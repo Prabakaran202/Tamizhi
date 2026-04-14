@@ -11,24 +11,60 @@ typedef enum {
     T_INP, T_IMP, T_ID, T_NUM, T_EOF  // கேள், சேர், identifiers, end of file
 } T_Type;
 
+Token get_next_token(FILE *file) {
+    Token token;
+    int c = fgetc(file);
 
-// 2. Token Struct (Puthusa paste pannunga)
-typedef struct {
-    T_Type type;
-    char value[64];
-} Token;
+    // ஸ்பேஸ்களைத் தவிர்க்க
+    while (isspace(c)) c = fgetc(file);
 
-// 3. Keyword Helper (Puthusa paste pannunga)
-T_Type get_keyword_type(char* value) {
-    if (strcmp(value, "செயல்") == 0) return T_FUNC;
-    if (strcmp(value, "கூறு") == 0) return T_PRINT;
-    if (strcmp(value, "கேள்") == 0) return T_INP;
-    if (strcmp(value, "சேர்") == 0) return T_IMP;
-    if (strcmp(value, "எ") == 0) return T_INT;
-    if (strcmp(value, "ஆ2") == 0) return T_IF;
-    if (strcmp(value, "த") == 0) return T_RET;
-    return T_ID; 
+    if (c == EOF) {
+        token.type = T_EOF;
+        return token;
+    }
+
+    // 1. தமிழ் மற்றும் ஆங்கில வார்த்தைகளைக் கையாள
+    if (isalpha(c) || c > 127) {
+        int i = 0;
+        do {
+            token.value[i++] = c;
+            c = fgetc(file);
+        } while (isalnum(c) || c > 127 || c == '2'); 
+        ungetc(c, file);
+        token.value[i] = '\0';
+        token.type = get_keyword_type(token.value);
+        return token;
+    }
+
+    // 2. எண்களைக் கையாள (Numbers)
+    if (isdigit(c)) {
+        int i = 0;
+        while (isdigit(c)) {
+            token.value[i++] = c;
+            c = fgetc(file);
+        }
+        ungetc(c, file);
+        token.value[i] = '\0';
+        token.type = T_NUM;
+        return token;
+    }
+
+    // 3. சிம்பல்ஸைக் கையாள (இதுதான் முக்கியம்)
+    token.value[0] = c;
+    token.value[1] = '\0';
+    token.type = T_ID; // தற்காலிகமாக T_ID என வைக்கிறோம்
+
+    if (c == '=') return token;
+    if (c == ';') return token;
+    if (c == '(') return token;
+    if (c == ')') return token;
+    if (c == '{') return token;
+    if (c == '}') return token;
+
+    return token;
 }
+
+
 
 // 4. Advanced Lexer Function (Puthusa paste pannunga)
 Token get_next_token(FILE *file) {
