@@ -32,7 +32,10 @@ void parse(FILE *file) {
 
             // 🔥 LINK TO BACKEND (Phone ASCII Fix)
             // 'val.value' inga thaan correct-a access aagum
-            tamizhi_gen_var_decl("v1", atoi(val.value)); 
+            //tamizhi_gen_var_decl("v1", atoi(val.value));
+            
+            tamizhi_gen_var_decl(name.value, atoi(val.value));
+            
         }
 
         // 2. 'கூறு' (Print Statement) handle pannuvom
