@@ -16,19 +16,22 @@ int main(int argc, char *argv[]) {
 
     printf("--- தமிழி கம்பைலர் (v0.1) ---\n");
 
-    // 1. LLVM Engine-a initialize pannuvom
+    // 1. Backend-a start pannuvom
     tamizhi_codegen_init();
 
-    // 2. Entry point (main function) create pannuvom
+    // 2. Main entry point create pannuvom
     tamizhi_generate_entry();
 
-    // 3. Tokens-a analyze panni screen-la print pannuvom (Temporary)
+    // 3. Oru dummy variable create panni LLVM memory-a check pannuvom
+    tamizhi_gen_var_decl("i", 0); 
+
+    // 4. Tokens list-a analyze panni screen-la kaatuvom
     Token t;
     while ((t = get_next_token(file)).type != T_EOF) {
         printf("வகை: %d | மதிப்பு: %s\n", t.type, t.value);
     }
 
-    // 4. Mudivila LLVM IR-a print panni finish pannuvom
+    // 5. LLVM IR-a generate panni finalize pannuvom
     tamizhi_codegen_finish();
 
     fclose(file);
