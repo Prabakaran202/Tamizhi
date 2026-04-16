@@ -1,5 +1,7 @@
 #include <stdio.h>
+#include <stdlib.h>
 #include "lexer.h"
+#include "parser.h" // Intha header romba mukkiyam
 #include "codegen.h"
 
 int main(int argc, char *argv[]) {
@@ -14,29 +16,21 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    //printf(" தமிழி கம்பைலர் (v0.1)\n");
-
-    // 1. Backend-a start pannuvom
+    // 1. Backend Engine Setup
     tamizhi_codegen_init();
-
-    // 2. Main entry point create pannuvom
     tamizhi_generate_entry();
-    tamizhi_gen_loop_test(1000000);
 
+    printf("--- தமிழி கம்பைலர் (v0.1) ---\n");
 
-    // 3. Oru dummy variable create panni LLVM memory-a check pannuvom
-    tamizhi_gen_var_decl("i", 0); 
+    // 2. Parser Integration 🔥
+    // Intha 'parse' function kulla thaan Lexer and Codegen onnaa serum.
+    // Lexer tokens-a tharum, Parser athai analyze panni Codegen-a call pannum.
+    parse(file); 
 
-    // 4. Tokens list-a analyze panni screen-la kaatuvom
-    Token t;
-    while ((t = get_next_token(file)).type != T_EOF) {
-        printf("வகை: %d | மதிப்பு: %s\n", t.type, t.value);
-    }
-
-    // 5. LLVM IR-a generate panni finalize pannuvom
+    // 3. Finalize and Output IR
     tamizhi_codegen_finish();
 
     fclose(file);
-    printf("\nஆய்வு முடிந்தது.\n");
+    printf("\nதொகுப்பு மற்றும் ஆய்வு முடிந்தது.\n");
     return 0;
 }
