@@ -32,9 +32,9 @@ void parse(FILE *file) {
             ASTNode* var_node = create_node(NODE_VAR_DECL, name);
             
             // 🔥 LINK TO BACKEND (LLVM IR Generation)
-            tamizhi_gen_var_decl(name.value, atoi(val.value));
+            //tamizhi_gen_var_decl(name.value, atoi(val.value));
         }
-        
+        tamizhi_gen_var_decl("v1", atoi(val.value)); 
         // 2. Handling 'கூறு' (Print Statement)
         else if (t.type == 14) { // Assume 14 for 'கூறு'
             Token open_p = get_next_token(file); // '('
