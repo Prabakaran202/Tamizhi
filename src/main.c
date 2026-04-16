@@ -14,7 +14,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    printf(" தமிழி கம்பைலர் (v0.1)\n");
+    //printf(" தமிழி கம்பைலர் (v0.1)\n");
 
     // 1. Backend-a start pannuvom
     tamizhi_codegen_init();
