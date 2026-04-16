@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
 
     // 2. Main entry point create pannuvom
     tamizhi_generate_entry();
-    tamizhi_gen_loop_test(1000000);-a
+    tamizhi_gen_loop_test(1000000);
 
 
     // 3. Oru dummy variable create panni LLVM memory-a check pannuvom
