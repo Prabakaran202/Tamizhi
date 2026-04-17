@@ -25,7 +25,7 @@ void parse(FILE *file) {
             Token val = get_next_token(file);    // Value (e.g., '100')
             Token semi = get_next_token(file);   // ';'
 
-            printf("[Parser] Variable Declaration Detect: %s = %s\n", name.value, val.value);
+            printf("stderr,[Parser] Variable Declaration Detect: %s = %s\n", name.value, val.value);
 
             // AST Node creation (Good for structure)
             ASTNode* var_node = create_node(NODE_VAR_DECL, name);
@@ -50,7 +50,7 @@ void parse(FILE *file) {
 
         // 3. 'சு' (Loop) handle pannuvom
         else if (strcmp(t.value, "சு") == 0) {
-            printf("[Parser] Loop detected! Triggering 1M Loop Test...\n");
+            printf("stderr,[Parser] Loop detected! Triggering 1M Loop Test...\n");
             tamizhi_gen_loop_test(1000000);
         }
     }
