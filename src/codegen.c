@@ -10,7 +10,7 @@ LLVMBuilderRef builder;
 void tamizhi_codegen_init() {
     module = LLVMModuleCreateWithName("tamizhi_engine");
     builder = LLVMCreateBuilder();
-   fprintf("stderr, [Codegen] LLVM Engine initialized successfully on your phone!\n");
+   fprintf(stderr," [Codegen] LLVM Engine initialized successfully on your phone!\n");
 }
 
 void tamizhi_generate_entry() {
@@ -25,14 +25,14 @@ void tamizhi_generate_entry() {
 
     LLVMBasicBlockRef entry = LLVMAppendBasicBlock(main_func, "entry");
     LLVMPositionBuilderAtEnd(builder, entry);
-    fprintf("stderr,[Codegen] Main function entry point created with public visibility.\n");
+    fprintf(stderr,"[Codegen] Main function entry point created with public visibility.\n");
 }
 
 void tamizhi_gen_var_decl(char* name, int initial_value) {
     LLVMValueRef alloca = LLVMBuildAlloca(builder, LLVMInt32Type(), name);
     LLVMValueRef val = LLVMConstInt(LLVMInt32Type(), initial_value, 0);
     LLVMBuildStore(builder, val, alloca);
-    fprintf("stderr,[Codegen] Variable '%s' created.\n", name);
+    fprintf(stderr,"[Codegen] Variable '%s' created.\n", name);
 }
 
 void tamizhi_gen_loop_test(int limit) {
@@ -59,7 +59,7 @@ void tamizhi_gen_loop_test(int limit) {
     LLVMBuildBr(builder, cond_block);
 
     LLVMPositionBuilderAtEnd(builder, after_block);
-    fprintf("stderr,[Codegen] 1 Million Loop logic generated.\n");
+    fprintf(stderr,"[Codegen] 1 Million Loop logic generated.\n");
 }
 
 void tamizhi_codegen_finish() {
@@ -69,7 +69,7 @@ void tamizhi_codegen_finish() {
     char *error = NULL;
     LLVMVerifyModule(module, LLVMAbortProcessAction, &error);
 
-    fprintf("stderr,\n--- Generated LLVM IR ---\n");
+    fprintf(stderr,"\n--- Generated LLVM IR ---\n");
     LLVMDumpModule(module);
 
     LLVMDisposeBuilder(builder);
