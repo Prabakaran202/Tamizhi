@@ -10,7 +10,7 @@ LLVMBuilderRef builder;
 void tamizhi_codegen_init() {
     module = LLVMModuleCreateWithName("tamizhi_engine");
     builder = LLVMCreateBuilder();
-   // printf("stderr, [Codegen] LLVM Engine initialized successfully on your phone!\n");
+   fprintf("stderr, [Codegen] LLVM Engine initialized successfully on your phone!\n");
 }
 
 void tamizhi_generate_entry() {
