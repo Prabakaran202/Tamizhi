@@ -6,13 +6,13 @@
 
 int main(int argc, char *argv[]) {
     if (argc < 2) {
-        printf("stderr,பயன்பாடு: tamizhi <filename.tz>\n");
+        fprintf(stderr,"பயன்பாடு: tamizhi <filename.tz>\n");
         return 1;
     }
 
     FILE *file = fopen(argv[1], "r");
     if (!file) {
-        perror("stderr,கோப்பை திறக்க முடியவில்லை");
+        perror("கோப்பை திறக்க முடியவில்லை");
         return 1;
     }
 
@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
     tamizhi_codegen_init();
     tamizhi_generate_entry();
 
-    printf("stderr,--- தமிழி கம்பைலர் (v0.1) ---\n");
+    printf(stderr,"--- தமிழி கம்பைலர் (v0.1) ---\n");
 
     // 2. Parser Integration 🔥
     // Intha 'parse' function kulla thaan Lexer and Codegen onnaa serum.
@@ -31,6 +31,6 @@ int main(int argc, char *argv[]) {
     tamizhi_codegen_finish();
 
     fclose(file);
-    printf("stderr,\nதொகுப்பு மற்றும் ஆய்வு முடிந்தது.\n");
+    printf(stderr,"\nதொகுப்பு மற்றும் ஆய்வு முடிந்தது.\n");
     return 0;
 }
