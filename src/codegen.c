@@ -59,7 +59,7 @@ void tamizhi_gen_loop_test(int limit) {
     LLVMBuildBr(builder, cond_block);
 
     LLVMPositionBuilderAtEnd(builder, after_block);
-    printf("[Codegen] 1 Million Loop logic generated.\n");
+    printf("stderr,[Codegen] 1 Million Loop logic generated.\n");
 }
 
 void tamizhi_codegen_finish() {
@@ -69,7 +69,7 @@ void tamizhi_codegen_finish() {
     char *error = NULL;
     LLVMVerifyModule(module, LLVMAbortProcessAction, &error);
 
-    printf("\n--- Generated LLVM IR ---\n");
+    printf("stderr,\n--- Generated LLVM IR ---\n");
     LLVMDumpModule(module);
 
     LLVMDisposeBuilder(builder);
