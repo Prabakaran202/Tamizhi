@@ -50,7 +50,7 @@ void parse(FILE *file) {
 
         // 3. 'சு' (Loop) handle pannuvom
         else if (strcmp(t.value, "சு") == 0) {
-            printf(stderr,"[Parser] Loop detected! Triggering 1M Loop Test...\n");
+            fprintf(stderr,"[Parser] Loop detected! Triggering 1M Loop Test...\n");
             tamizhi_gen_loop_test(1000000);
         }
     }
