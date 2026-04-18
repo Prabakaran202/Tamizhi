@@ -20,7 +20,7 @@ int main(int argc, char *argv[]) {
     tamizhi_codegen_init();
     tamizhi_generate_entry();
 
-    printf(stderr,"--- தமிழி கம்பைலர் (v0.1) ---\n");
+    fprintf(stderr,"--- தமிழி கம்பைலர் (v0.1) ---\n");
 
     // 2. Parser Integration 🔥
     // Intha 'parse' function kulla thaan Lexer and Codegen onnaa serum.
@@ -31,6 +31,6 @@ int main(int argc, char *argv[]) {
     tamizhi_codegen_finish();
 
     fclose(file);
-    printf(stderr,"\nதொகுப்பு மற்றும் ஆய்வு முடிந்தது.\n");
+    fprintf(stderr,"\nதொகுப்பு மற்றும் ஆய்வு முடிந்தது.\n");
     return 0;
 }
