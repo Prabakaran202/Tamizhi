@@ -81,7 +81,7 @@ void tamizhi_gen_print(char* var_name) {
     // LLVMValueRef val = LLVMBuildLoad2(builder, LLVMInt32Type(), var_ptr, "print_val");
 
     // 4. Call printf
-    LLVMValueRef args[] = { format_str,value  };
+    LLVMValueRef args[] = { format_str,var_ptr};
     LLVMBuildCall2(builder, printf_type, printf_func, args, 2, "print_call");
 }
 
