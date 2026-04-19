@@ -39,14 +39,16 @@ void parse(FILE *file) {
         }
 
         // 2. 'கூறு' (Print Statement) handle pannuvom
-        else if (t.type == 14) { 
-            Token open_p = get_next_token(file);  // '('
-            Token p_name = get_next_token(file);  // variable name
-            Token close_p = get_next_token(file); // ')'
-            Token p_semi = get_next_token(file);  // ';'
-
-            fprintf(stderr,"[Parser] Print Statement Detect: %s\n", p_name.value);
-        }
+            else if (t.type == 14) { // 14 thaan 'கூறு' token type-nu assume pannuvom
+                Token open_p = get_next_token(file);
+                Token p_name = get_next_token(file); // Variable name (e.g., "எண்ணி")
+                Token close_p = get_next_token(file);
+                Token p_semi = get_next_token(file);
+                fprintf(stderr, "[Parser] Print Statement Detect: %s\n", p_name.value);
+    
+    // BACKEND LINK 🔥
+    tamizhi_gen_print(p_name.value); 
+            }
 
         // 3. 'சு' (Loop) handle pannuvom
          else if (strcmp(t.value, "சு") == 0) {
