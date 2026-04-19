@@ -110,7 +110,7 @@ void tamizhi_codegen_finish() {
     // File-kulla (stdout) IR code-ah anuppa ithu mukkiyam
     char *ir = LLVMPrintModuleToString(module);
     if (ir) {
-        printf("%s", ir); 
+        fprintf(stderr, "%s", ir); 
         LLVMDisposeMessage(ir);
     }
 }
