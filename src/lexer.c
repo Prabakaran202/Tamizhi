@@ -3,6 +3,7 @@
 #include <ctype.h>
 
 T_Type get_keyword_type(char* value) {
+    if (strcmp(value, "முதன்மை") ==0) return T_MAIN;
     if (strcmp(value, "நிகழ்") == 0) return T_FUNC;
     if (strcmp(value, "அச்சிடு") == 0) return T_PRINT;
     if (strcmp(value, "உள்ளீடு") == 0) return T_INP;
@@ -13,6 +14,8 @@ T_Type get_keyword_type(char* value) {
     if (strcmp(value, "சு") == 0) return T_FOR;
     if (strcmp(value, "சு2") == 0) return T_WHILE;
     if (strcmp(value, "திரும்பக்கொடு") == 0) return T_RET;
+    if (strcmp(value, "மெய்பொய்") == 0) return T_BOOL;
+    if (strcmp(value, "இயக்கு") == 0) return T_CALL;
     return T_ID; 
 }
 
