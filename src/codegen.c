@@ -10,7 +10,13 @@ LLVMBuilderRef builder;
 void tamizhi_codegen_init() {
     module = LLVMModuleCreateWithName("tamizhi_engine");
     builder = LLVMCreateBuilder();
-   fprintf(stderr," [Codegen] LLVM Engine initialized successfully on your phone!\n");
+   
+    LLVMTypeRef printf_args[] = { LLVMPointerType(LLVMInt8Type(), 0) }; // format string
+    LLVMTypeRef printf_type = LLVMFunctionType(LLVMInt32Type(), printf_args, 1, 1);
+    LLVMValueRef printf_func = LLVMAddFunction(module, "printf", printf_type);
+    
+    fprintf(stderr," [Codegen] LLVM Engine initialized successfully on your phone!\n");
+
 }
 
 void tamizhi_generate_entry() {
