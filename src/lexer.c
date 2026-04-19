@@ -18,11 +18,11 @@ T_Type get_keyword_type(char* value) {
     if (strcmp(value, "இயக்கு") == 0) return T_CALL;
     return T_ID; 
 }
-
 Token get_next_token(FILE *file) {
     Token token;
     int c = fgetc(file);
 
+    // 1. Skip Whitespaces
     while (isspace(c)) c = fgetc(file);
 
     if (c == EOF) {
@@ -31,6 +31,7 @@ Token get_next_token(FILE *file) {
         return token;
     }
 
+    // 2. Handle Tamil Keywords & Identifiers
     if (isalpha(c) || (unsigned char)c > 127) {
         int i = 0;
         do {
@@ -43,6 +44,7 @@ Token get_next_token(FILE *file) {
         return token;
     }
 
+    // 3. Handle Numbers
     if (isdigit(c)) {
         int i = 0;
         while (isdigit(c)) {
@@ -55,9 +57,20 @@ Token get_next_token(FILE *file) {
         return token;
     }
 
+    // 4. CRITICAL: Handle Symbols & Operators
     token.value[0] = c;
     token.value[1] = '\0';
-    token.type = T_ID; 
+
+    if (c == '(') token.type = 15;      // T_LPAREN
+    else if (c == ')') token.type = 16; // T_RPAREN
+    else if (c == ';') token.type = 17; // T_SEMI
+    else if (c == '<') token.type = 18; // T_LT
+    else if (c == '>') token.type = 21; // T_GT
+    else if (c == '+') token.type = 19; // T_PLUS
+    else if (c == '=') token.type = 20; // T_ASSIGN
+    else if (c == '{') token.type = 22; // T_LBRACE
+    else if (c == '}') token.type = 23; // T_RBRACE
+    else token.type = T_ID;             // Default to Identifier
 
     return token;
 }
