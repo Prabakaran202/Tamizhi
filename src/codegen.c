@@ -8,6 +8,7 @@ LLVMModuleRef module;
 LLVMBuilderRef builder;
 LLVMTypeRef printf_type;
 LLVMValueRef printf_func;
+LLVMValueRef i_ptr;
 void tamizhi_codegen_init() {
     module = LLVMModuleCreateWithName("tamizhi_engine");
     builder = LLVMCreateBuilder();
