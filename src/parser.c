@@ -46,8 +46,7 @@ void parse(FILE *file) {
                 Token p_semi = get_next_token(file);
                 fprintf(stderr, "[Parser] Print Statement Detect: %s\n", p_name.value);
     
-    // BACKEND LINK 🔥
-                tamizhi_gen_print(p_name.value); 
+    
             }
 
         // 3. 'சு' (Loop) handle pannuvom
