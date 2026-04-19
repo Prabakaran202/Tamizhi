@@ -3,16 +3,16 @@
 #include <ctype.h>
 
 T_Type get_keyword_type(char* value) {
-    if (strcmp(value, "செயல்") == 0) return T_FUNC;
-    if (strcmp(value, "கூறு") == 0) return T_PRINT;
-    if (strcmp(value, "கேள்") == 0) return T_INP;
+    if (strcmp(value, "நிகழ்") == 0) return T_FUNC;
+    if (strcmp(value, "அச்சிடு") == 0) return T_PRINT;
+    if (strcmp(value, "உள்ளீடு") == 0) return T_INP;
     if (strcmp(value, "சேர்") == 0) return T_IMP;
-    if (strcmp(value, "எ") == 0) return T_INT;
-    if (strcmp(value, "வ") == 0) return T_STR;
-    if (strcmp(value, "ஆ2") == 0) return T_IF;
+    if (strcmp(value, "முமூஎண்") == 0) return T_INT;
+    if (strcmp(value, "மாலை") == 0) return T_STR;
+    if (strcmp(value, "என்றால்") == 0) return T_IF;
     if (strcmp(value, "சு") == 0) return T_FOR;
     if (strcmp(value, "சு2") == 0) return T_WHILE;
-    if (strcmp(value, "த") == 0) return T_RET;
+    if (strcmp(value, "திரும்பக்கொடு") == 0) return T_RET;
     return T_ID; 
 }
 
