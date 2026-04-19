@@ -92,3 +92,19 @@ void tamizhi_codegen_finish() {
 
     LLVMDisposeBuilder(builder);
 }
+void tamizhi_gen_print(char* var_name) {
+    // 1. Get the printf function from module
+    LLVMValueRef printf_func = LLVMGetNamedFunction(module, "printf");
+    
+    // 2. Create a format string (e.g., "%d\n")
+    LLVMValueRef format_str = LLVMBuildGlobalStringPtr(builder, "%d\n", "fmt");
+    
+    // 3. Load the variable value
+    LLVMValueRef var_ptr = LLVMGetNamedGlobal(module, var_name); // Note: Fix if using alloca
+    // For simplicity, let's assume we load from current scope
+    // LLVMValueRef val = LLVMBuildLoad2(builder, LLVMInt32Type(), var_ptr, "print_val");
+
+    // 4. Call printf
+    LLVMValueRef args[] = { format_str, /* value here */ };
+    LLVMBuildCall2(builder, printf_type, printf_func, args, 2, "print_call");
+}
