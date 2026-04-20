@@ -152,7 +152,7 @@ void parse(FILE *file) {
         }
 
         // --- 'அச்சிடு' (Print Variable Fix) ---
-        else if (t.type == T_PRINT || strcmp(t.value, "அச்சிடு") == 0) {
+       /*else if (t.type == T_PRINT || strcmp(t.value, "அச்சிடு") == 0) {
             t = get_next_token(file);
             
             // ஒருவேளை '(' இருந்தால் அதைத் தாண்டுவோம்
@@ -169,7 +169,25 @@ void parse(FILE *file) {
                 //ungetc_token(next, file); // இது இல்லை என்றால் பரவாயில்லை, t-ஐ அப்படியே விடலாம்
             }
             continue;
+        }*/
+                // --- 'அச்சிடு' (Clean & Fixed Version) ---
+        else if (t.type == T_PRINT || strcmp(t.value, "அச்சிடு") == 0) {
+            t = get_next_token(file);
+            
+            // 1. ஒருவேளை '(' இருந்தால் அதைத் தாண்டி அடுத்த டோக்கனை எடுப்போம்
+            if (t.type == 15 || strcmp(t.value, "(") == 0) { 
+                t = get_next_token(file); // இதுதான் உண்மையான மாறி (Variable)
+            }
+            
+            // 2. மாறியின் பெயரை அனுப்பி அச்சிடுவோம்
+            fprintf(stderr, "[Parser] Printing Variable: %s\n", t.value);
+            tamizhi_gen_print(t.value);
+
+            // 3. இங்க நாம வேற எந்த 'next' டோக்கனையும் தொட வேண்டாம். 
+            // லூப் தானாவே அடுத்த வரியைப் படிக்கட்டும்.
+            continue;
         }
+            
 
         // --- 'சு' (Loop) ---
         else if (t.type == T_FOR || strcmp(t.value, "சு") == 0) {
