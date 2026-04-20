@@ -4,59 +4,64 @@
 #include <stdio.h>
 #include <string.h>
 
-// கணிதக் கணக்கீடுகளை கையாள (e.g., 1 + 4)
-void parse_expression(FILE *file, Token first_token) {
-    Token op = get_next_token(file); 
-    if (strcmp(op.value, "+") == 0) {
-        Token second_val = get_next_token(file);
-        fprintf(stderr, "[Parser] கணிதம்: %s + %s\n", first_token.value, second_val.value);
-
-        int n1 = atoi(first_token.value);
-        int n2 = atoi(second_val.value);
-        tamizhi_gen_add_and_print(n1, n2); 
+// Helper to skip blocks { ... }
+void skip_block(FILE *file) {
+    Token t;
+    int brace_count = 1;
+    while (brace_count > 0 && (t = get_next_token(file)).type != T_EOF) {
+        if (t.type == 22) brace_count++; // {
+        if (t.type == 23) brace_count--; // }
     }
 }
 
 void parse(FILE *file) {
     Token t;
+    fprintf(stderr, "[Parser] Tamizhi Engine Analysis Started...\n");
+
     while ((t = get_next_token(file)).type != T_EOF) {
-
-        // --- 'முதன்மை' (Main Block) ---
+        
+        // 1. 'முதன்மை' (Main Block) - It's just a setup, so we skip its body for now
         if (t.type == T_MAIN) {
-            fprintf(stderr, "[Parser] முதன்மை பகுதி கண்டறியப்பட்டது.\n");
-            // '{' வரும் வரை டோக்கன்களை நகர்த்தவும்
-            while ((t = get_next_token(file)).type != 22 && t.type != T_EOF); 
-            // '}' வரும் வரை உள்ளே இருப்பவற்றை ஸ்கிப் செய்யவும்
-            while ((t = get_next_token(file)).type != 23 && t.type != T_EOF);
+            fprintf(stderr, "[Parser] Main block detected.\n");
+            while ((t = get_next_token(file)).type != 22 && t.type != T_EOF); // Look for {
+            skip_block(file);
         }
 
-        // --- 'நிகழ்' (Function Definition) ---
+        // 2. 'நிகழ்' (Function Definition)
         else if (t.type == T_FUNC) {
-            Token func_name = get_next_token(file);
-            fprintf(stderr, "[Parser] செயல்முறை உருவாக்கம்: %s\n", func_name.value);
-            // அடுத்த செமிகோலன் அல்லது கோலன் வரை நகர்த்தவும்
-            while ((t = get_next_token(file)).type != 17 && t.type != T_EOF);
+            Token name = get_next_token(file);
+            fprintf(stderr, "[Parser] Function definition found: %s\n", name.value);
+            // Skip until semicolon or body
+            while ((t = get_next_token(file)).type != 17 && t.type != 22 && t.type != T_EOF);
+            if (t.type == 22) skip_block(file);
         }
 
-        // --- 'இயக்கு' (Function Call / Execute) ---
+        // 3. 'இயக்கு' (The Execution logic)
         else if (t.type == T_CALL) {
-            fprintf(stderr, "[Parser] 'இயக்கு' பகுதி தொடங்குகிறது...\n");
+            fprintf(stderr, "[Parser] Starting Execution Block...\n");
             
-            // 'add' அல்லது ஃபங்க்ஷன் பெயர் வரும் வரை தேடவும்
-            while ((t = get_next_token(file)).type != T_ID && t.type != T_EOF);
-            char func_name[64];
-            strcpy(func_name, t.value);
+            while ((t = get_next_token(file)).type != 23 && t.type != T_EOF) {
+                // If we find the function call inside 'இயக்கு'
+                if (t.type == T_ID) {
+                    char func_name[64];
+                    strcpy(func_name, t.value);
 
-            // '(' வரும் வரை நகர்த்தவும்
-            while ((t = get_next_token(file)).type != 15 && t.type != T_EOF);
+                    // Look for numbers inside brackets: add(10+20)
+                    while ((t = get_next_token(file)).type != T_NUM && t.type != 23 && t.type != T_EOF);
+                    
+                    if (t.type == T_NUM) {
+                        int n1 = atoi(t.value);
+                        get_next_token(file); // Skip '+'
+                        Token second = get_next_token(file);
+                        int n2 = atoi(second.value);
 
-            // முதல் எண்ணை எடுக்கவும் (உதாரணம்: 1)
-            Token first_num = get_next_token(file);
-            if (first_num.type == T_NUM) {
-                parse_expression(file, first_num);
+                        fprintf(stderr, "[Parser] Executing %s with: %d + %d\n", func_name, n1, n2);
+                        
+                        // 🔥 TRIGGER BACKEND
+                        tamizhi_gen_add_and_print(n1, n2);
+                    }
+                }
             }
-
-            fprintf(stderr, "[Parser] செயல்முறை '%s' வெற்றிகரமாகத் தொகுக்கப்பட்டது.\n", func_name);
         }
     }
 }
