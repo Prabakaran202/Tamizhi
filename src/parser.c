@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include <string.h>
 
-// 1. Prototype - அறிவிப்பு
+// 1. Prototype
 void skip_block(FILE *file); 
 
 void parse(FILE *file) {
@@ -34,10 +34,9 @@ void parse(FILE *file) {
             fprintf(stderr, "[Parser] Starting Execution (இயக்கு)...\n");
 
             // '}' வரும் வரை உள்ளே இருக்கும் எண்களைத் தேடுவோம்
-            while ((t = get_next_token(file)).type != 23 && t.type != T_EOF) {
-                
-                // Debug: ஒவ்வொரு டோக்கனையும் செக் பண்ணுவோம்
-                fprintf(stderr, "[Debug] Token: '%s' | Type: %d\n", t.value, t.type);
+            while (1) {
+                t = get_next_token(file);
+                if (t.type == 23 || t.type == T_EOF) break; // '}' வந்தால் நிறுத்து
 
                 // ஒரு டோக்கன் எண்ணாக இருக்கிறதா என்று அதன் முதல் எழுத்தை (0-9) வைத்துப் பார்ப்போம்
                 if (t.value[0] >= '0' && t.value[0] <= '9') {
@@ -45,14 +44,18 @@ void parse(FILE *file) {
                     fprintf(stderr, "[Parser] Found First Number: %d\n", n1);
 
                     // அடுத்த எண் கிடைக்கும் வரை இடையில் இருப்பவற்றைத் தாண்டுவோம்
-                    while ((t = get_next_token(file)).type != T_EOF && (t.value[0] < '0' || t.value[0] > '9') && t.type != 23);
+                    while (1) {
+                        t = get_next_token(file);
+                        if (t.type == 23 || t.type == T_EOF) break;
+                        if (t.value[0] >= '0' && t.value[0] <= '9') break;
+                    }
 
                     if (t.value[0] >= '0' && t.value[0] <= '9') {
                         int n2 = atoi(t.value);
                         fprintf(stderr, "[Parser] Found Second Number: %d\n", n2);
                         fprintf(stderr, "[Parser] Logic Found: %d + %d\n", n1, n2);
                         
-                        // Backend-ஐ அழைத்து LLVM IR உருவாக்குதல்
+                        // Backend-ஐ அழைத்து அவுட்புட் உருவாக்குதல்
                         tamizhi_gen_add_and_print(n1, n2);
                         break; 
                     }
@@ -62,7 +65,7 @@ void parse(FILE *file) {
     }
 }
 
-// 2. skip_block - பிளாக்குகளைத் தாண்ட
+// 2. skip_block - இது பிளாக்குகளை சரியாக மூடும் வரை தாண்டும்
 void skip_block(FILE *file) {
     Token t;
     int brace_count = 1;
@@ -71,3 +74,4 @@ void skip_block(FILE *file) {
         if (t.type == 23) brace_count--; // '}'
     }
 }
+
