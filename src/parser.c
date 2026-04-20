@@ -1,4 +1,4 @@
-#include "parser.h"
+/*#include "parser.h"
 #include "codegen.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -53,6 +53,89 @@ void parse(FILE *file) {
          else if (strcmp(t.value, "சு") == 0) {
             fprintf(stderr,"[Parser] Loop detected! Triggering 1M Loop Test...\n");
             tamizhi_gen_loop_test(1000000);
+        }
+    }
+}
+*/
+
+#include "parser.h"
+#include "codegen.h"
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+
+// Helper to check if the token is what we expect
+void expect(T_Type expected_type, FILE *file) {
+    Token t = get_next_token(file);
+    if (t.type != expected_type) {
+        fprintf(stderr, "[Error] Expected token type %d but got %s\n", expected_type, t.value);
+    }
+}
+
+// 1. Math Expression Parse panna (e.g., 1 + 4)
+void parse_expression(FILE *file, Token first_token) {
+    Token op = get_next_token(file); // '+'
+    Token second_val = get_next_token(file); // '4'
+    
+    if (strcmp(op.value, "+") == 0) {
+        fprintf(stderr, "[Parser] Math: %s + %s\n", first_token.value, second_val.value);
+        // Inga tamizhi_gen_add(atoi(first_token.value), atoi(second_val.value)) call aagum
+    }
+}
+
+void parse(FILE *file) {
+    Token t;
+    while ((t = get_next_token(file)).type != T_EOF) {
+
+        // --- HANDLE 'முதன்மை' (Main) ---
+        if (t.type == T_MAIN) {
+            expect(15, file); // Expect '('
+            expect(16, file); // Expect ')'
+            expect(22, file); // Expect '{'
+            fprintf(stderr, "[Parser] Entering Main Block\n");
+            // Main block content parsing logic here...
+        }
+
+        // --- HANDLE 'நிகழ்' (Function Definition) ---
+        else if (t.type == T_FUNC) {
+            Token func_name = get_next_token(file); // 'add'
+            expect(15, file); // '('
+            expect(16, file); // ')'
+            expect(17, file); // ';' or ':' based on your image
+            fprintf(stderr, "[Parser] Defining Function: %s\n", func_name.value);
+        }
+
+        // --- HANDLE 'அச்சிடு' (Print) with Expressions ---
+        else if (t.type == T_PRINT) {
+            expect(15, file); // '('
+            Token first = get_next_token(file);
+            
+            // Check if it's a simple variable or an expression (a + b)
+            Token next = get_next_token(file);
+            if (strcmp(next.value, "+") == 0) {
+                Token second = get_next_token(file);
+                fprintf(stderr, "[Parser] Print Expression: %s + %s\n", first.value, second.value);
+            }
+            expect(16, file); // ')'
+            expect(17, file); // ';'
+        }
+
+        // --- HANDLE 'இயக்கு' (Function Call/Execute) ---
+        else if (t.type == T_CALL) {
+            expect(15, file); // '('
+            expect(22, file); // '{'
+            
+            Token func_to_call = get_next_token(file); // 'add'
+            expect(15, file); // '('
+            
+            Token param = get_next_token(file); // '1'
+            parse_expression(file, param); // Handle '1 + 4'
+            
+            expect(16, file); // ')'
+            expect(17, file); // ';'
+            expect(23, file); // '}'
+            expect(17, file); // ';'
+            fprintf(stderr, "[Parser] Calling Function %s with expression\n", func_to_call.value);
         }
     }
 }
