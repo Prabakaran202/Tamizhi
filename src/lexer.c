@@ -8,7 +8,10 @@ T_Type get_keyword_type(char* value) {
     if (strcmp(value, "அச்சிடு") == 0) return T_PRINT;
     if (strcmp(value, "உள்ளீடு") == 0) return T_INP;
     if (strcmp(value, "சேர்") == 0) return T_IMP;
-    if (strcmp(value, "Num") == 0) return T_INT;
+    if (strcmp(value, "முழுஎண்") == 0 || strcmp(value, "Num") == 0) {
+    return T_INT;
+    }
+
     if (strcmp(value, "Str") == 0) return T_STR;
     if (strcmp(value, "if") == 0) return T_IF;
     if (strcmp(value, "சு") == 0) return T_FOR;
