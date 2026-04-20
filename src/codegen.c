@@ -86,7 +86,7 @@ void tamizhi_gen_print(char* var_name) {
     LLVMBuildCall2(builder, printf_type, printf_func, args, 2, "print_call");
 }
 
-/*
+
 void tamizhi_gen_print(char* var_name) {
     // 1. Get printf and format string
     LLVMValueRef fmt = LLVMBuildGlobalStringPtr(builder, "%d\n", "fmt");
