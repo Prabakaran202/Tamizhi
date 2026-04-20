@@ -7,7 +7,7 @@ typedef enum {
     T_INT, T_STR, T_FLT, T_BOOL,
     T_IF, T_ELSE, T_FOR, T_WHILE,
     T_RET, T_FUNC, T_PRINT,
-    T_INP, T_IMP, T_ID, T_NUM, T_EOF 
+    T_INP, T_IMP, T_ID, T_NUM, T_EOF,T_MAIN,T_CALL
 } T_Type;
 
 typedef struct {
