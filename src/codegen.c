@@ -108,7 +108,7 @@ void tamizhi_gen_print(char* var_name) {
     // MUKKIYAM: Global 'printf_type' and 'printf_func' use pannanum
     LLVMBuildCall2(builder, printf_type, printf_func, args, 2, "print_call");
 }
-*/
+
 void tamizhi_codegen_finish() {
     // 1. Return 0 for main function
     LLVMValueRef ret_val = LLVMConstInt(LLVMInt32Type(), 0, 0);
