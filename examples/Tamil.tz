@@ -1,0 +1,13 @@
+main(){
+add(int,str)
+}
+
+fun add (){
+   c = a + b 
+   return c
+}
+
+
+call(){
+add()
+};
