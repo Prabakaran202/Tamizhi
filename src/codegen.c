@@ -78,3 +78,17 @@ void tamizhi_codegen_finish() {
     LLVMDisposeMessage(ir_string);
     LLVMDisposeBuilder(builder);
 }
+// இரண்டு எண்களைக் கூட்டி அச்சிடும் லாஜிக்
+void tamizhi_gen_add_and_print(int n1, int n2) {
+    // 1. கூட்டல் செய்ய (n1 + n2)
+    LLVMValueRef val1 = LLVMConstInt(LLVMInt32Type(), n1, 0);
+    LLVMValueRef val2 = LLVMConstInt(LLVMInt32Type(), n2, 0);
+    LLVMValueRef sum = LLVMBuildAdd(builder, val1, val2, "tmp_sum");
+    
+    // 2. பிரிண்ட் செய்ய பார்மேட் ஸ்ட்ரிங்
+    LLVMValueRef fmt = LLVMBuildGlobalStringPtr(builder, "%d\n", "fmt_sum");
+    
+    // 3. பிரிண்ட் பங்க்ஷனை அழைத்தல்
+    LLVMValueRef args[] = { fmt, sum };
+    LLVMBuildCall2(builder, printf_type, printf_func, args, 2, "print_sum_call");
+}
