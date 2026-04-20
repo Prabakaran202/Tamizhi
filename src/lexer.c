@@ -3,11 +3,11 @@
 #include <ctype.h>
 
 T_Type get_keyword_type(char* value) {
-    if (strcmp(value, "முதன்மை") == 0 || strcmp(value, "main") == 0) {
+    if (strcmp(value, "முதன்மை") == 0 || strcmp(value, "main") == 0 {
     return T_MAIN;}
-    if (strcmp(value,"நிகழ்") == 0 || strcmp(value,"fun") = 0){return T_FUN;}
-    if (strcmp(value, "அச்சிடு") == 0 || strcmp(value,"print") = 0) {return T_PRINT;}
-    if (strcmp(value, "உள்ளீடு") == 0  || strcmp(value,"input") = 0){return T_INP;}
+    if (strcmp(value,"நிகழ்") == 0 || strcmp(value,"fun") = 0 {return T_FUN;}
+    if (strcmp(value, "அச்சிடு") == 0 || strcmp(value,"print") = 0 {return T_PRINT;}
+    if (strcmp(value, "உள்ளீடு") == 0  || strcmp(value,"input") = 0 {return T_INP;}
     if (strcmp(value, "சேர்") == 0  || strcmp(value,"import") = 0){return T_IMP;}
     if (strcmp(value, "முழுஎண்") == 0 || strcmp(value, "Num") == 0) {
     return T_INT;
