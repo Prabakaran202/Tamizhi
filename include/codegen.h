@@ -9,7 +9,7 @@ void tamizhi_generate_entry();
 void tamizhi_codegen_finish();
 
 // வேரியபிள் மற்றும் லூப் லாஜிக்
-void tamizhi_gen_var_decl(char* name, int initial_value);
+void tamizhi_gen_var(char* name, int initial_value);
 void tamizhi_gen_loop_test(int limit);
 
 // --- புதிய பங்க்ஷன்: கூட்டல் மற்றும் பிரிண்ட் செய்ய ---
