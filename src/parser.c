@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+void skip_block(FILE *file); // இதை முன்னாடியே அறிவிக்கிறோம் (Prototype)
+
 
 void parse(FILE *file) {
     Token t;
