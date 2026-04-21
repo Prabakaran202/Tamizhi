@@ -9,9 +9,8 @@ LLVMModuleRef module;
 LLVMBuilderRef builder;
 LLVMTypeRef printf_type;
 LLVMValueRef printf_func;
-LLVMValueRef i_ptr; 
+LLVMValueRef i_ptr = NULL; 
 
-// --- சிம்பிள் Symbol Table ---
 typedef struct {
     char name[50];
     LLVMValueRef alloca_ptr;
@@ -38,40 +37,8 @@ void tamizhi_generate_entry() {
     LLVMPositionBuilderAtEnd(builder, entry);
 }
 
-// --- வேரியபிள் கூட்டல் லாஜிக் (New!) ---
-void tamizhi_gen_var_add(char* res_name, char* var1, char* var2) {
-    LLVMValueRef v1_ptr = NULL, v2_ptr = NULL;
-
-    // Symbol Table-ல் var1 மற்றும் var2-வை தேடுவோம்
-    for(int i=0; i<var_count; i++) {
-        if(strcmp(symbol_table[i].name, var1) == 0) v1_ptr = symbol_table[i].alloca_ptr;
-        if(strcmp(symbol_table[i].name, var2) == 0) v2_ptr = symbol_table[i].alloca_ptr;
-    }
-
-    if(v1_ptr && v2_ptr) {
-        // மெமரில இருந்து மதிப்புகளை எடு (Load)
-        LLVMValueRef val1 = LLVMBuildLoad2(builder, LLVMInt32Type(), v1_ptr, "v1");
-        LLVMValueRef val2 = LLVMBuildLoad2(builder, LLVMInt32Type(), v2_ptr, "v2");
-        
-        // கூட்டல் செய் (Add)
-        LLVMValueRef sum = LLVMBuildAdd(builder, val1, val2, "sum_tmp");
-
-        // முடிவை புதிய மாறியில் (res_name) சேமி (Alloca & Store)
-        LLVMValueRef res_ptr = LLVMBuildAlloca(builder, LLVMInt32Type(), res_name);
-        LLVMBuildStore(builder, sum, res_ptr);
-
-        // Symbol Table-ல் புதிய மாறியைச் சேர்ப்போம்
-        strcpy(symbol_table[var_count].name, res_name);
-        symbol_table[var_count].alloca_ptr = res_ptr;
-        var_count++;
-        
-        fprintf(stderr, "[Codegen] Logic: %s = %s + %s completed.\n", res_name, var1, var2);
-    } else {
-        fprintf(stderr, "[Codegen] Error: Variables %s or %s not found!\n", var1, var2);
-    }
-}
-
 void tamizhi_gen_var(char* name, int value) {
+    if (var_count >= 100) return;
     LLVMValueRef alloca = LLVMBuildAlloca(builder, LLVMInt32Type(), name);
     LLVMBuildStore(builder, LLVMConstInt(LLVMInt32Type(), value, 0), alloca);
     
@@ -80,6 +47,30 @@ void tamizhi_gen_var(char* name, int value) {
     var_count++;
 
     fprintf(stderr, "[Codegen] Variable '%s' = %d stored.\n", name, value);
+}
+
+void tamizhi_gen_var_add(char* res_name, char* var1, char* var2) {
+    LLVMValueRef v1_ptr = NULL, v2_ptr = NULL;
+
+    for(int i=0; i<var_count; i++) {
+        if(strcmp(symbol_table[i].name, var1) == 0) v1_ptr = symbol_table[i].alloca_ptr;
+        if(strcmp(symbol_table[i].name, var2) == 0) v2_ptr = symbol_table[i].alloca_ptr;
+    }
+
+    if(v1_ptr && v2_ptr) {
+        LLVMValueRef val1 = LLVMBuildLoad2(builder, LLVMInt32Type(), v1_ptr, "v1");
+        LLVMValueRef val2 = LLVMBuildLoad2(builder, LLVMInt32Type(), v2_ptr, "v2");
+        LLVMValueRef sum = LLVMBuildAdd(builder, val1, val2, "sum_tmp");
+
+        LLVMValueRef res_ptr = LLVMBuildAlloca(builder, LLVMInt32Type(), res_name);
+        LLVMBuildStore(builder, sum, res_ptr);
+
+        strcpy(symbol_table[var_count].name, res_name);
+        symbol_table[var_count].alloca_ptr = res_ptr;
+        var_count++;
+        
+        fprintf(stderr, "[Codegen] Logic: %s = %s + %s completed.\n", res_name, var1, var2);
+    }
 }
 
 void tamizhi_gen_print(char* var_name) {
@@ -93,10 +84,12 @@ void tamizhi_gen_print(char* var_name) {
         }
     }
 
-    if(!val) val = LLVMBuildLoad2(builder, LLVMInt32Type(), i_ptr, "load_val");
+    if(!val && i_ptr) val = LLVMBuildLoad2(builder, LLVMInt32Type(), i_ptr, "load_val");
     
-    LLVMValueRef args[] = { fmt, val };
-    LLVMBuildCall2(builder, printf_type, printf_func, args, 2, "print_call");
+    if(val) {
+        LLVMValueRef args[] = { fmt, val };
+        LLVMBuildCall2(builder, printf_type, printf_func, args, 2, "print_call");
+    }
 }
 
 void tamizhi_gen_loop_test(int limit) {
@@ -131,13 +124,4 @@ void tamizhi_codegen_finish() {
     printf("%s", ir_string); 
     LLVMDisposeMessage(ir_string);
     LLVMDisposeBuilder(builder);
-}
-
-void tamizhi_gen_add_and_print(int n1, int n2) {
-    LLVMValueRef val1 = LLVMConstInt(LLVMInt32Type(), n1, 0);
-    LLVMValueRef val2 = LLVMConstInt(LLVMInt32Type(), n2, 0);
-    LLVMValueRef sum = LLVMBuildAdd(builder, val1, val2, "tmp_sum");
-    LLVMValueRef fmt = LLVMBuildGlobalStringPtr(builder, "%d\n", "fmt_sum");
-    LLVMValueRef args[] = { fmt, sum };
-    LLVMBuildCall2(builder, printf_type, printf_func, args, 2, "print_sum_call");
 }
