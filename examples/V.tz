@@ -1,4 +1,4 @@
 Num p = 100
 Num c = 290
-அச்சிடு  p 
-அச்சிடு  c
+print p 
+print c
