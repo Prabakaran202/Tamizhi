@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-
+#include <ctype.h>
 void skip_block(FILE *file); 
 
 void parse(FILE *file) {
