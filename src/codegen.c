@@ -3,6 +3,7 @@
 #include <llvm-c/Analysis.h>
 #include <llvm-c/TargetMachine.h>
 #include <llvm-c/Target.h>
+#include <llvm-c/BitWriter.h> // Bitcode எழுத இது தேவை
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -31,15 +32,23 @@ typedef struct {
 Variable symbol_table[100];
 int var_count = 0;
 
-// 1. மெஷின் கோடை DNA-வாக மாற்றும் தளம் (Binary AOT Storage)
+// 1. Universal Bitcode உருவாக்கும் பங்க்ஷன் (புதியது)
+void tamizhi_generate_universal_bitcode(const char* filename) {
+    // மெஷின் கோடுக்கு பதிலாக எல்லா சிஸ்டமுக்கும் பொதுவான LLVM Bitcode ஆக சேமித்தல்
+    if (LLVMWriteBitcodeToFile(module, filename) != 0) {
+        fprintf(stderr, " [Error] Failed to write universal bitcode!\n");
+    } else {
+        fprintf(stderr, " [Universal] Universal Bitcode generated: %s\n", filename);
+    }
+}
+
+// 2. மெஷின் கோடை DNA-வாக மாற்றும் தளம் (Binary AOT Storage)
 void tamizhi_binary_to_dna_storage(const char* filename) {
     char dna_path[2048];
-    // லேப்டாப் என்விரான்மென்டுக்கு ஏற்றவாறு பாத் செட் செய்யப்பட்டுள்ளது
     sprintf(dna_path, "storage/project_binary.dna");
 
     fprintf(stderr, " [DNA-VM] Converting Machine Code to DNA Sequence...\n");
-    
-    // பைனரி மோடு பாதுகாப்பு செக்
+
     FILE *check = fopen(filename, "rb");
     if (check) {
         fclose(check);
@@ -50,7 +59,7 @@ void tamizhi_binary_to_dna_storage(const char* filename) {
     }
 }
 
-// 2. கம்பைலர் இனிஷியலைசேஷன்
+// 3. கம்பைலர் இனிஷியலைசேஷன்
 void tamizhi_codegen_init() {
     LLVMInitializeAllTargetInfos();
     LLVMInitializeAllTargets();
@@ -61,7 +70,6 @@ void tamizhi_codegen_init() {
     module = LLVMModuleCreateWithName("tamizhi_engine");
     builder = LLVMCreateBuilder();
 
-    // Printf பங்க்ஷன் செட்டப்
     LLVMTypeRef printf_args[] = { LLVMPointerType(LLVMInt8Type(), 0) };
     printf_type = LLVMFunctionType(LLVMInt32Type(), printf_args, 1, 1);
     printf_func = LLVMAddFunction(module, "printf", printf_type);
@@ -76,7 +84,7 @@ void tamizhi_generate_entry() {
     LLVMPositionBuilderAtEnd(builder, entry);
 }
 
-// 3. வேரியபிள் மற்றும் கணித செயல்பாடுகள்
+// 4. வேரியபிள் மற்றும் கணித செயல்பாடுகள்
 void tamizhi_gen_var(char* name, int value) {
     if (var_count >= 100) return;
     LLVMValueRef alloca = LLVMBuildAlloca(builder, LLVMInt32Type(), name);
@@ -120,7 +128,7 @@ void tamizhi_gen_print(char* var_name) {
     }
 }
 
-// 4. லாஜிக் கன்ட்ரோல் (IF-ELSE & LOOP)
+// 5. லாஜிக் கன்ட்ரோல் (IF-ELSE & LOOP)
 void tamizhi_gen_if_start(char* var1, char* op, char* var2) {
     LLVMValueRef v1 = NULL, v2 = NULL;
     for(int i = 0; i < var_count; i++) {
@@ -176,18 +184,20 @@ void tamizhi_gen_loop_end() {
     LLVMPositionBuilderAtEnd(builder, loop_after);
 }
 
-// 5. இறுதி கட்டம்: Binary Generation & DNA Storage
+// 6. இறுதி கட்டம்: Binary Generation & Universal Bitcode
 void tamizhi_codegen_finish() {
     LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0, 0));
+    
+    // Pass 1: Universal Bitcode உருவாக்கம் (எல்லா சிஸ்டமுக்கும் பொதுவானது)
+    tamizhi_generate_universal_bitcode("output.bc");
+
+    // Pass 2: மெஷின் கோடு (Object file) உருவாக்கம்
     char *error = NULL;
     const char *out_file = "output.o";
 
     if (target_machine && LLVMTargetMachineEmitToFile(target_machine, module, (char*)out_file, LLVMObjectFile, &error)) {
         fprintf(stderr, " [Codegen Error] Failed to emit machine code: %s\n", error);
         LLVMDisposeMessage(error);
-        return;
-    } else if (!target_machine) {
-        fprintf(stderr, " [Codegen Warning] Target Machine not set, only DNA-VM encoding attempted.\n");
     }
 
     // மெஷின் கோடை DNA-வாக மாற்றுதல்
@@ -196,6 +206,6 @@ void tamizhi_codegen_finish() {
     // தற்காலிக ஆப்ஜெக்ட் ஃபைலை நீக்குதல்
     remove(out_file);
 
-    fprintf(stderr, "\n[Codegen] --- Tamizhi Binary DNA Engine: SUCCESS ---\n");
+    fprintf(stderr, "\n[Codegen] --- Tamizhi Universal & Binary Engine: SUCCESS ---\n");
     LLVMDisposeBuilder(builder);
 }
