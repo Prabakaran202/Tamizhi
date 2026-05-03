@@ -14,7 +14,7 @@ extern void encode_logic(const char* input_path, const char* output_path);
 // LLVM குளோபல் வேரியபிள்கள்
 LLVMModuleRef module;
 LLVMBuilderRef builder;
-LLVMTargetMachineRef target_machine; // மெஷின் கோடு உருவாக்க தேவை
+LLVMTargetMachineRef target_machine; 
 LLVMTypeRef printf_type;
 LLVMValueRef printf_func;
 LLVMValueRef i_ptr = NULL; 
@@ -33,14 +33,9 @@ int var_count = 0;
 // 1. மெஷின் கோடை DNA-வாக மாற்றும் பங்க்ஷன்
 void tamizhi_binary_to_dna_storage(const char* filename) {
     char dna_path[2048];
-    // லேப்டாப் என்விரான்மென்டுக்கு ஏத்த மாதிரி ரிலேட்டிவ் பாத்
     sprintf(dna_path, "./storage/project_binary.dna");
-
     fprintf(stderr, " [DNA-VM] Converting Machine Code to DNA Sequence...\n");
-    
-    // பைனரி என்கோடிங் லாஜிக்கை அழைத்தல்
     encode_logic(filename, dna_path); 
-    
     fprintf(stderr, " [DNA-VM] Binary AOT Secured at: %s\n", dna_path);
 }
 
@@ -55,7 +50,6 @@ void tamizhi_codegen_init() {
     module = LLVMModuleCreateWithName("tamizhi_engine");
     builder = LLVMCreateBuilder();
 
-    // பிரிண்ட் பங்க்ஷன் செட்டப்
     LLVMTypeRef printf_args[] = { LLVMPointerType(LLVMInt8Type(), 0) };
     printf_type = LLVMFunctionType(LLVMInt32Type(), printf_args, 1, 1);
     printf_func = LLVMAddFunction(module, "printf", printf_type);
@@ -96,7 +90,7 @@ void tamizhi_gen_var_add(char* res_name, char* var1, char* var2) {
     }
 }
 
-// 4. லாஜிக் கன்ட்ரோல் (If, Loop, Print)
+// 4. லாஜிக் கன்ட்ரோல் (Print, If, Else)
 void tamizhi_gen_print(char* var_name) {
     LLVMValueRef fmt = LLVMBuildGlobalStringPtr(builder, "%d\n", "fmt");
     LLVMValueRef val = NULL;
@@ -112,40 +106,36 @@ void tamizhi_gen_print(char* var_name) {
     }
 }
 
-void tamizhi_gen_if_start(char* var1, char* op, char* var2) {
-    // ... (உன்னுடைய பழைய If-Else லாஜிக் இங்கே தொடரும்)
+// விடுபட்ட If-Else லாஜிக்
+void tamizhi_gen_else_start() {
+    if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder)) == NULL) {
+        LLVMBuildBr(builder, merge_block);
+    }
+    LLVMPositionBuilderAtEnd(builder, else_block);
 }
 
-void tamizhi_gen_loop_start(int limit) {
-    // ... (உன்னுடைய பழைய Loop லாஜிக் இங்கே தொடரும்)
+void tamizhi_gen_if_end() {
+    if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder)) == NULL) {
+        LLVMBuildBr(builder, merge_block);
+    }
+    LLVMPositionBuilderAtEnd(builder, merge_block);
 }
 
-void tamizhi_gen_loop_end() {
-    // ... (உன்னுடைய பழைய Loop End லாஜிக் இங்கே தொடரும்)
-}
-
-// 5. இறுதி கட்டம்: Binary Generation & DNA Storage
+// 5. இறுதி கட்டம்: Binary Generation
 void tamizhi_codegen_finish() {
     LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0, 0));
-    
+
     char *error = NULL;
     const char *out_file = "output.o";
 
-    // மெஷின் கோடை ஃபைலாக மாற்றுதல்
-    // (target_machine செட்டப் செய்யப்பட்டிருக்க வேண்டும்)
     if (target_machine && LLVMTargetMachineEmitToFile(target_machine, module, (char*)out_file, LLVMObjectFile, &error)) {
         fprintf(stderr, " [Codegen Error] Failed to emit machine code: %s\n", error);
         LLVMDisposeMessage(error);
         return;
     }
 
-    // மெஷின் கோடை DNA-வாக மாற்றுதல்
     tamizhi_binary_to_dna_storage(out_file);
-
-    // தற்காலிக ஆப்ஜெக்ட் ஃபைலை நீக்குதல்
     remove(out_file);
-
     fprintf(stderr, "\n[Codegen] --- Tamizhi Binary DNA Engine: SUCCESS ---\n");
-    
     LLVMDisposeBuilder(builder);
 }
