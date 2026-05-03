@@ -28,6 +28,7 @@ typedef struct {
 Variable symbol_table[100];
 int var_count = 0;
 
+// DNA சேமிப்பு வசதி
 void tamizhi_dna_secure_storage(char* name, int value) {
     char temp_raw[100], dna_file[2048];
     sprintf(temp_raw, "temp_%s.txt", name);
@@ -58,32 +59,42 @@ void tamizhi_generate_entry() {
     LLVMPositionBuilderAtEnd(builder, entry);
 }
 
+// சாதாரண வேரியபிள் டிக்ளரேஷன்
 void tamizhi_gen_var(char* name, int value) {
     if (var_count >= 100) return;
+    
+    // DNA சேமிப்பு (Security)
     tamizhi_dna_secure_storage(name, value);
+    
     LLVMValueRef alloca = LLVMBuildAlloca(builder, LLVMInt32Type(), name);
     LLVMBuildStore(builder, LLVMConstInt(LLVMInt32Type(), value, 0), alloca);
+    
     strcpy(symbol_table[var_count].name, name);
     symbol_table[var_count].alloca_ptr = alloca;
     var_count++;
 }
 
-// 🟢 இங்கதான் அந்த எரர் வருது - மிஸ்ஸிங் பங்க்ஷன் இதோ:
+// 🟢 மேம்படுத்தப்பட்ட கூட்டல் லாஜிக் (Var Add)
 void tamizhi_gen_var_add(char* res_name, char* var1, char* var2) {
     LLVMValueRef v1_ptr = NULL, v2_ptr = NULL;
     for(int i = 0; i < var_count; i++) {
         if(strcmp(symbol_table[i].name, var1) == 0) v1_ptr = symbol_table[i].alloca_ptr;
         if(strcmp(symbol_table[i].name, var2) == 0) v2_ptr = symbol_table[i].alloca_ptr;
     }
+    
     if(v1_ptr && v2_ptr) {
         LLVMValueRef val1 = LLVMBuildLoad2(builder, LLVMInt32Type(), v1_ptr, "v1");
         LLVMValueRef val2 = LLVMBuildLoad2(builder, LLVMInt32Type(), v2_ptr, "v2");
         LLVMValueRef sum = LLVMBuildAdd(builder, val1, val2, "sum_tmp");
+        
         LLVMValueRef res_ptr = LLVMBuildAlloca(builder, LLVMInt32Type(), res_name);
         LLVMBuildStore(builder, sum, res_ptr);
+        
+        // சிம்பல் டேபிளில் பதிவு செய்தல்
         strcpy(symbol_table[var_count].name, res_name);
         symbol_table[var_count].alloca_ptr = res_ptr;
         var_count++;
+        fprintf(stderr, " [Codegen] Addition: %s = %s + %s completed.\n", res_name, var1, var2);
     }
 }
 
@@ -103,24 +114,29 @@ void tamizhi_gen_print(char* var_name) {
     }
 }
 
+// IF-ELSE லாஜிக்
 void tamizhi_gen_if_start(char* var1, char* op, char* var2) {
     LLVMValueRef v1 = NULL, v2 = NULL;
     for(int i = 0; i < var_count; i++) {
         if(strcmp(symbol_table[i].name, var1) == 0) v1 = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v1");
     }
+    
     if(isdigit(var2[0])) v2 = LLVMConstInt(LLVMInt32Type(), atoi(var2), 0);
     else {
         for(int i = 0; i < var_count; i++) {
             if(strcmp(symbol_table[i].name, var2) == 0) v2 = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v2");
         }
     }
+    
     if(!v1 || !v2) return;
     LLVMIntPredicate pred = (strcmp(op, "<") == 0) ? LLVMIntSLT : (strcmp(op, ">") == 0) ? LLVMIntSGT : LLVMIntEQ;
     LLVMValueRef cond = LLVMBuildICmp(builder, pred, v1, v2, "if_cond");
+    
     LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
     then_block = LLVMAppendBasicBlock(func, "then");
     else_block = LLVMAppendBasicBlock(func, "else");
     merge_block = LLVMAppendBasicBlock(func, "if_cont");
+    
     LLVMBuildCondBr(builder, cond, then_block, else_block);
     LLVMPositionBuilderAtEnd(builder, then_block);
 }
@@ -135,18 +151,22 @@ void tamizhi_gen_if_end() {
     LLVMPositionBuilderAtEnd(builder, merge_block);
 }
 
+// LOOP லாஜிக்
 void tamizhi_gen_loop_start(int limit) {
     LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
     loop_cond = LLVMAppendBasicBlock(func, "loop_cond");
     loop_body = LLVMAppendBasicBlock(func, "loop_body");
     loop_after = LLVMAppendBasicBlock(func, "loop_after");
+    
     i_ptr = LLVMBuildAlloca(builder, LLVMInt32Type(), "i");
     LLVMBuildStore(builder, LLVMConstInt(LLVMInt32Type(), 0, 0), i_ptr);
     LLVMBuildBr(builder, loop_cond);
+    
     LLVMPositionBuilderAtEnd(builder, loop_cond);
     LLVMValueRef i_val = LLVMBuildLoad2(builder, LLVMInt32Type(), i_ptr, "i_val");
     LLVMValueRef cond = LLVMBuildICmp(builder, LLVMIntSLT, i_val, LLVMConstInt(LLVMInt32Type(), limit, 0), "tmp_cond");
     LLVMBuildCondBr(builder, cond, loop_body, loop_after);
+    
     LLVMPositionBuilderAtEnd(builder, loop_body);
 }
 
