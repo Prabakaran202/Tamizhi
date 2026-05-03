@@ -8,7 +8,7 @@
 // பங்க்ஷன் அறிவிப்புகள் (Prototypes)
 void parse_statement(FILE *file, Token t);
 void scan_headers(FILE *file);
-void execute_footer(FILE *file);
+void execute_footer(FILE *file, long start_pos); // start_pos தேவை
 
 // 1. மெயின் பார்ஸர் (Advanced 3-Pass Logic)
 void parse(FILE *file) {
@@ -17,43 +17,37 @@ void parse(FILE *file) {
 
     fprintf(stderr, "\n[Parser] --- Tamizhi Engine: Advanced 3-Pass Analysis Started ---\n");
 
-    // PASS 1: Header - வரி எண்கள் மற்றும் பங்க்ஷன் பெயர்களைப் பதிவு செய்ய
-    fprintf(stderr, " -> Phase 1 [Header]: Scanning blueprints & line maps...\n");
+    // PASS 1: Header - Blueprint-களைப் பதிவு செய்ய
+    fprintf(stderr, " -> Phase 1 [Header]: Scanning blueprints...\n");
     scan_headers(file);
 
-    // PASS 2: Body - ஃபங்க்ஷனுக்குள் இருக்கும் லாஜிக்கை மெமரியில் ஏற்றுதல்
+    // PASS 2: Body - லாஜிக்கை மெமரியில் ஏற்றுதல்
     fseek(file, start_pos, SEEK_SET);
-    fprintf(stderr, " -> Phase 2 [Body]: Building core logic engine...\n");
+    fprintf(stderr, " -> Phase 2 [Body]: Mapping logic to DNA-VM...\n");
     while ((t = get_next_token(file)).type != T_EOF) {
-        if (strcmp(t.value, "footer") == 0 || strcmp(t.value, "call") == 0) break;
+        if (strcmp(t.value, "footer") == 0) break;
 
         if (strcmp(t.value, "fun") == 0) {
-            // ஃபங்க்ஷன் பெயரைத் தாண்டு (எ.கா: கூட்டு)
-            get_next_token(file); 
-            // '{' வரும் வரை தாண்டு
-            while ((t = get_next_token(file)).type != 22 && t.type != T_EOF); 
+            get_next_token(file); // பெயரைத் தாண்டு
+            while ((t = get_next_token(file)).type != 22 && t.type != T_EOF); // '{'
             
-            // இப்போ ஃபங்க்ஷன் உள்ளே இருக்கிற லாஜிக்கை பார்ஸ் பண்ணுவோம்
             while ((t = get_next_token(file)).type != 23 && t.type != T_EOF) {
                 parse_statement(file, t);
             }
             continue;
         }
-        // ஃபங்க்ஷனுக்கு வெளியே ஏதேனும் வரிகள் இருந்தால் (Optional)
-        parse_statement(file, t);
     }
 
     // PASS 3: Footer - ரன்-டைம் இயக்கத்தைத் தொடங்க
     fseek(file, start_pos, SEEK_SET);
-    fprintf(stderr, " -> Phase 3 [Footer]: Launching execution from footer block...\n");
-    execute_footer(file);
+    fprintf(stderr, " -> Phase 3 [Footer]: Launching execution...\n");
+    execute_footer(file, start_pos);
 
     fprintf(stderr, "[Parser] --- Analysis Completed Successfully ---\n\n");
 }
 
-// 2. ஸ்டேட்மென்ட் இன்ஜின் (இது மாறவில்லை, முன்பே சிறப்பாக உள்ளது)
+// 2. ஸ்டேட்மென்ட் இன்ஜின்
 void parse_statement(FILE *file, Token t) {
-    // --- மாறிகள் & கூட்டல் ---
     if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
         Token name_token = get_next_token(file); 
         while ((t = get_next_token(file)).type != 20 && t.type != T_EOF); 
@@ -69,13 +63,11 @@ void parse_statement(FILE *file, Token t) {
             }
         }
     }
-    // --- அச்சிடு ---
     else if (t.type == T_PRINT || strcmp(t.value, "print") == 0 || strcmp(t.value, "அச்சிடு") == 0) {
         Token var_t = get_next_token(file);
         if (var_t.type == 15) var_t = get_next_token(file); 
         tamizhi_gen_print(var_t.value);
     }
-    // --- எனில் & இல்லையெனில் ---
     else if (t.type == T_IF || strcmp(t.value, "if") == 0 || strcmp(t.value, "எனில்") == 0) {
         while ((t = get_next_token(file)).type != 15 && t.type != T_EOF); 
         Token var1 = get_next_token(file);
@@ -88,7 +80,6 @@ void parse_statement(FILE *file, Token t) {
         }
         tamizhi_gen_if_end();
     }
-    // --- சுற்று ---
     else if (t.type == T_FOR || strcmp(t.value, "for") == 0 || strcmp(t.value, "சு") == 0) {
         while ((t = get_next_token(file)).type != T_NUM && t.type != T_EOF);
         int limit = atoi(t.value);
@@ -107,20 +98,14 @@ void scan_headers(FILE *file) {
     while ((t = get_next_token(file)).type != T_EOF) {
         if (strcmp(t.value, "fun") == 0) {
             Token name = get_next_token(file);
-            Token check = get_next_token(file);
-            if (strcmp(check.value, "line") == 0 || strcmp(check.value, "-") == 0) {
-                while ((t = get_next_token(file)).type != T_NUM && t.type != T_EOF);
-                fprintf(stderr, "    [Header] Registered: %s at line %s\n", name.value, t.value);
-            } else {
-                fprintf(stderr, "    [Header] Registered function: %s\n", name.value);
-            }
+            fprintf(stderr, "    [Header] Registered function: %s\n", name.value);
         }
         if (strcmp(t.value, "footer") == 0) break; 
     }
 }
 
-// 4. Phase 3: Footer Runtime Executor
-void execute_footer(FILE *file) {
+// 4. Phase 3: Footer Runtime Executor (இங்கேதான் மேஜிக் நடக்குது!)
+void execute_footer(FILE *file, long start_pos) {
     Token t;
     int in_footer = 0;
     while ((t = get_next_token(file)).type != T_EOF) {
@@ -132,8 +117,28 @@ void execute_footer(FILE *file) {
         if (in_footer) {
             if (t.type == 23) break; 
             if (t.type == T_ID) {
-                fprintf(stderr, "    [Runtime] Executing: %s();\n", t.value);
-                // இங்கே அந்தப் பெயருக்கான மெஷின் லாஜிக்கை கால் செய்யும் கோட் வரும்
+                char func_to_call[64];
+                strcpy(func_to_call, t.value);
+                fprintf(stderr, "    [Runtime] Booting Function: %s();\n", func_to_call);
+                
+                // ஃபைலைத் திரும்பப் போய் அந்த பங்க்ஷனைத் தேடு
+                long current_pos = ftell(file);
+                fseek(file, start_pos, SEEK_SET);
+                
+                Token find_f;
+                while ((find_f = get_next_token(file)).type != T_EOF) {
+                    if (strcmp(find_f.value, "fun") == 0) {
+                        Token name = get_next_token(file);
+                        if (strcmp(name.value, func_to_call) == 0) {
+                            while ((find_f = get_next_token(file)).type != 22); // '{'
+                            while ((find_f = get_next_token(file)).type != 23) {
+                                parse_statement(file, find_f);
+                            }
+                            break;
+                        }
+                    }
+                }
+                fseek(file, current_pos, SEEK_SET); // பூட்டருக்கே திரும்பி வா
             }
         }
     }
