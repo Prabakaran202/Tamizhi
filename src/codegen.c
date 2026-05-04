@@ -32,19 +32,16 @@ typedef struct {
 Variable symbol_table[100];
 int var_count = 0;
 
-// 1. Universal Bitcode & Assembly உருவாக்கும் பங்க்ஷன்
+// 1. Universal Bitcode & Assembly உருவாக்கம்
 void tamizhi_generate_universal_bitcode(const char* filename) {
-    // A. LLVM Bitcode (.bc) உருவாக்குதல்
     if (LLVMWriteBitcodeToFile(module, filename) != 0) {
         fprintf(stderr, " [Error] Failed to write universal bitcode!\n");
     } else {
         fprintf(stderr, " [Universal] Bitcode generated: %s\n", filename);
     }
 
-    // B. LLVM Assembly (.ll) உருவாக்குதல் (மனிதர்கள் படிக்கக்கூடியது)
     char asm_path[256];
     sprintf(asm_path, "output.ll");
-    
     FILE *f = fopen(asm_path, "w");
     if (f) {
         char *str = LLVMPrintModuleToString(module);
@@ -106,15 +103,24 @@ void tamizhi_gen_var(char* name, int value) {
 }
 
 void tamizhi_gen_var_add(char* res_name, char* var1, char* var2) {
-    LLVMValueRef v1_ptr = NULL, v2_ptr = NULL;
-    for(int i = 0; i < var_count; i++) {
-        if(strcmp(symbol_table[i].name, var1) == 0) v1_ptr = symbol_table[i].alloca_ptr;
-        if(strcmp(symbol_table[i].name, var2) == 0) v2_ptr = symbol_table[i].alloca_ptr;
+    LLVMValueRef v1_val = NULL, v2_val = NULL;
+    
+    // Var 1 க்கான செக் (எண் அல்லது வேரியபிள்)
+    if(isdigit(var1[0])) v1_val = LLVMConstInt(LLVMInt32Type(), atoi(var1), 0);
+    else {
+        for(int i=0; i<var_count; i++) 
+            if(strcmp(symbol_table[i].name, var1) == 0) v1_val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v1");
     }
-    if(v1_ptr && v2_ptr) {
-        LLVMValueRef val1 = LLVMBuildLoad2(builder, LLVMInt32Type(), v1_ptr, "v1");
-        LLVMValueRef val2 = LLVMBuildLoad2(builder, LLVMInt32Type(), v2_ptr, "v2");
-        LLVMValueRef sum = LLVMBuildAdd(builder, val1, val2, "sum_tmp");
+
+    // Var 2 க்கான செக்
+    if(isdigit(var2[0])) v2_val = LLVMConstInt(LLVMInt32Type(), atoi(var2), 0);
+    else {
+        for(int i=0; i<var_count; i++) 
+            if(strcmp(symbol_table[i].name, var2) == 0) v2_val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v2");
+    }
+
+    if(v1_val && v2_val) {
+        LLVMValueRef sum = LLVMBuildAdd(builder, v1_val, v2_val, "sum_tmp");
         LLVMValueRef res_ptr = LLVMBuildAlloca(builder, LLVMInt32Type(), res_name);
         LLVMBuildStore(builder, sum, res_ptr);
         strcpy(symbol_table[var_count].name, res_name);
@@ -123,34 +129,45 @@ void tamizhi_gen_var_add(char* res_name, char* var1, char* var2) {
     }
 }
 
+// ⭐ மேம்படுத்தப்பட்ட Print பங்க்ஷன்
 void tamizhi_gen_print(char* var_name) {
     LLVMValueRef fmt = LLVMBuildGlobalStringPtr(builder, "%d\n", "fmt");
     LLVMValueRef val = NULL;
-    for(int i = 0; i < var_count; i++) {
-        if(strcmp(symbol_table[i].name, var_name) == 0) {
-            val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "load_val");
-            break;
+
+    // 1. இது ஒரு நேரடி எண்ணா (Constant Number) என்று பார்க்கவும்
+    if (isdigit(var_name[0])) {
+        val = LLVMConstInt(LLVMInt32Type(), atoi(var_name), 0);
+    } 
+    // 2. இல்லையெனில் வேரியபிள் டேபிளில் தேடவும்
+    else {
+        for(int i = 0; i < var_count; i++) {
+            if(strcmp(symbol_table[i].name, var_name) == 0) {
+                val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "load_val");
+                break;
+            }
         }
+        // லூப் இண்டெக்ஸ் 'i' ஆக இருந்தால்
+        if(!val && i_ptr && strcmp(var_name, "i") == 0) val = LLVMBuildLoad2(builder, LLVMInt32Type(), i_ptr, "load_val");
     }
-    if(!val && i_ptr && strcmp(var_name, "i") == 0) val = LLVMBuildLoad2(builder, LLVMInt32Type(), i_ptr, "load_val");
+
     if(val) {
         LLVMValueRef args[] = { fmt, val };
         LLVMBuildCall2(builder, printf_type, printf_func, args, 2, "print_call");
     }
 }
 
-// 5. லாஜிக் கன்ட்ரோல்
+// 5. லாஜிக் கன்ட்ரோல் (If, Loop)
 void tamizhi_gen_if_start(char* var1, char* op, char* var2) {
     LLVMValueRef v1 = NULL, v2 = NULL;
-    for(int i = 0; i < var_count; i++) {
+    for(int i = 0; i < var_count; i++) 
         if(strcmp(symbol_table[i].name, var1) == 0) v1 = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v1");
-    }
+    
     if(isdigit(var2[0])) v2 = LLVMConstInt(LLVMInt32Type(), atoi(var2), 0);
     else {
-        for(int i = 0; i < var_count; i++) {
+        for(int i = 0; i < var_count; i++) 
             if(strcmp(symbol_table[i].name, var2) == 0) v2 = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v2");
-        }
     }
+    
     if(!v1 || !v2) return;
     LLVMIntPredicate pred = (strcmp(op, "<") == 0) ? LLVMIntSLT : (strcmp(op, ">") == 0) ? LLVMIntSGT : LLVMIntEQ;
     LLVMValueRef cond = LLVMBuildICmp(builder, pred, v1, v2, "if_cond");
@@ -199,10 +216,8 @@ void tamizhi_gen_loop_end() {
 void tamizhi_codegen_finish() {
     LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0, 0));
 
-    // Universal Files (bc & ll)
     tamizhi_generate_universal_bitcode("output.bc");
 
-    // Machine Code (Object file)
     char *error = NULL;
     const char *out_file = "output.o";
     if (target_machine && LLVMTargetMachineEmitToFile(target_machine, module, (char*)out_file, LLVMObjectFile, &error)) {
@@ -213,6 +228,6 @@ void tamizhi_codegen_finish() {
     tamizhi_binary_to_dna_storage(out_file);
     remove(out_file);
 
-    fprintf(stderr, "\n[Codegen] --- Tamizhi Universal Engine: SUCCESS ---\n");
+    fprintf(stderr, "\n[Codegen] --- Tamizhi Universal & Binary Engine: SUCCESS ---\n");
     LLVMDisposeBuilder(builder);
 }
