@@ -5,7 +5,7 @@
 #include <string.h>
 #include <ctype.h>
 
-// ஹெல்பர் பங்க்ஷன்: டோக்கன் பாதுகாப்பைச் சரிபார்க்க
+// பாதுகாப்பிற்காக டோக்கன் செக்
 int is_valid(Token t) {
     if (t.value == NULL || strlen(t.value) == 0) return 0;
     return 1;
@@ -15,81 +15,88 @@ void parse_statement(FILE *file, Token t);
 void scan_headers(FILE *file);
 void execute_footer(FILE *file, long start_pos);
 
-// 1. மெயின் பார்ஸர்
 void parse(FILE *file) {
     Token t;
     long start_pos = ftell(file);
 
     fprintf(stderr, "\n[Parser] --- Tamizhi Engine: Advanced 3-Pass Analysis Started ---\n");
 
-    // PASS 1: Header Scanning
+    // PASS 1: ஹேடர் ஸ்கேனிங் (மாற்றமில்லை)
     scan_headers(file);
 
-    // PASS 2: Body Mapping (லாஜிக்கை மெமரியில் ஏற்றுதல்)
+    // ---------------------------------------------------------
+    // PASS 2: பாடி மேப்பிங் (இங்க தான் முக்கியமான திருத்தம் இருக்கு)
+    // ---------------------------------------------------------
     rewind(file); 
     fprintf(stderr, " -> Phase 2 [Body]: Mapping logic to DNA-VM...\n");
 
-    // மிக முக்கியம்: லூப் தொடங்குவதற்கு முன்பே என்ட்ரி பாயிண்ட்டை (main) உருவாக்கவும்
+    /* மாற்றம்: tamizhi_generate_entry() இப்போ இங்க மட்டும் தான் இருக்கு. 
+       இதனால 'main.1' அப்படின்னு வராம, ஒரே ஒரு 'main' மட்டும் உருவாகும்.
+    */
     tamizhi_generate_entry(); 
 
     while ((t = get_next_token(file)).type != T_EOF) {
         if (!is_valid(t)) continue; 
-        
-        // பூட்டர் வரும்வரை உள்ளே இருக்கும் அத்தனை கோடுகளையும் பார்ஸ் செய்யவும்
         if (strcmp(t.value, "footer") == 0) break;
 
-        // ஒருவேளை அது பங்க்ஷன் டிக்ளரேஷனாக இருந்தால் (fun test { ... })
         if (strcmp(t.value, "fun") == 0) {
             Token name = get_next_token(file);
             if (!is_valid(name)) break; 
-            while ((t = get_next_token(file)).type != 22 && t.type != T_EOF); // '{'
-            while ((t = get_next_token(file)).type != 23 && t.type != T_EOF) { // '}'
+            while ((t = get_next_token(file)).type != 22 && t.type != T_EOF); 
+            while ((t = get_next_token(file)).type != 23 && t.type != T_EOF) {
                 if (is_valid(t)) parse_statement(file, t);
             }
             continue;
         }
-
-        // மெயின் பகுதியில் இருக்கும் ஸ்டேட்மென்ட்களை பார்ஸ் செய்யவும் (num a = 24, print a)
+        
+        // எல்லா மெயின் ஸ்டேட்மென்ட்டும் அந்த ஒரே 'main' பங்க்ஷனுக்குள்ள ஏறும்.
         parse_statement(file, t);
     }
 
-    // PASS 3: Footer Execution
+    // PASS 3: பூட்டர் எக்ஸிகியூஷன் (மாற்றமில்லை)
     rewind(file);
     fprintf(stderr, " -> Phase 3 [Footer]: Launching execution...\n");
     execute_footer(file, 0L);
-
+    
     fprintf(stderr, "[Parser] --- Analysis Completed Successfully ---\n\n");
 }
 
-// 2. ஸ்டேட்மென்ட் இன்ஜின் (Expression Support உள்ளது)
+// 2. ஸ்டேட்மென்ட் இன்ஜின்
 void parse_statement(FILE *file, Token t) {
     if (!is_valid(t)) return;
 
-    // --- மாறிகள் டிக்ளரேஷன் (Num a = 10) ---
-    if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
+    // எண் / Num / int டிக்ளரேஷன்
+    if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0 || strcmp(t.value, "int") == 0) {
         Token name_token = get_next_token(file); 
+        if (!is_valid(name_token)) return;
+
         while ((t = get_next_token(file)).type != 20 && t.type != T_EOF); // '='
 
         Token first_val = get_next_token(file); 
+        if (!is_valid(first_val)) return;
+
         Token next_t = get_next_token(file);
 
         if (is_valid(next_t) && (next_t.type == 19 || strcmp(next_t.value, "+") == 0)) {
             Token second_val = get_next_token(file);
-            tamizhi_gen_var_add(name_token.value, first_val.value, second_val.value);
+            if (is_valid(second_val)) {
+                tamizhi_gen_var_add(name_token.value, first_val.value, second_val.value);
+            }
         } else {
-            if (is_valid(first_val) && isdigit(first_val.value[0])) {
+            if (isdigit(first_val.value[0])) {
                 tamizhi_gen_var(name_token.value, atoi(first_val.value));
             }
         }
     }
-    // --- மேம்படுத்தப்பட்ட அச்சிடு (Direct Numbers & Expressions: print 1 + 1) ---
+    // அச்சிடு / print
     else if (t.type == T_PRINT || strcmp(t.value, "print") == 0 || strcmp(t.value, "அச்சிடு") == 0) {
         Token first = get_next_token(file);
-        if (first.type == 15) first = get_next_token(file); // '('
+        if (first.type == 15) first = get_next_token(file); // '(' தாண்டு
 
         long pos = ftell(file);
         Token op = get_next_token(file);
 
+        // 1 + 1 போன்ற ஆபரேஷன் செக்
         if (is_valid(op) && (strcmp(op.value, "+") == 0)) {
             Token second = get_next_token(file);
             tamizhi_gen_var_add("temp_res", first.value, second.value);
@@ -102,7 +109,7 @@ void parse_statement(FILE *file, Token t) {
     }
 }
 
-// 3. Phase 1 & 3 லாஜிக் (மாற்றமில்லை)
+// 3. Phase 1: Header Scanner
 void scan_headers(FILE *file) {
     Token t;
     while ((t = get_next_token(file)).type != T_EOF) {
@@ -114,6 +121,7 @@ void scan_headers(FILE *file) {
     }
 }
 
+// 4. Phase 3: Footer Runtime Executor
 void execute_footer(FILE *file, long start_pos) {
     Token t;
     int in_footer = 0;
@@ -129,8 +137,10 @@ void execute_footer(FILE *file, long start_pos) {
                 char func_to_call[64];
                 strcpy(func_to_call, t.value);
                 fprintf(stderr, "    [Runtime] Executing Function: %s();\n", func_to_call);
+
                 long current_pos = ftell(file);
                 rewind(file);
+
                 Token find_f;
                 while ((find_f = get_next_token(file)).type != T_EOF) {
                     if (is_valid(find_f) && strcmp(find_f.value, "fun") == 0) {
