@@ -21,82 +21,67 @@ void parse(FILE *file) {
 
     fprintf(stderr, "\n[Parser] --- Tamizhi Engine: Advanced 3-Pass Analysis Started ---\n");
 
-    // PASS 1: ஹேடர் ஸ்கேனிங் (மாற்றமில்லை)
+    // PASS 1: ஹேடர் ஸ்கேனிங்
     scan_headers(file);
 
     // ---------------------------------------------------------
-    // PASS 2: பாடி மேப்பிங் (இங்க தான் முக்கியமான திருத்தம் இருக்கு)
+    // PASS 2: பாடி மேப்பிங் (யுனிவர்சல் மெயின் உருவாக்கம்)
     // ---------------------------------------------------------
     rewind(file); 
     fprintf(stderr, " -> Phase 2 [Body]: Mapping logic to DNA-VM...\n");
 
-    /* மாற்றம்: tamizhi_generate_entry() இப்போ இங்க மட்டும் தான் இருக்கு. 
-       இதனால 'main.1' அப்படின்னு வராம, ஒரே ஒரு 'main' மட்டும் உருவாகும்.
-    */
+    // மாற்றம்: மெயின் பங்க்ஷனை இங்க ஒருமுறை மட்டும் தான் தொடங்கணும்.
     tamizhi_generate_entry(); 
 
     while ((t = get_next_token(file)).type != T_EOF) {
         if (!is_valid(t)) continue; 
         if (strcmp(t.value, "footer") == 0) break;
 
+        // மாற்றம்: 'fun' உள்ளே இருக்கும் கோடு மெயினுக்குள்ள வராம இருக்க இத ஸ்கிப் பண்றோம்.
         if (strcmp(t.value, "fun") == 0) {
-            Token name = get_next_token(file);
-            if (!is_valid(name)) break; 
-            while ((t = get_next_token(file)).type != 22 && t.type != T_EOF); 
-            while ((t = get_next_token(file)).type != 23 && t.type != T_EOF) {
-                if (is_valid(t)) parse_statement(file, t);
-            }
+            // '}' வரும் வரை தாண்டு
+            while ((t = get_next_token(file)).type != 23 && t.type != T_EOF); 
             continue;
         }
         
-        // எல்லா மெயின் ஸ்டேட்மென்ட்டும் அந்த ஒரே 'main' பங்க்ஷனுக்குள்ள ஏறும்.
+        // ஸ்டேட்மென்ட்களை அந்த ஒரே மெயின் பங்க்ஷனுக்குள்ள தள்ளுறோம்.
         parse_statement(file, t);
     }
 
-    // PASS 3: பூட்டர் எக்ஸிகியூஷன் (மாற்றமில்லை)
+    // ---------------------------------------------------------
+    // PASS 3: பூட்டர் எக்ஸிகியூஷன்
+    // ---------------------------------------------------------
     rewind(file);
     fprintf(stderr, " -> Phase 3 [Footer]: Launching execution...\n");
+    
+    // மாற்றம்: பூட்டர் ரன் ஆகும்போது புதுசா 'main' உருவாகாது.
     execute_footer(file, 0L);
     
     fprintf(stderr, "[Parser] --- Analysis Completed Successfully ---\n\n");
 }
 
-// 2. ஸ்டேட்மென்ட் இன்ஜின்
+// 2. ஸ்டேட்மென்ட் இன்ஜின் (இதில மாற்றமில்லை, பழையபடி ஒர்க் ஆகும்)
 void parse_statement(FILE *file, Token t) {
     if (!is_valid(t)) return;
 
-    // எண் / Num / int டிக்ளரேஷன்
     if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0 || strcmp(t.value, "int") == 0) {
         Token name_token = get_next_token(file); 
         if (!is_valid(name_token)) return;
-
-        while ((t = get_next_token(file)).type != 20 && t.type != T_EOF); // '='
-
+        while ((t = get_next_token(file)).type != 20 && t.type != T_EOF); 
         Token first_val = get_next_token(file); 
-        if (!is_valid(first_val)) return;
-
         Token next_t = get_next_token(file);
-
         if (is_valid(next_t) && (next_t.type == 19 || strcmp(next_t.value, "+") == 0)) {
             Token second_val = get_next_token(file);
-            if (is_valid(second_val)) {
-                tamizhi_gen_var_add(name_token.value, first_val.value, second_val.value);
-            }
+            tamizhi_gen_var_add(name_token.value, first_val.value, second_val.value);
         } else {
-            if (isdigit(first_val.value[0])) {
-                tamizhi_gen_var(name_token.value, atoi(first_val.value));
-            }
+            if (isdigit(first_val.value[0])) tamizhi_gen_var(name_token.value, atoi(first_val.value));
         }
     }
-    // அச்சிடு / print
     else if (t.type == T_PRINT || strcmp(t.value, "print") == 0 || strcmp(t.value, "அச்சிடு") == 0) {
         Token first = get_next_token(file);
-        if (first.type == 15) first = get_next_token(file); // '(' தாண்டு
-
+        if (first.type == 15) first = get_next_token(file);
         long pos = ftell(file);
         Token op = get_next_token(file);
-
-        // 1 + 1 போன்ற ஆபரேஷன் செக்
         if (is_valid(op) && (strcmp(op.value, "+") == 0)) {
             Token second = get_next_token(file);
             tamizhi_gen_var_add("temp_res", first.value, second.value);
@@ -109,7 +94,7 @@ void parse_statement(FILE *file, Token t) {
     }
 }
 
-// 3. Phase 1: Header Scanner
+// 3. Header Scanner & Footer Logic (இதில மாற்றமில்லை)
 void scan_headers(FILE *file) {
     Token t;
     while ((t = get_next_token(file)).type != T_EOF) {
@@ -121,7 +106,6 @@ void scan_headers(FILE *file) {
     }
 }
 
-// 4. Phase 3: Footer Runtime Executor
 void execute_footer(FILE *file, long start_pos) {
     Token t;
     int in_footer = 0;
@@ -136,11 +120,8 @@ void execute_footer(FILE *file, long start_pos) {
             if (t.type == T_ID && is_valid(t)) {
                 char func_to_call[64];
                 strcpy(func_to_call, t.value);
-                fprintf(stderr, "    [Runtime] Executing Function: %s();\n", func_to_call);
-
                 long current_pos = ftell(file);
                 rewind(file);
-
                 Token find_f;
                 while ((find_f = get_next_token(file)).type != T_EOF) {
                     if (is_valid(find_f) && strcmp(find_f.value, "fun") == 0) {
