@@ -208,8 +208,8 @@ void tamizhi_gen_loop_end() {
     LLVMPositionBuilderAtEnd(builder, loop_after);
 }
 
-void tamizhi_codegen_finish() {
-    LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0, 0));
+/*void tamizhi_codegen_finish() {
+    /*LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0, 0));
     tamizhi_generate_universal_bitcode("output.bc");
     char *error = NULL;
     const char *out_file = "output.o";
@@ -218,7 +218,47 @@ void tamizhi_codegen_finish() {
     if (target_machine && LLVMTargetMachineEmitToFile(target_machine, module, (char*)out_file, LLVMObjectFile, &error)) {
         fprintf(stderr, " [Codegen Error] Failed to emit machine code: %s\n", error);
         LLVMDisposeMessage(error);
+    tamizhi_binary_to_dna_storage(out_file);
+    remove(out_file);
+
+    // ⭐ இங்க தான் மேஜிக் - கம்பைல் ஆன அவுட்புட்டை ரன் பண்ணச் சொல்லுவோம்
+    fprintf(stderr, "\n[Execution] Running compiled logic...\n");
+    system("lli output.ll"); 
+
+    fprintf(stderr, "\n[Codegen] --- Tamizhi Universal Engine: SUCCESS ---\n");
+    LLVMDisposeBuilder(builder);
+    
+    }*/
+    void tamizhi_codegen_finish() {
+    LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0, 0));
+    
+    // 1. பிட்கோட் மற்றும் அசெம்பிளி ஜெனரேஷன்
+    tamizhi_generate_universal_bitcode("output.bc");
+    
+    char *error = NULL;
+    const char *out_file = "output.o";
+    
+    // 2. மெஷின் கோட் (.o) உருவாக்குதல்
+    if (target_machine) {
+        if (LLVMTargetMachineEmitToFile(target_machine, module, (char*)out_file, LLVMObjectFile, &error)) {
+            fprintf(stderr, " [Codegen Error] Failed to emit machine code: %s\n", error);
+            LLVMDisposeMessage(error);
+        }
     }
+
+    // 3. DNA-VM என்கோடிங் (இது if-க்கு வெளிய இருக்கணும்)
+    tamizhi_binary_to_dna_storage(out_file);
+    remove(out_file); // டெம்பரவரி ஃபைலை நீக்குதல்
+
+    // 4. ⭐ ஆட்டோமேட்டிக் எக்ஸிகியூஷன் (Automatic Execution)
+    fprintf(stderr, "\n[Execution] Running compiled logic...\n");
+    system("lli output.ll"); 
+
+    fprintf(stderr, "\n[Codegen] --- Tamizhi Universal Engine: SUCCESS ---\n");
+    
+    // 5. கிளீன் அப்
+    LLVMDisposeBuilder(builder);
+}
     
     tamizhi_binary_to_dna_storage(out_file);
     remove(out_file);
