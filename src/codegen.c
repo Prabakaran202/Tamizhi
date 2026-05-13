@@ -60,21 +60,43 @@ void tamizhi_binary_to_dna_storage(const char* filename) {
     }
 }
 
+// 🛠️ இனிஷியலைசேஷன்: Target Machine இங்க தான் செட் ஆகுது
 void tamizhi_codegen_init() {
     LLVMInitializeAllTargetInfos();
     LLVMInitializeAllTargets();
     LLVMInitializeAllTargetMCs();
     LLVMInitializeAllAsmParsers();
     LLVMInitializeAllAsmPrinters();
+
     module = LLVMModuleCreateWithName("tamizhi_engine");
     builder = LLVMCreateBuilder();
+
+    char *target_triple = LLVMGetDefaultTargetTriple();
+    LLVMSetTarget(module, target_triple);
+
+    char *error = NULL;
+    LLVMTargetRef target;
+    if (LLVMGetTargetFromTriple(target_triple, &target, &error)) {
+        fprintf(stderr, " [Codegen Error] %s\n", error);
+        LLVMDisposeMessage(error);
+        return;
+    }
+
+    target_machine = LLVMCreateTargetMachine(target, target_triple, "generic", "", 
+                                             LLVMCodeGenLevelDefault, LLVMRelocDefault, 
+                                             LLVMCodeModelDefault);
+    
+    LLVMSetModuleDataLayout(module, LLVMCreateTargetDataLayout(target_machine));
+
     LLVMTypeRef printf_args[] = { LLVMPointerType(LLVMInt8Type(), 0) };
     printf_type = LLVMFunctionType(LLVMInt32Type(), printf_args, 1, 1);
     printf_func = LLVMAddFunction(module, "printf", printf_type);
-    fprintf(stderr, " [Codegen] LLVM Engine Initialized.\n");
+
+    fprintf(stderr, " [Codegen] LLVM Engine Initialized with Target: %s\n", target_triple);
+    LLVMDisposeMessage(target_triple);
 }
 
-// ⭐ இங்க தான் அந்த முக்கியமான @main.1 செக் இருக்கு
+// ⭐ @main.1 எரரைத் தவிர்க்கும் செக்
 void tamizhi_generate_entry() {
     if (LLVMGetNamedFunction(module, "main")) return; 
     LLVMTypeRef main_func_type = LLVMFunctionType(LLVMInt32Type(), NULL, 0, 0);
@@ -191,10 +213,13 @@ void tamizhi_codegen_finish() {
     tamizhi_generate_universal_bitcode("output.bc");
     char *error = NULL;
     const char *out_file = "output.o";
+    
+    // target_machine இப்போ initialize ஆகி இருப்பதால் .o ஃபைல் உருவாகும்
     if (target_machine && LLVMTargetMachineEmitToFile(target_machine, module, (char*)out_file, LLVMObjectFile, &error)) {
         fprintf(stderr, " [Codegen Error] Failed to emit machine code: %s\n", error);
         LLVMDisposeMessage(error);
     }
+    
     tamizhi_binary_to_dna_storage(out_file);
     remove(out_file);
     fprintf(stderr, "\n[Codegen] --- Tamizhi Universal Engine: SUCCESS ---\n");
