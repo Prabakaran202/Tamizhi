@@ -60,7 +60,6 @@ void tamizhi_binary_to_dna_storage(const char* filename) {
     }
 }
 
-// 🛠️ இனிஷியலைசேஷன்: Target Machine இங்க தான் செட் ஆகுது
 void tamizhi_codegen_init() {
     LLVMInitializeAllTargetInfos();
     LLVMInitializeAllTargets();
@@ -85,7 +84,7 @@ void tamizhi_codegen_init() {
     target_machine = LLVMCreateTargetMachine(target, target_triple, "generic", "", 
                                              LLVMCodeGenLevelDefault, LLVMRelocDefault, 
                                              LLVMCodeModelDefault);
-    
+
     LLVMSetModuleDataLayout(module, LLVMCreateTargetDataLayout(target_machine));
 
     LLVMTypeRef printf_args[] = { LLVMPointerType(LLVMInt8Type(), 0) };
@@ -96,7 +95,6 @@ void tamizhi_codegen_init() {
     LLVMDisposeMessage(target_triple);
 }
 
-// ⭐ @main.1 எரரைத் தவிர்க்கும் செக்
 void tamizhi_generate_entry() {
     if (LLVMGetNamedFunction(module, "main")) return; 
     LLVMTypeRef main_func_type = LLVMFunctionType(LLVMInt32Type(), NULL, 0, 0);
@@ -208,37 +206,13 @@ void tamizhi_gen_loop_end() {
     LLVMPositionBuilderAtEnd(builder, loop_after);
 }
 
-/*void tamizhi_codegen_finish() {
-    /*LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0, 0));
-    tamizhi_generate_universal_bitcode("output.bc");
-    char *error = NULL;
-    const char *out_file = "output.o";
-    
-    // target_machine இப்போ initialize ஆகி இருப்பதால் .o ஃபைல் உருவாகும்
-    if (target_machine && LLVMTargetMachineEmitToFile(target_machine, module, (char*)out_file, LLVMObjectFile, &error)) {
-        fprintf(stderr, " [Codegen Error] Failed to emit machine code: %s\n", error);
-        LLVMDisposeMessage(error);
-    tamizhi_binary_to_dna_storage(out_file);
-    remove(out_file);
-
-    // ⭐ இங்க தான் மேஜிக் - கம்பைல் ஆன அவுட்புட்டை ரன் பண்ணச் சொல்லுவோம்
-    fprintf(stderr, "\n[Execution] Running compiled logic...\n");
-    system("lli output.ll"); 
-
-    fprintf(stderr, "\n[Codegen] --- Tamizhi Universal Engine: SUCCESS ---\n");
-    LLVMDisposeBuilder(builder);
-    
-    }*/
-    void tamizhi_codegen_finish() {
+void tamizhi_codegen_finish() {
     LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0, 0));
-    
-    // 1. பிட்கோட் மற்றும் அசெம்பிளி ஜெனரேஷன்
     tamizhi_generate_universal_bitcode("output.bc");
     
     char *error = NULL;
     const char *out_file = "output.o";
     
-    // 2. மெஷின் கோட் (.o) உருவாக்குதல்
     if (target_machine) {
         if (LLVMTargetMachineEmitToFile(target_machine, module, (char*)out_file, LLVMObjectFile, &error)) {
             fprintf(stderr, " [Codegen Error] Failed to emit machine code: %s\n", error);
@@ -246,22 +220,12 @@ void tamizhi_gen_loop_end() {
         }
     }
 
-    // 3. DNA-VM என்கோடிங் (இது if-க்கு வெளிய இருக்கணும்)
     tamizhi_binary_to_dna_storage(out_file);
-    remove(out_file); // டெம்பரவரி ஃபைலை நீக்குதல்
+    remove(out_file);
 
-    // 4. ⭐ ஆட்டோமேட்டிக் எக்ஸிகியூஷன் (Automatic Execution)
     fprintf(stderr, "\n[Execution] Running compiled logic...\n");
     system("lli output.ll"); 
 
-    fprintf(stderr, "\n[Codegen] --- Tamizhi Universal Engine: SUCCESS ---\n");
-    
-    // 5. கிளீன் அப்
-    LLVMDisposeBuilder(builder);
-}
-    
-    tamizhi_binary_to_dna_storage(out_file);
-    remove(out_file);
     fprintf(stderr, "\n[Codegen] --- Tamizhi Universal Engine: SUCCESS ---\n");
     LLVMDisposeBuilder(builder);
 }
