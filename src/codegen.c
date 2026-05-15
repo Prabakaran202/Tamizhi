@@ -29,6 +29,8 @@ typedef struct {
 Variable symbol_table[100];
 int var_count = 0;
 
+// ... (Bitcode generation and DNA storage functions remain same)
+
 void tamizhi_generate_universal_bitcode(const char* filename) {
     if (LLVMWriteBitcodeToFile(module, filename) != 0) {
         fprintf(stderr, " [Error] Failed to write universal bitcode!\n");
@@ -104,14 +106,12 @@ void tamizhi_generate_entry() {
 }
 
 void tamizhi_gen_var(char* name, int value) {
-    // ஏற்கனவே இந்த பெயர்ல வேரியபிள் இருந்தா அதைத் தேடு
     for(int i=0; i<var_count; i++) {
         if(strcmp(symbol_table[i].name, name) == 0) {
             LLVMBuildStore(builder, LLVMConstInt(LLVMInt32Type(), value, 0), symbol_table[i].alloca_ptr);
             return;
         }
     }
-    
     if (var_count >= 100) return;
     LLVMValueRef alloca = LLVMBuildAlloca(builder, LLVMInt32Type(), name);
     LLVMBuildStore(builder, LLVMConstInt(LLVMInt32Type(), value, 0), alloca);
@@ -120,27 +120,32 @@ void tamizhi_gen_var(char* name, int value) {
     var_count++;
 }
 
-// ⭐ அப்டேட் செய்யப்பட்ட Var Add லாஜிக்
+// ⭐ புதிய ஸ்ட்ரிங் ஜெனரேஷன் பங்க்ஷன்
+void tamizhi_gen_str(char* name, char* value) {
+    if (var_count >= 100) return;
+    
+    // LLVM-ல் குளோபல் ஸ்ட்ரிங் பாயிண்டர் உருவாக்குதல்
+    LLVMValueRef str_ptr = LLVMBuildGlobalStringPtr(builder, value, "str_lit");
+    
+    strcpy(symbol_table[var_count].name, name);
+    symbol_table[var_count].alloca_ptr = str_ptr; // இது pointer-ஆக சேமிக்கப்படும்
+    var_count++;
+}
+
 void tamizhi_gen_var_add(char* res_name, char* var1, char* var2) {
     LLVMValueRef v1_val = NULL, v2_val = NULL;
-    
     if(isdigit(var1[0])) v1_val = LLVMConstInt(LLVMInt32Type(), atoi(var1), 0);
     else {
         for(int i=0; i<var_count; i++) 
-            if(strcmp(symbol_table[i].name, var1) == 0) 
-                v1_val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v1");
+            if(strcmp(symbol_table[i].name, var1) == 0) v1_val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v1");
     }
-
     if(isdigit(var2[0])) v2_val = LLVMConstInt(LLVMInt32Type(), atoi(var2), 0);
     else {
         for(int i=0; i<var_count; i++) 
-            if(strcmp(symbol_table[i].name, var2) == 0) 
-                v2_val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v2");
+            if(strcmp(symbol_table[i].name, var2) == 0) v2_val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v2");
     }
-
     if(v1_val && v2_val) {
         LLVMValueRef sum = LLVMBuildAdd(builder, v1_val, v2_val, "sum_tmp");
-        
         LLVMValueRef target_ptr = NULL;
         for(int i=0; i<var_count; i++) {
             if(strcmp(symbol_table[i].name, res_name) == 0) {
@@ -148,36 +153,48 @@ void tamizhi_gen_var_add(char* res_name, char* var1, char* var2) {
                 break;
             }
         }
-
         if(!target_ptr) {
             target_ptr = LLVMBuildAlloca(builder, LLVMInt32Type(), res_name);
             strcpy(symbol_table[var_count].name, res_name);
             symbol_table[var_count].alloca_ptr = target_ptr;
             var_count++;
         }
-
         LLVMBuildStore(builder, sum, target_ptr);
     }
 }
 
+// ⭐ மாற்றப்பட்ட பிரிண்ட் பங்க்ஷன்
 void tamizhi_gen_print(char* var_name) {
-    LLVMValueRef fmt = LLVMBuildGlobalStringPtr(builder, "%d\n", "fmt");
     LLVMValueRef val = NULL;
-    if (isdigit(var_name[0])) val = LLVMConstInt(LLVMInt32Type(), atoi(var_name), 0);
-    else {
+    int is_string = 0;
+
+    if (isdigit(var_name[0])) {
+        val = LLVMConstInt(LLVMInt32Type(), atoi(var_name), 0);
+    } else {
         for(int i = 0; i < var_count; i++) {
             if(strcmp(symbol_table[i].name, var_name) == 0) {
-                val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "load_val");
+                val = symbol_table[i].alloca_ptr;
+                // Pointer டைப்பா என்று செக் பண்றோம் (Strings are pointers)
+                if (LLVMGetTypeKind(LLVMTypeOf(val)) == LLVMPointerTypeKind) {
+                    is_string = 1; 
+                } else {
+                    val = LLVMBuildLoad2(builder, LLVMInt32Type(), val, "load_val");
+                }
                 break;
             }
         }
         if(!val && i_ptr && strcmp(var_name, "i") == 0) val = LLVMBuildLoad2(builder, LLVMInt32Type(), i_ptr, "load_val");
     }
+
     if(val) {
+        const char* fmt_str = is_string ? "%s\n" : "%d\n";
+        LLVMValueRef fmt = LLVMBuildGlobalStringPtr(builder, fmt_str, "fmt");
         LLVMValueRef args[] = { fmt, val };
         LLVMBuildCall2(builder, printf_type, printf_func, args, 2, "print_call");
     }
 }
+
+// ... (tamizhi_gen_if_start, tamizhi_gen_loop_start, etc. remain the same)
 
 void tamizhi_gen_if_start(char* var1, char* op, char* var2) {
     LLVMValueRef v1 = NULL, v2 = NULL;
