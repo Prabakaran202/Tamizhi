@@ -104,6 +104,14 @@ void tamizhi_generate_entry() {
 }
 
 void tamizhi_gen_var(char* name, int value) {
+    // ஏற்கனவே இந்த பெயர்ல வேரியபிள் இருந்தா அதைத் தேடு
+    for(int i=0; i<var_count; i++) {
+        if(strcmp(symbol_table[i].name, name) == 0) {
+            LLVMBuildStore(builder, LLVMConstInt(LLVMInt32Type(), value, 0), symbol_table[i].alloca_ptr);
+            return;
+        }
+    }
+    
     if (var_count >= 100) return;
     LLVMValueRef alloca = LLVMBuildAlloca(builder, LLVMInt32Type(), name);
     LLVMBuildStore(builder, LLVMConstInt(LLVMInt32Type(), value, 0), alloca);
@@ -112,25 +120,43 @@ void tamizhi_gen_var(char* name, int value) {
     var_count++;
 }
 
+// ⭐ அப்டேட் செய்யப்பட்ட Var Add லாஜிக்
 void tamizhi_gen_var_add(char* res_name, char* var1, char* var2) {
     LLVMValueRef v1_val = NULL, v2_val = NULL;
+    
     if(isdigit(var1[0])) v1_val = LLVMConstInt(LLVMInt32Type(), atoi(var1), 0);
     else {
         for(int i=0; i<var_count; i++) 
-            if(strcmp(symbol_table[i].name, var1) == 0) v1_val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v1");
+            if(strcmp(symbol_table[i].name, var1) == 0) 
+                v1_val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v1");
     }
+
     if(isdigit(var2[0])) v2_val = LLVMConstInt(LLVMInt32Type(), atoi(var2), 0);
     else {
         for(int i=0; i<var_count; i++) 
-            if(strcmp(symbol_table[i].name, var2) == 0) v2_val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v2");
+            if(strcmp(symbol_table[i].name, var2) == 0) 
+                v2_val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v2");
     }
+
     if(v1_val && v2_val) {
         LLVMValueRef sum = LLVMBuildAdd(builder, v1_val, v2_val, "sum_tmp");
-        LLVMValueRef res_ptr = LLVMBuildAlloca(builder, LLVMInt32Type(), res_name);
-        LLVMBuildStore(builder, sum, res_ptr);
-        strcpy(symbol_table[var_count].name, res_name);
-        symbol_table[var_count].alloca_ptr = res_ptr;
-        var_count++;
+        
+        LLVMValueRef target_ptr = NULL;
+        for(int i=0; i<var_count; i++) {
+            if(strcmp(symbol_table[i].name, res_name) == 0) {
+                target_ptr = symbol_table[i].alloca_ptr;
+                break;
+            }
+        }
+
+        if(!target_ptr) {
+            target_ptr = LLVMBuildAlloca(builder, LLVMInt32Type(), res_name);
+            strcpy(symbol_table[var_count].name, res_name);
+            symbol_table[var_count].alloca_ptr = target_ptr;
+            var_count++;
+        }
+
+        LLVMBuildStore(builder, sum, target_ptr);
     }
 }
 
@@ -209,23 +235,18 @@ void tamizhi_gen_loop_end() {
 void tamizhi_codegen_finish() {
     LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0, 0));
     tamizhi_generate_universal_bitcode("output.bc");
-    
     char *error = NULL;
     const char *out_file = "output.o";
-    
     if (target_machine) {
         if (LLVMTargetMachineEmitToFile(target_machine, module, (char*)out_file, LLVMObjectFile, &error)) {
             fprintf(stderr, " [Codegen Error] Failed to emit machine code: %s\n", error);
             LLVMDisposeMessage(error);
         }
     }
-
     tamizhi_binary_to_dna_storage(out_file);
     remove(out_file);
-
     fprintf(stderr, "\n[Execution] Running compiled logic...\n");
     system("lli output.ll"); 
-
     fprintf(stderr, "\n[Codegen] --- Tamizhi Universal Engine: SUCCESS ---\n");
     LLVMDisposeBuilder(builder);
 }
