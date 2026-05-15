@@ -11,15 +11,15 @@ void tamizhi_codegen_finish();
 // 2. வேரியபிள் மேனேஜ்மென்ட்
 void tamizhi_gen_var(char* name, int initial_value);
 void tamizhi_gen_var_add(char* res_name, char* var1, char* var2);
+// ⭐ புதிய ஸ்ட்ரிங் ஜெனரேஷன் (Issue #6 Fix)
+void tamizhi_gen_str(char* name, char* value); 
 
 // 3. அச்சிடுதல் (Printing)
 void tamizhi_gen_print(char* var_name);
-void tamizhi_gen_add_and_print(int n1, int n2);
 
 // 4. லூப் லாஜிக் (Looping)
-void tamizhi_gen_loop_test(int limit); // பழைய பங்க்ஷன்
-void tamizhi_gen_loop_start(int limit); // புதிய லூப் தொடக்கம்
-void tamizhi_gen_loop_end();           // புதிய லூப் முடிவு
+void tamizhi_gen_loop_start(int limit);
+void tamizhi_gen_loop_end();
 
 // 5. நிபந்தனை லாஜிக் (If-Else Logic)
 void tamizhi_gen_if_start(char* var1, char* op, char* var2);

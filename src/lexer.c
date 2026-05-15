@@ -43,8 +43,18 @@ Token get_next_token(FILE *file) {
         return token;
     }
 
-    // தமிழ் மற்றும் ஆங்கில எழுத்துக்களைக் கையாளுதல் (UTF-8 Support)
-    // 127-க்கு மேல் இருந்தால் அது தமிழ் போன்ற யுனிகோடு எழுத்துக்கள்
+    // 🧵 புதிய அப்டேட்: சரங்களைக் கையாளுதல் (String Literals)
+    if (c == '"') {
+        int i = 0;
+        while ((c = fgetc(file)) != '"' && c != EOF) {
+            token.value[i++] = c;
+        }
+        token.value[i] = '\0';
+        token.type = T_STR; 
+        return token;
+    }
+
+    // தமிழ் மற்றும் ஆங்கில எழுத்துக்களைக் கையாளுதல்
     if (isalpha(c) || (unsigned char)c > 127) {
         int i = 0;
         do {
@@ -80,7 +90,7 @@ Token get_next_token(FILE *file) {
     else if (c == '<') token.type = 18;
     else if (c == '>') token.type = 21;
     else if (c == '+') token.type = 19;
-    else if (c == '-') token.type = 56; // Minus symbol for line-1 logic
+    else if (c == '-') token.type = 56; 
     else if (c == '=') token.type = 20;
     else if (c == '{') token.type = 22;
     else if (c == '}') token.type = 23;

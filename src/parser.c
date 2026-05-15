@@ -53,24 +53,34 @@ void parse(FILE *file) {
 void parse_statement(FILE *file, Token t) {
     if (!is_valid(t)) return;
 
-    // 1. புதிய வேரியபிள் அறிவிப்பு (Num a = 0)
+    // 1. எண்கள் (Num a = 10)
     if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
         Token name_token = get_next_token(file); 
         while ((t = get_next_token(file)).type != 20 && t.type != T_EOF); 
         Token val_token = get_next_token(file);
-        
+
         if (isdigit(val_token.value[0])) {
             tamizhi_gen_var(name_token.value, atoi(val_token.value));
         }
     }
-    // 2. ⭐ புதிய அப்டேட்: ஏற்கனவே உள்ள வேரியபிளை அப்டேட் செய்தல் (a = a + 1)
+    // ⭐ 2. புதிய அப்டேட்: சரங்கள் (Str s = "Hello")
+    else if (t.type == T_STR || strcmp(t.value, "Str") == 0 || strcmp(t.value, "வரி") == 0) {
+        Token name_token = get_next_token(file);
+        while ((t = get_next_token(file)).type != 20 && t.type != T_EOF); // '=' தேடுகிறது
+        Token val_token = get_next_token(file);
+        
+        if (is_valid(val_token)) {
+            tamizhi_gen_str(name_token.value, val_token.value);
+        }
+    }
+    // 3. வேரியபிள் அப்டேட் (a = a + 1)
     else if (t.type == T_ID) {
         char var_name[50];
         strcpy(var_name, t.value); 
         long pos_after_id = ftell(file);
         Token next = get_next_token(file);
-        
-        if (next.type == 20) { // '=' பார்த்தால்
+
+        if (next.type == 20) { 
             Token first_val = get_next_token(file); 
             Token op = get_next_token(file);
             if (op.type == 19 || strcmp(op.value, "+") == 0) {
@@ -81,12 +91,12 @@ void parse_statement(FILE *file, Token t) {
             fseek(file, pos_after_id, SEEK_SET); 
         }
     }
-    // 3. லூப் (for / சு)
+    // 4. லூப் (for / சு)
     else if (t.type == T_FOR || strcmp(t.value, "சு") == 0 || strcmp(t.value, "for") == 0) {
         Token limit_token = get_next_token(file); 
         int limit = atoi(limit_token.value);
         Token next = get_next_token(file); 
-        if (next.type == 22) { // '{'
+        if (next.type == 22) { 
             tamizhi_gen_loop_start(limit);
             Token body_t;
             while ((body_t = get_next_token(file)).type != 23 && body_t.type != T_EOF) {
@@ -95,13 +105,15 @@ void parse_statement(FILE *file, Token t) {
             tamizhi_gen_loop_end();
         }
     }
-    // 4. அச்சிடு
+    // 5. அச்சிடு
     else if (t.type == T_PRINT || strcmp(t.value, "print") == 0 || strcmp(t.value, "அச்சிடு") == 0) {
         Token first = get_next_token(file);
-        if (first.type == 15) first = get_next_token(file); // '(' ஸ்கிப்
+        if (first.type == 15) first = get_next_token(file); 
         if (is_valid(first)) tamizhi_gen_print(first.value);
     }
 }
+
+// ... (scan_headers and execute_footer remain the same)
 
 void scan_headers(FILE *file) {
     Token t;
