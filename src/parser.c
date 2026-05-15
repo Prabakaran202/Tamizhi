@@ -5,84 +5,146 @@
 #include <string.h>
 #include <ctype.h>
 
-// புதுசா ஒரு Statement Parser தேவை, அப்போதான் nested logic வேலை செய்யும்
+int main_generated = 0;
+
+int is_valid(Token t) {
+    if (t.value == NULL || strlen(t.value) == 0) return 0;
+    return 1;
+}
+
 void parse_statement(FILE *file, Token t);
+void scan_headers(FILE *file);
+void execute_footer(FILE *file, long start_pos);
 
 void parse(FILE *file) {
     Token t;
-    fprintf(stderr, "[Parser] Tamizhi Engine Analysis Started...\n");
+    fprintf(stderr, "\n[Parser] --- Tamizhi Engine: Universal Analysis Started ---\n");
+    scan_headers(file);
+    rewind(file); 
+    fprintf(stderr, " -> Phase 2 [Body]: Mapping logic to DNA-VM...\n");
 
-    // மெயின் லூப் - ஒவ்வொரு ஸ்டேட்மென்டா எடுக்கும்
+    if (!main_generated) {
+        tamizhi_generate_entry(); 
+        main_generated = 1;
+    }
+
     while ((t = get_next_token(file)).type != T_EOF) {
+        if (!is_valid(t)) continue; 
+        if (strcmp(t.value, "footer") == 0) break;
+        if (strcmp(t.value, "fun") == 0 || t.type == T_FUNC) {
+            int brace_count = 0;
+            while ((t = get_next_token(file)).type != T_EOF) {
+                if (t.type == 22) brace_count++;
+                if (t.type == 23) {
+                    brace_count--;
+                    if (brace_count <= 0) break;
+                }
+            }
+            continue;
+        }
         parse_statement(file, t);
     }
+    rewind(file);
+    fprintf(stderr, " -> Phase 3 [Footer]: Launching execution...\n");
+    execute_footer(file, 0L);
+    fprintf(stderr, "[Parser] --- Analysis Completed Successfully ---\n\n");
 }
 
 void parse_statement(FILE *file, Token t) {
-    // --- 1. 'Num' / 'முழுஎண்' (Variables) ---
-    if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "முழுஎண்") == 0) {
+    if (!is_valid(t)) return;
+
+    // 1. புதிய வேரியபிள் அறிவிப்பு (Num a = 0)
+    if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
         Token name_token = get_next_token(file); 
-        while ((t = get_next_token(file)).type != 20 && t.type != T_EOF); // '=' தேடு
-        Token first_val = get_next_token(file); 
-        Token next_t = get_next_token(file);
-
-        if (next_t.type == 19 || strcmp(next_t.value, "+") == 0) {
-            Token second_val = get_next_token(file);
-            tamizhi_gen_var_add(name_token.value, first_val.value, second_val.value);
+        while ((t = get_next_token(file)).type != 20 && t.type != T_EOF); 
+        Token val_token = get_next_token(file);
+        
+        if (isdigit(val_token.value[0])) {
+            tamizhi_gen_var(name_token.value, atoi(val_token.value));
+        }
+    }
+    // 2. ⭐ புதிய அப்டேட்: ஏற்கனவே உள்ள வேரியபிளை அப்டேட் செய்தல் (a = a + 1)
+    else if (t.type == T_ID) {
+        char var_name[50];
+        strcpy(var_name, t.value); 
+        long pos_after_id = ftell(file);
+        Token next = get_next_token(file);
+        
+        if (next.type == 20) { // '=' பார்த்தால்
+            Token first_val = get_next_token(file); 
+            Token op = get_next_token(file);
+            if (op.type == 19 || strcmp(op.value, "+") == 0) {
+                Token second_val = get_next_token(file); 
+                tamizhi_gen_var_add(var_name, first_val.value, second_val.value);
+            }
         } else {
-            if (isdigit(first_val.value[0])) {
-                tamizhi_gen_var(name_token.value, atoi(first_val.value));
+            fseek(file, pos_after_id, SEEK_SET); 
+        }
+    }
+    // 3. லூப் (for / சு)
+    else if (t.type == T_FOR || strcmp(t.value, "சு") == 0 || strcmp(t.value, "for") == 0) {
+        Token limit_token = get_next_token(file); 
+        int limit = atoi(limit_token.value);
+        Token next = get_next_token(file); 
+        if (next.type == 22) { // '{'
+            tamizhi_gen_loop_start(limit);
+            Token body_t;
+            while ((body_t = get_next_token(file)).type != 23 && body_t.type != T_EOF) {
+                parse_statement(file, body_t);
+            }
+            tamizhi_gen_loop_end();
+        }
+    }
+    // 4. அச்சிடு
+    else if (t.type == T_PRINT || strcmp(t.value, "print") == 0 || strcmp(t.value, "அச்சிடு") == 0) {
+        Token first = get_next_token(file);
+        if (first.type == 15) first = get_next_token(file); // '(' ஸ்கிப்
+        if (is_valid(first)) tamizhi_gen_print(first.value);
+    }
+}
+
+void scan_headers(FILE *file) {
+    Token t;
+    while ((t = get_next_token(file)).type != T_EOF) {
+        if (is_valid(t) && (strcmp(t.value, "fun") == 0 || t.type == T_FUNC)) {
+            Token name = get_next_token(file);
+            if (is_valid(name)) fprintf(stderr, "    [Header] Registered: %s\n", name.value);
+        }
+        if (is_valid(t) && strcmp(t.value, "footer") == 0) break; 
+    }
+}
+
+void execute_footer(FILE *file, long start_pos) {
+    Token t;
+    int in_footer = 0;
+    while ((t = get_next_token(file)).type != T_EOF) {
+        if (is_valid(t) && strcmp(t.value, "footer") == 0) {
+            in_footer = 1;
+            while ((t = get_next_token(file)).type != 22 && t.type != T_EOF); 
+            continue;
+        }
+        if (in_footer) {
+            if (t.type == 23) break; 
+            if (t.type == T_ID && is_valid(t)) {
+                char func_to_call[64];
+                strcpy(func_to_call, t.value);
+                long current_pos = ftell(file);
+                rewind(file);
+                Token find_f;
+                while ((find_f = get_next_token(file)).type != T_EOF) {
+                    if (is_valid(find_f) && (strcmp(find_f.value, "fun") == 0 || find_f.type == T_FUNC)) {
+                        Token name = get_next_token(file);
+                        if (is_valid(name) && strcmp(name.value, func_to_call) == 0) {
+                            while ((find_f = get_next_token(file)).type != 22); 
+                            while ((find_f = get_next_token(file)).type != 23 && find_f.type != T_EOF) {
+                                if (is_valid(find_f)) parse_statement(file, find_f);
+                            }
+                            break;
+                        }
+                    }
+                }
+                fseek(file, current_pos, SEEK_SET); 
             }
         }
-    }
-
-    // --- 2. 'அச்சிடு' (Print) ---
-    else if (t.type == T_PRINT || strcmp(t.value, "அச்சிடு") == 0) {
-        Token var_t = get_next_token(file);
-        if (var_t.type == 15) var_t = get_next_token(file); // '(' தாண்டு
-        tamizhi_gen_print(var_t.value);
-    }
-
-    // --- 3. 'சு' (Loop) ---
-    else if (t.type == T_FOR || strcmp(t.value, "சு") == 0) {
-        while ((t = get_next_token(file)).type != T_NUM && t.type != T_EOF);
-        int limit = atoi(t.value);
-        tamizhi_gen_loop_start(limit); // லூப் தொடக்கம்
-
-        while ((t = get_next_token(file)).type != 22 && t.type != T_EOF); // '{' தேடு
-        
-        // பிளாக்குக்குள்ள இருக்குற கோடை படிக்க Recursion பயன்படுத்துகிறோம்
-        while ((t = get_next_token(file)).type != 23 && t.type != T_EOF) { // '}' வரும் வரை
-            parse_statement(file, t);
-        }
-        tamizhi_gen_loop_end(); // லூப் முடிவு
-    }
-
-    // --- 4. 'எனில்' (If Condition - NEW!) ---
-    else if (t.type == T_IF || strcmp(t.value, "எனில்") == 0) {
-        while ((t = get_next_token(file)).type != 15 && t.type != T_EOF); // '(' தேடு
-        Token var1 = get_next_token(file);
-        Token op = get_next_token(file);
-        Token var2 = get_next_token(file);
-        
-        tamizhi_gen_if_start(var1.value, op.value, var2.value);
-
-        while ((t = get_next_token(file)).type != 22 && t.type != T_EOF); // '{' தேடு
-        
-        // If-Block உள்ளே இருக்கும் கோடை படிக்கிறோம்
-        while ((t = get_next_token(file)).type != 23 && t.type != T_EOF) {
-            parse_statement(file, t);
-        }
-        
-        // 'இல்லையெனில்' (Else) இருக்கான்னு பார்க்கணும்
-        Token next_look = get_next_token(file);
-        if (strcmp(next_look.value, "else") == 0 || strcmp(next_look.value, "இல்லையெனில்") == 0) {
-            tamizhi_gen_else_start();
-            while ((t = get_next_token(file)).type != 22 && t.type != T_EOF); // '{'
-            while ((t = get_next_token(file)).type != 23 && t.type != T_EOF) {
-                parse_statement(file, t);
-            }
-        }
-        tamizhi_gen_if_end();
     }
 }
