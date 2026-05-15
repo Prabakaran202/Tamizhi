@@ -7,9 +7,17 @@
 
 int main_generated = 0;
 
+// லேப்டாப் வார்னிங்கைத் தவிர்க்க திருத்தப்பட்ட பங்க்ஷன்
 int is_valid(Token t) {
-    if (t.value == NULL || strlen(t.value) == 0) return 0;
+    if (strlen(t.value) == 0) return 0;
     return 1;
+}
+
+// 🌟 புதிய ஹெல்பர்: செமிகோலன் (;) வரும் வரை டோக்கன்களைத் தவிர்க்க
+void skip_to_semicolon(FILE *file) {
+    Token t;
+    // Lexer-ல் செமிகோலனுக்கு டைப் 21 கொடுத்துள்ளோம்
+    while ((t = get_next_token(file)).type != 21 && t.type != T_EOF);
 }
 
 void parse_statement(FILE *file, Token t);
@@ -31,6 +39,8 @@ void parse(FILE *file) {
     while ((t = get_next_token(file)).type != T_EOF) {
         if (!is_valid(t)) continue; 
         if (strcmp(t.value, "footer") == 0) break;
+        
+        // பங்க்ஷன் டெபனிஷன்களைத் தவிர்க்க
         if (strcmp(t.value, "fun") == 0 || t.type == T_FUNC) {
             int brace_count = 0;
             while ((t = get_next_token(file)).type != T_EOF) {
@@ -53,7 +63,7 @@ void parse(FILE *file) {
 void parse_statement(FILE *file, Token t) {
     if (!is_valid(t)) return;
 
-    // 1. எண்கள் (Num a = 10)
+    // 1. எண்கள் (Num a = 10 ;)
     if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
         Token name_token = get_next_token(file); 
         while ((t = get_next_token(file)).type != 20 && t.type != T_EOF); 
@@ -62,18 +72,20 @@ void parse_statement(FILE *file, Token t) {
         if (isdigit(val_token.value[0])) {
             tamizhi_gen_var(name_token.value, atoi(val_token.value));
         }
+        skip_to_semicolon(file); // 🌟 அடுத்த வரிக்கு நகர
     }
-    // ⭐ 2. புதிய அப்டேட்: சரங்கள் (Str s = "Hello")
+    // 2. சரங்கள் (Str s = "Hello" ;)
     else if (t.type == T_STR || strcmp(t.value, "Str") == 0 || strcmp(t.value, "வரி") == 0) {
         Token name_token = get_next_token(file);
-        while ((t = get_next_token(file)).type != 20 && t.type != T_EOF); // '=' தேடுகிறது
+        while ((t = get_next_token(file)).type != 20 && t.type != T_EOF); 
         Token val_token = get_next_token(file);
-        
+
         if (is_valid(val_token)) {
             tamizhi_gen_str(name_token.value, val_token.value);
         }
+        skip_to_semicolon(file); // 🌟 அடுத்த வரிக்கு நகர
     }
-    // 3. வேரியபிள் அப்டேட் (a = a + 1)
+    // 3. வேரியபிள் அப்டேட் (a = a + 1 ;)
     else if (t.type == T_ID) {
         char var_name[50];
         strcpy(var_name, t.value); 
@@ -87,6 +99,7 @@ void parse_statement(FILE *file, Token t) {
                 Token second_val = get_next_token(file); 
                 tamizhi_gen_var_add(var_name, first_val.value, second_val.value);
             }
+            skip_to_semicolon(file); // 🌟 அடுத்த வரிக்கு நகர
         } else {
             fseek(file, pos_after_id, SEEK_SET); 
         }
@@ -105,16 +118,20 @@ void parse_statement(FILE *file, Token t) {
             tamizhi_gen_loop_end();
         }
     }
-    // 5. அச்சிடு
+    // 5. அச்சிடு (print ;)
     else if (t.type == T_PRINT || strcmp(t.value, "print") == 0 || strcmp(t.value, "அச்சிடு") == 0) {
         Token first = get_next_token(file);
         if (first.type == 15) first = get_next_token(file); 
-        if (is_valid(first)) tamizhi_gen_print(first.value);
+        if (is_valid(first)) {
+            tamizhi_gen_print(first.value);
+        }
+        // பிராக்கெட் இருந்தால் அதை ஸ்கிப் செய்ய
+        Token check = get_next_token(file);
+        if (check.type != 21) skip_to_semicolon(file);
     }
 }
 
-// ... (scan_headers and execute_footer remain the same)
-
+// scan_headers மற்றும் execute_footer பழையபடி இருக்கும்
 void scan_headers(FILE *file) {
     Token t;
     while ((t = get_next_token(file)).type != T_EOF) {
