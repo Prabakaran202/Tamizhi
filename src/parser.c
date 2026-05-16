@@ -50,9 +50,9 @@ void parse(FILE *file) {
     while ((t = get_next_token(file)).type != T_EOF) {
         if (strcmp(t.value, "முதன்மை") == 0 || strcmp(t.value, "main") == 0) {
             get_next_token(file); // '{' ஸ்கிப்
-            
+
             int main_brace_count = 1; // மெயின் ஓபனிங் பிராக்கெட்டைக் கணக்கில் கொள்கிறோம்
-            
+
             while ((t = get_next_token(file)).type != T_EOF) {
                 if (t.type == 22 || strcmp(t.value, "{") == 0) {
                     main_brace_count++;
@@ -74,7 +74,7 @@ void parse(FILE *file) {
         fprintf(stderr, " -> Phase 3 [Footer]: Launching execution...\n");
         fseek(file, footer_pos, SEEK_SET);
         get_next_token(file); // '{' ஸ்கிப்
-        
+
         int footer_brace_count = 1;
         while ((t = get_next_token(file)).type != T_EOF) {
             if (t.type == 22 || strcmp(t.value, "{") == 0) footer_brace_count++;
@@ -113,28 +113,36 @@ void parse_statement(FILE *file, Token t) {
             tamizhi_gen_str(name_token.value, val_token.value);
         }
     }
-    // 3. வேரியபிள் அப்டேட் (a = a + 1 ;)
+    // 3. வேரியபிள் அப்டேட் அல்லது பங்க்ஷன் கால் (a = a + 1 ; அல்லது add() ;) 🌟
     else if (t.type == T_ID) {
         char var_name[50];
         strcpy(var_name, t.value); 
         long current_pos = ftell(file);
-        Token next = get_next_token(file);
-        if (next.type == 20) { // '='
+        Token next_t = get_next_token(file);
+        
+        if (next_t.type == 20) { // '=' -> வேரியபிள் அப்டேட்
             Token v1 = get_next_token(file);
             Token op = get_next_token(file);
             if (op.type == 19) { // '+'
                 Token v2 = get_next_token(file);
                 tamizhi_gen_var_add(var_name, v1.value, v2.value);
             }
-        } else if (next.type == 15) { // '(' -> பங்க்ஷன் கால்
+        } 
+        else if (next_t.type == 15 || strcmp(next_t.value, "(") == 0) { // '(' -> பங்க்ஷன் கால்
+            // பங்க்ஷனோட க்ளோசிங் பிராக்கெட் ')' மற்றும் செமிகோலன் ';' வரை டோக்கனை நகர்த்துகிறோம்
+            while ((next_t = get_next_token(file)).type != 21 && next_t.type != T_EOF && strcmp(next_t.value, ";") != 0);
+            
+            long post_call_pos = ftell(file); // பங்க்ஷன் காலுக்கு அடுத்த வரியின் பொசிஷனை சேமிக்கிறோம்
+
+            // Phase: பங்க்ஷன் பாடியை தேடி ரன் செய்தல்
             rewind(file);
             Token find_f;
             while ((find_f = get_next_token(file)).type != T_EOF) {
                 if (is_valid(find_f) && (strcmp(find_f.value, "fun") == 0 || find_f.type == T_FUNC)) {
                     Token name = get_next_token(file);
                     if (is_valid(name) && strcmp(name.value, var_name) == 0) {
-                        while ((find_f = get_next_token(file)).type != 22); 
-                        while ((find_f = get_next_token(file)).type != 23) {
+                        while ((find_f = get_next_token(file)).type != 22); // '{' தேடுகிறது
+                        while ((find_f = get_next_token(file)).type != 23) { // '}' வரும் வரை
                             parse_statement(file, find_f);
                             find_f = get_next_token(file);
                         }
@@ -142,7 +150,9 @@ void parse_statement(FILE *file, Token t) {
                     }
                 }
             }
-            fseek(file, current_pos + 2, SEEK_SET); 
+            
+            // பக்கா ஃபிக்ஸ்: பங்க்ஷன் பாடி ரன் ஆகி முடிஞ்சதும், கச்சிதமா அடுத்த வரிக்கு பாயிண்டரை கொண்டு வரோம்!
+            fseek(file, post_call_pos, SEEK_SET); 
         } else {
             fseek(file, current_pos, SEEK_SET);
         }
