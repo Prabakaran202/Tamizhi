@@ -19,7 +19,9 @@ LLVMValueRef printf_func;
 LLVMValueRef i_ptr = NULL; 
 
 LLVMBasicBlockRef then_block, else_block, merge_block;
-LLVMBasicBlockRef loop_cond, loop_body, loop_after;
+
+// 🌟 லூப் கவுண்ட்டர்களை ஹேண்டில் செய்ய
+int loop_counter = 0;
 
 typedef struct {
     char name[50];
@@ -28,8 +30,6 @@ typedef struct {
 
 Variable symbol_table[100];
 int var_count = 0;
-
-// ... (Bitcode generation and DNA storage functions remain same)
 
 void tamizhi_generate_universal_bitcode(const char* filename) {
     if (LLVMWriteBitcodeToFile(module, filename) != 0) {
@@ -120,15 +120,11 @@ void tamizhi_gen_var(char* name, int value) {
     var_count++;
 }
 
-// ⭐ புதிய ஸ்ட்ரிங் ஜெனரேஷன் பங்க்ஷன்
 void tamizhi_gen_str(char* name, char* value) {
     if (var_count >= 100) return;
-    
-    // LLVM-ல் குளோபல் ஸ்ட்ரிங் பாயிண்டர் உருவாக்குதல்
     LLVMValueRef str_ptr = LLVMBuildGlobalStringPtr(builder, value, "str_lit");
-    
     strcpy(symbol_table[var_count].name, name);
-    symbol_table[var_count].alloca_ptr = str_ptr; // இது pointer-ஆக சேமிக்கப்படும்
+    symbol_table[var_count].alloca_ptr = str_ptr; 
     var_count++;
 }
 
@@ -163,7 +159,6 @@ void tamizhi_gen_var_add(char* res_name, char* var1, char* var2) {
     }
 }
 
-// ⭐ மாற்றப்பட்ட பிரிண்ட் பங்க்ஷன்
 void tamizhi_gen_print(char* var_name) {
     LLVMValueRef val = NULL;
     int is_string = 0;
@@ -174,7 +169,6 @@ void tamizhi_gen_print(char* var_name) {
         for(int i = 0; i < var_count; i++) {
             if(strcmp(symbol_table[i].name, var_name) == 0) {
                 val = symbol_table[i].alloca_ptr;
-                // Pointer டைப்பா என்று செக் பண்றோம் (Strings are pointers)
                 if (LLVMGetTypeKind(LLVMTypeOf(val)) == LLVMPointerTypeKind) {
                     is_string = 1; 
                 } else {
@@ -193,8 +187,6 @@ void tamizhi_gen_print(char* var_name) {
         LLVMBuildCall2(builder, printf_type, printf_func, args, 2, "print_call");
     }
 }
-
-// ... (tamizhi_gen_if_start, tamizhi_gen_loop_start, etc. remain the same)
 
 void tamizhi_gen_if_start(char* var1, char* op, char* var2) {
     LLVMValueRef v1 = NULL, v2 = NULL;
@@ -226,31 +218,55 @@ void tamizhi_gen_if_end() {
     LLVMPositionBuilderAtEnd(builder, merge_block);
 }
 
+// 🌟 பிக்ஸ் செய்யப்பட்ட டைனமிக் லூப் ஸ்டார்ட்
 void tamizhi_gen_loop_start(int limit) {
     LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
-    loop_cond = LLVMAppendBasicBlock(func, "loop_cond");
-    loop_body = LLVMAppendBasicBlock(func, "loop_body");
-    loop_after = LLVMAppendBasicBlock(func, "loop_after");
+    
+    char cond_name[32], body_name[32], after_name[32];
+    sprintf(cond_name, "loop_cond_%d", loop_counter);
+    sprintf(body_name, "loop_body_%d", loop_counter);
+    sprintf(after_name, "loop_after_%d", loop_counter);
+    loop_counter++;
+
+    LLVMBasicBlockRef l_cond = LLVMAppendBasicBlock(func, cond_name);
+    LLVMBasicBlockRef l_body = LLVMAppendBasicBlock(func, body_name);
+    LLVMBasicBlockRef l_after = LLVMAppendBasicBlock(func, after_name);
+
     i_ptr = LLVMBuildAlloca(builder, LLVMInt32Type(), "i");
     LLVMBuildStore(builder, LLVMConstInt(LLVMInt32Type(), 0, 0), i_ptr);
-    LLVMBuildBr(builder, loop_cond);
-    LLVMPositionBuilderAtEnd(builder, loop_cond);
+    LLVMBuildBr(builder, l_cond);
+    
+    LLVMPositionBuilderAtEnd(builder, l_cond);
     LLVMValueRef i_val = LLVMBuildLoad2(builder, LLVMInt32Type(), i_ptr, "i_val");
     LLVMValueRef cond = LLVMBuildICmp(builder, LLVMIntSLT, i_val, LLVMConstInt(LLVMInt32Type(), limit, 0), "tmp_cond");
-    LLVMBuildCondBr(builder, cond, loop_body, loop_after);
-    LLVMPositionBuilderAtEnd(builder, loop_body);
+    LLVMBuildCondBr(builder, cond, l_body, l_after);
+    
+    LLVMPositionBuilderAtEnd(builder, l_body);
 }
 
+// 🌟 பிக்ஸ் செய்யப்பட்ட டைனமிக் லூப் எண்டு
 void tamizhi_gen_loop_end() {
+    LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
+    LLVMBasicBlockRef current_body = LLVMGetInsertBlock(builder);
+    
+    // லூப் கண்டிஷன் பிளாக்கைக் கண்டுபிடித்து திரும்ப பிராஞ்ச் செய்ய
+    LLVMBasicBlockRef l_cond = LLVMGetPreviousBasicBlock(current_body);
+    LLVMBasicBlockRef l_after = LLVMGetNextBasicBlock(current_body);
+
     LLVMValueRef i_val = LLVMBuildLoad2(builder, LLVMInt32Type(), i_ptr, "i_val");
     LLVMValueRef next_val = LLVMBuildAdd(builder, i_val, LLVMConstInt(LLVMInt32Type(), 1, 0), "next_i");
     LLVMBuildStore(builder, next_val, i_ptr);
-    LLVMBuildBr(builder, loop_cond); 
-    LLVMPositionBuilderAtEnd(builder, loop_after);
+    
+    LLVMBuildBr(builder, l_cond); 
+    LLVMPositionBuilderAtEnd(builder, l_after);
 }
 
 void tamizhi_codegen_finish() {
-    LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0, 0));
+    // 🌟 பிக்ஸ்: அனைத்து ஸ்டேட்மென்ட்களும் முடிந்த பிறகு 'ret i32 0' கடைசியாக எழுதப்படுகிறது!
+    if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder)) == NULL) {
+        LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0, 0));
+    }
+
     tamizhi_generate_universal_bitcode("output.bc");
     char *error = NULL;
     const char *out_file = "output.o";
