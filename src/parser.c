@@ -29,7 +29,7 @@ void parse(FILE *file) {
     // Phase 1: பங்க்ஷன்களை (Fun) மட்டும் ஸ்கேன் செய்து ரிஜிஸ்டர் செய்தல்
     scan_headers(file);
 
-    // Phase 2: மெயின் (Main) மற்றும் பூட்டர் (Footer) எங்குள்ளது எனத் தேடுதல்
+    // Phase 2: பூட்டர் (Footer) எங்குள்ளது எனத் தேடுதல்
     rewind(file);
     while ((t = get_next_token(file)).type != T_EOF) {
         if (strcmp(t.value, "பூட்டர்") == 0 || strcmp(t.value, "footer") == 0) {
@@ -46,12 +46,19 @@ void parse(FILE *file) {
         main_generated = 1;
     }
 
+    // 🌟 மெயின் பிளாக்கை மட்டும் துல்லியமாகப் படிக்கும் புதிய லாஜிக்
     while ((t = get_next_token(file)).type != T_EOF) {
         if (strcmp(t.value, "முதன்மை") == 0 || strcmp(t.value, "main") == 0) {
-            get_next_token(file); // '{' ஸ்கிப்
-            while ((t = get_next_token(file)).type != 23 && t.type != T_EOF) {
+            Token open_brace = get_next_token(file); // '{' ஸ்கிப்
+            
+            // '}' வர்ற வரைக்கும் உள்ள இருக்கிற எல்லா டோக்கனையும் வரிசையா படிக்கும்
+            while ((t = get_next_token(file)).type != T_EOF) {
+                if (t.type == 23 || strcmp(t.value, "}") == 0) {
+                    break; // மெயின் பிளாக் முடிந்தது, வெளியே வா
+                }
                 parse_statement(file, t);
             }
+            break; // மெயின் பிளாக் வேலை முடிந்தது
         }
     }
 
@@ -61,7 +68,7 @@ void parse(FILE *file) {
         fseek(file, footer_pos, SEEK_SET);
         get_next_token(file); // '{' ஸ்கிப்
         while ((t = get_next_token(file)).type != T_EOF) {
-            if (t.type == 23) break; // '}' வந்ததும் நிறுத்து
+            if (t.type == 23 || strcmp(t.value, "}") == 0) break;
             parse_statement(file, t);
         }
     }
