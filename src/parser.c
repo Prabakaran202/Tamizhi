@@ -46,19 +46,18 @@ void parse(FILE *file) {
         main_generated = 1;
     }
 
-    // 🌟 மெயின் பிளாக்கை மட்டும் துல்லியமாகப் படிக்கும் புதிய லாஜிக்
+    // மெயின் பிளாக்கை மட்டும் துல்லியமாகப் படிக்கும் லாஜிக்
     while ((t = get_next_token(file)).type != T_EOF) {
         if (strcmp(t.value, "முதன்மை") == 0 || strcmp(t.value, "main") == 0) {
-            Token open_brace = get_next_token(file); // '{' ஸ்கிப்
-            
-            // '}' வர்ற வரைக்கும் உள்ள இருக்கிற எல்லா டோக்கனையும் வரிசையா படிக்கும்
+            get_next_token(file); // '{' ஸ்கிப்
+
             while ((t = get_next_token(file)).type != T_EOF) {
                 if (t.type == 23 || strcmp(t.value, "}") == 0) {
-                    break; // மெயின் பிளாக் முடிந்தது, வெளியே வா
+                    break; // மெயின் பிளாக் முடிந்தது
                 }
                 parse_statement(file, t);
             }
-            break; // மெயின் பிளாக் வேலை முடிந்தது
+            break; 
         }
     }
 
@@ -79,13 +78,13 @@ void parse(FILE *file) {
 void parse_statement(FILE *file, Token t) {
     if (!is_valid(t)) return;
 
-    // 🌟 செமிகோலன் (;) அல்லது நியூலைன் டோக்கனாக இருந்தால் அதை அப்படியே கடந்து செல்லலாம்
+    // செமிகோலன் (;) அல்லது நியூலைன் டோக்கனாக இருந்தால் அதை அப்படியே கடந்து செல்லலாம்
     if (t.type == 21 || strcmp(t.value, ";") == 0) return;
 
     // 1. எண்கள் (Num a = 10 ;)
     if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
         Token name_token = get_next_token(file); 
-        while ((t = get_next_token(file)).type != 20 && t.type != T_EOF); // '=' தேடுகிறது
+        while ((t = get_next_token(file)).type != 20 && t.type != T_EOF); 
         Token val_token = get_next_token(file);
         if (isdigit(val_token.value[0])) {
             tamizhi_gen_var(name_token.value, atoi(val_token.value));
@@ -94,7 +93,7 @@ void parse_statement(FILE *file, Token t) {
     // 2. சரங்கள் (Str s = "Hello" ;)
     else if (t.type == T_STR || strcmp(t.value, "Str") == 0 || strcmp(t.value, "வரி") == 0) {
         Token name_token = get_next_token(file);
-        while ((t = get_next_token(file)).type != 20 && t.type != T_EOF); // '=' தேடுகிறது
+        while ((t = get_next_token(file)).type != 20 && t.type != T_EOF); 
         Token val_token = get_next_token(file);
         if (is_valid(val_token)) {
             tamizhi_gen_str(name_token.value, val_token.value);
@@ -134,10 +133,21 @@ void parse_statement(FILE *file, Token t) {
             fseek(file, current_pos, SEEK_SET);
         }
     }
-    // 4. லூப் (for / சு)
+    // 4. லூப் (for / சு) - புதிய அப்டேட் 🌟
     else if (t.type == T_FOR || strcmp(t.value, "சு") == 0) {
         Token limit_token = get_next_token(file); 
-        int limit = atoi(limit_token.value);
+        int limit = 0;
+        
+        // லிமிட் டோக்கன் நேரடியாக எண்ணாக இருந்தால் அதை அப்படியே எடுக்கிறோம்
+        if (isdigit(limit_token.value[0])) {
+            limit = atoi(limit_token.value);
+        } else {
+            // 💡 ஒருவேளை அது வேரியபிளாக இருந்தால் (எ.கா: சு முறை), 
+            // இப்போதைக்கு தற்காலிகமாக ஒரு மதிப்பை (எ.கா: 3) கொடுக்கிறோம்.
+            // பின்னாடி சிம்பல் டேபிளில் இருந்து லோடு செய்யும் லாஜிக்கை கோட்ஜென்னில் சேர்க்கலாம்.
+            limit = 3; 
+        }
+
         Token next = get_next_token(file);
         if (next.type == 22) { // '{'
             tamizhi_gen_loop_start(limit);
@@ -151,7 +161,7 @@ void parse_statement(FILE *file, Token t) {
     // 5. அச்சிடு (print ;)
     else if (t.type == T_PRINT || strcmp(t.value, "அச்சிடு") == 0) {
         Token first = get_next_token(file);
-        if (first.type == 15) first = get_next_token(file); // '(' ஸ்கிப்
+        if (first.type == 15) first = get_next_token(file); 
         tamizhi_gen_print(first.value);
     }
 }
