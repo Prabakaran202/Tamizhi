@@ -72,7 +72,7 @@ void parse(FILE *file) {
 void parse_statement(FILE *file, Token t) {
     if (!is_valid(t)) return;
 
-    // செமிகோலன் டோக்கனாக இருந்தால் அதை அப்படியே கடந்து செல்லலாம்
+    // 🌟 செமிகோலன் (;) அல்லது நியூலைன் டோக்கனாக இருந்தால் அதை அப்படியே கடந்து செல்லலாம்
     if (t.type == 21 || strcmp(t.value, ";") == 0) return;
 
     // 1. எண்கள் (Num a = 10 ;)
@@ -83,11 +83,6 @@ void parse_statement(FILE *file, Token t) {
         if (isdigit(val_token.value[0])) {
             tamizhi_gen_var(name_token.value, atoi(val_token.value));
         }
-        // அடுத்த வரியை எதிர்கொள்ள செமிகோலன் வரும் வரை மட்டும் டோக்கனை நகர்த்துகிறோம் (ஸ்கிப் செய்யாமல்)
-        Token check = get_next_token(file);
-        if (check.type != 21 && check.type != T_EOF) {
-            ungetc(check.value[0], file); // செமிகோலன் இல்லை எனில் ஃபைல் பாயிண்டரைத் திருப்புகிறோம்
-        }
     }
     // 2. சரங்கள் (Str s = "Hello" ;)
     else if (t.type == T_STR || strcmp(t.value, "Str") == 0 || strcmp(t.value, "வரி") == 0) {
@@ -96,11 +91,6 @@ void parse_statement(FILE *file, Token t) {
         Token val_token = get_next_token(file);
         if (is_valid(val_token)) {
             tamizhi_gen_str(name_token.value, val_token.value);
-        }
-        // 🌟 ஸ்ட்ரிங் டோக்கனுக்கு அடுத்து இருக்கும் செமிகோலனை மட்டும் கச்சிதமாகக் கடக்கிறோம்
-        Token check = get_next_token(file);
-        if (check.type != 21 && check.type != T_EOF) {
-            ungetc(check.value[0], file);
         }
     }
     // 3. வேரியபிள் அப்டேட் (a = a + 1 ;)
@@ -116,8 +106,6 @@ void parse_statement(FILE *file, Token t) {
                 Token v2 = get_next_token(file);
                 tamizhi_gen_var_add(var_name, v1.value, v2.value);
             }
-            Token check = get_next_token(file);
-            if (check.type != 21) ungetc(check.value[0], file);
         } else if (next.type == 15) { // '(' -> பங்க்ஷன் கால்
             rewind(file);
             Token find_f;
@@ -135,8 +123,6 @@ void parse_statement(FILE *file, Token t) {
                 }
             }
             fseek(file, current_pos + 2, SEEK_SET); 
-            Token check = get_next_token(file);
-            if (check.type != 21) ungetc(check.value[0], file);
         } else {
             fseek(file, current_pos, SEEK_SET);
         }
@@ -160,11 +146,6 @@ void parse_statement(FILE *file, Token t) {
         Token first = get_next_token(file);
         if (first.type == 15) first = get_next_token(file); // '(' ஸ்கிப்
         tamizhi_gen_print(first.value);
-        
-        Token check = get_next_token(file);
-        if (check.type != 21 && check.type != T_EOF) {
-            ungetc(check.value[0], file);
-        }
     }
 }
 
