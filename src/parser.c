@@ -80,7 +80,7 @@ void parse_statement(FILE *file, Token t) {
         if (isdigit(val_token.value[0])) {
             tamizhi_gen_var(name_token.value, atoi(val_token.value));
         }
-        skip_to_semicolon(file);
+        // ⭐ skip_to_semicolon நீக்கப்பட்டது (Over-skipping பக் பிக்ஸ்)
     }
     // 2. சரங்கள் (Str s = "Hello" ;)
     else if (t.type == T_STR || strcmp(t.value, "Str") == 0 || strcmp(t.value, "வரி") == 0) {
@@ -90,7 +90,7 @@ void parse_statement(FILE *file, Token t) {
         if (is_valid(val_token)) {
             tamizhi_gen_str(name_token.value, val_token.value);
         }
-        skip_to_semicolon(file);
+        // ⭐ skip_to_semicolon நீக்கப்பட்டது (Over-skipping பக் பிக்ஸ்)
     }
     // 3. வேரியபிள் அப்டேட் (a = a + 1 ;)
     else if (t.type == T_ID) {
@@ -107,7 +107,6 @@ void parse_statement(FILE *file, Token t) {
             }
             skip_to_semicolon(file);
         } else if (next.type == 15) { // '(' - இது ஒரு பங்க்ஷன் கால்
-            // பூட்டர்ல இருந்து பங்க்ஷனைத் தேடி ரன் பண்ணும் லாஜிக்
             rewind(file);
             Token find_f;
             while ((find_f = get_next_token(file)).type != T_EOF) {
@@ -123,7 +122,7 @@ void parse_statement(FILE *file, Token t) {
                     }
                 }
             }
-            fseek(file, current_pos + 2, SEEK_SET); // பிராக்கெட் தாண்டி திரும்பு
+            fseek(file, current_pos + 2, SEEK_SET); 
             skip_to_semicolon(file);
         } else {
             fseek(file, current_pos, SEEK_SET);
