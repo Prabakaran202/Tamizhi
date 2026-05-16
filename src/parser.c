@@ -46,14 +46,22 @@ void parse(FILE *file) {
         main_generated = 1;
     }
 
-    // மெயின் பிளாக்கை மட்டும் துல்லியமாகப் படிக்கும் லாஜிக்
+    // 🌟 பிராக்கெட் கவுண்ட் மூலம் மெயின் பிளாக்கை மட்டும் துல்லியமாகப் படிக்கும் லாஜிக்
     while ((t = get_next_token(file)).type != T_EOF) {
         if (strcmp(t.value, "முதன்மை") == 0 || strcmp(t.value, "main") == 0) {
             get_next_token(file); // '{' ஸ்கிப்
-
+            
+            int main_brace_count = 1; // மெயின் ஓபனிங் பிராக்கெட்டைக் கணக்கில் கொள்கிறோம்
+            
             while ((t = get_next_token(file)).type != T_EOF) {
+                if (t.type == 22 || strcmp(t.value, "{") == 0) {
+                    main_brace_count++;
+                }
                 if (t.type == 23 || strcmp(t.value, "}") == 0) {
-                    break; // மெயின் பிளாக் முடிந்தது
+                    main_brace_count--;
+                    if (main_brace_count <= 0) {
+                        break; // மெயின் பிளாக்கோட உண்மையான முடிவு பிராக்கெட் வந்தால் மட்டுமே வெளியேறும்!
+                    }
                 }
                 parse_statement(file, t);
             }
@@ -66,8 +74,14 @@ void parse(FILE *file) {
         fprintf(stderr, " -> Phase 3 [Footer]: Launching execution...\n");
         fseek(file, footer_pos, SEEK_SET);
         get_next_token(file); // '{' ஸ்கிப்
+        
+        int footer_brace_count = 1;
         while ((t = get_next_token(file)).type != T_EOF) {
-            if (t.type == 23 || strcmp(t.value, "}") == 0) break;
+            if (t.type == 22 || strcmp(t.value, "{") == 0) footer_brace_count++;
+            if (t.type == 23 || strcmp(t.value, "}") == 0) {
+                footer_brace_count--;
+                if (footer_brace_count <= 0) break;
+            }
             parse_statement(file, t);
         }
     }
@@ -133,18 +147,14 @@ void parse_statement(FILE *file, Token t) {
             fseek(file, current_pos, SEEK_SET);
         }
     }
-    // 4. லூப் (for / சு) - புதிய அப்டேட் 🌟
+    // 4. லூப் (for / சு)
     else if (t.type == T_FOR || strcmp(t.value, "சு") == 0) {
         Token limit_token = get_next_token(file); 
         int limit = 0;
-        
-        // லிமிட் டோக்கன் நேரடியாக எண்ணாக இருந்தால் அதை அப்படியே எடுக்கிறோம்
+
         if (isdigit(limit_token.value[0])) {
             limit = atoi(limit_token.value);
         } else {
-            // 💡 ஒருவேளை அது வேரியபிளாக இருந்தால் (எ.கா: சு முறை), 
-            // இப்போதைக்கு தற்காலிகமாக ஒரு மதிப்பை (எ.கா: 3) கொடுக்கிறோம்.
-            // பின்னாடி சிம்பல் டேபிளில் இருந்து லோடு செய்யும் லாஜிக்கை கோட்ஜென்னில் சேர்க்கலாம்.
             limit = 3; 
         }
 
