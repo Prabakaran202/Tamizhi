@@ -19,14 +19,30 @@ void skip_to_semicolon(FILE *file) {
 }
 
 void parse_statement(FILE *file, Token t);
-void scan_headers(FILE *file);
+
+// 🌟 புதிய கச்சிதமான ஹெடர் பிரீ-ஸ்கேன் பங்க்ஷன்
+void scan_headers(FILE *file) {
+    Token t;
+    rewind(file);
+    fprintf(stderr, " -> Starting Header Pre-Scan...\n");
+    
+    while ((t = get_next_token(file)).type != T_EOF) {
+        if (is_valid(t) && (strcmp(t.value, "fun") == 0 || t.type == T_FUNC || strcmp(t.value, "நிகழ்") == 0)) {
+            Token name = get_next_token(file);
+            if (is_valid(name)) {
+                fprintf(stderr, "    [Header] Registered: %s\n", name.value);
+            }
+        }
+    }
+    rewind(file); // 🌟 பிரீ-ஸ்கேன் முடிந்ததும் கோப்பு தொடக்கப்புள்ளிக்குத் திரும்புகிறது!
+}
 
 void parse(FILE *file) {
     Token t;
     long footer_pos = -1L;
     fprintf(stderr, "\n[Parser] --- Tamizhi Engine: Universal Analysis Started ---\n");
 
-    // Phase 1: பங்க்ஷன்களை (Fun) மட்டும் ஸ்கேன் செய்து ரிஜிஸ்டர் செய்தல்
+    // Phase 1: பங்க்ஷன்களை மட்டும் ஸ்கேன் செய்து ரிஜிஸ்டர் செய்தல்
     scan_headers(file);
 
     // Phase 2: பூட்டர் (Footer) எங்குள்ளது எனத் தேடுதல்
@@ -129,80 +145,6 @@ void parse_statement(FILE *file, Token t) {
             }
         } 
         else if (next_t.type == 15 || strcmp(next_t.value, "(") == 0) { // '(' -> பங்க்ஷன் கால்
-            // 🌟 STEP 1: Function call mudiyura semicolon varai mattum padichu athan post-pos-ah edukrom
+            // STEP 1: Function call முடிகிற செமிகோலன் வரை மட்டும் படித்து அதன் போஸ்ட்-பொசிஷனை எடுக்கிறோம்
             Token tmp;
-            while ((tmp = get_next_token(file)).type != T_EOF) {
-                if (tmp.type == 21 || strcmp(tmp.value, ";") == 0) {
-                    break;
-                }
-            }
-            long post_call_pos = ftell(file); // Function call-uku adutha statement-oda exact point!
-
-            // STEP 2: Global scope-la function body-ah thedi run pannuthu
-            rewind(file);
-            Token find_f;
-            while ((find_f = get_next_token(file)).type != T_EOF) {
-                if (is_valid(find_f) && (strcmp(find_f.value, "fun") == 0 || find_f.type == T_FUNC || strcmp(find_f.value, "நிகழ்") == 0)) {
-                    Token name = get_next_token(file);
-                    if (is_valid(name) && strcmp(name.value, var_name) == 0) {
-                        while ((find_f = get_next_token(file)).type != 22); // '{' thedugirathu
-                        
-                        int body_brace_count = 1;
-                        while ((find_f = get_next_token(file)).type != T_EOF) {
-                            if (find_f.type == 22 || strcmp(find_f.value, "{") == 0) body_brace_count++;
-                            if (find_f.type == 23 || strcmp(find_f.value, "}") == 0) {
-                                body_brace_count--;
-                                if (body_brace_count <= 0) break; 
-                            }
-                            parse_statement(file, find_f); // Function-ku ulle irupavatrai read seiyum
-                        }
-                        break;
-                    }
-                }
-            }
-
-            // 🌟 STEP 3: Safe Reset - Adutha statement-ai karat-ah edukka pointer reset!
-            fseek(file, post_call_pos, SEEK_SET); 
-        } else {
-            fseek(file, current_pos, SEEK_SET);
-        }
-    }
-    // 4. லூப் (for / சு)
-    else if (t.type == T_FOR || strcmp(t.value, "சு") == 0) {
-        Token limit_token = get_next_token(file); 
-        int limit = 0;
-
-        if (isdigit(limit_token.value[0])) {
-            limit = atoi(limit_token.value);
-        } else {
-            limit = 3; 
-        }
-
-        Token next = get_next_token(file);
-        if (next.type == 22) { // '{'
-            tamizhi_gen_loop_start(limit);
-            Token body_t;
-            while ((body_t = get_next_token(file)).type != 23 && body_t.type != T_EOF) {
-                parse_statement(file, body_t);
-            }
-            tamizhi_gen_loop_end();
-        }
-    }
-    // 5. அச்சிடு (print ;)
-    else if (t.type == T_PRINT || strcmp(t.value, "அச்சிடு") == 0) {
-        Token first = get_next_token(file);
-        if (first.type == 15) first = get_next_token(file); 
-        tamizhi_gen_print(first.value);
-    }
-}
-
-void scan_headers(FILE *file) {
-    Token t;
-    rewind(file);
-    while ((t = get_next_token(file)).type != T_EOF) {
-        if (is_valid(t) && (strcmp(t.value, "fun") == 0 || t.type == T_FUNC || strcmp(t.value, "நிகழ்") == 0)) {
-            Token name = get_next_token(file);
-            if (is_valid(name)) fprintf(stderr, "    [Header] Registered: %s\n", name.value);
-        }
-    }
-}
+            while ((tmp = get_next_token(file)).type !=
