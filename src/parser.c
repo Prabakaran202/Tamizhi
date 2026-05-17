@@ -20,21 +20,30 @@ void skip_to_semicolon(FILE *file) {
 
 void parse_statement(FILE *file, Token t);
 
-// 🌟 ஹெடர் பிரீ-ஸ்கேன் பங்க்ஷன் (Rewind பக் ஃபிக்ஸ் செய்யப்பட்டது)
+// 🌟 புதிய அதிநவீன டோக்கன்-சேஃப் பிரீ-ஸ்கேன் பங்க்ஷன் (Bracket Check & Trim Fix)
 void scan_headers(FILE *file) {
     Token t;
     rewind(file);
     fprintf(stderr, " -> Starting Header Pre-Scan...\n");
-
+    
     while ((t = get_next_token(file)).type != T_EOF) {
-        if (is_valid(t) && (strcmp(t.value, "fun") == 0 || t.type == T_FUNC || strcmp(t.value, "நிகழ்") == 0)) {
+        // 🌟 துல்லியமாக 'fun' அல்லது 'நிகழ்' அல்லது பங்க்ஷன் டோக்கன் வகையை மட்டும் பார்க்கிறது
+        if (strcmp(t.value, "fun") == 0 || t.type == T_FUNC || strcmp(t.value, "நிகழ்") == 0) {
             Token name = get_next_token(file);
+            
+            // ஒருவேளை லெக்சர் பிராக்கெட்டைப் பெயருடன் சேர்த்துக் கொடுத்தால் அதை மட்டும் பிரிக்கிறோம்
             if (is_valid(name)) {
+                // 'next()' என வந்தால் 'next' என்று மட்டும் பிரித்தெடுக்க
+                char *bracket_ptr = strchr(name.value, '(');
+                if (bracket_ptr != NULL) {
+                    *bracket_ptr = '\0';
+                }
+                
                 fprintf(stderr, "    [Header] Registered: %s\n", name.value);
             }
         }
     }
-    rewind(file); 
+    rewind(file); // 🌟 மிக முக்கியம்: மெயின் பாடி படிப்பதற்காக கோப்பு மீண்டும் ரீவைண்ட் செய்யப்படுகிறது!
 }
 
 void parse(FILE *file) {
@@ -145,7 +154,6 @@ void parse_statement(FILE *file, Token t) {
         } 
         else if (next_t.type == 15 || strcmp(next_t.value, "(") == 0) { // '(' -> பங்க்ஷன் கால்
             Token tmp;
-            // 🌟 பக்கா லூப் கண்டிஷன் இங்க முழுமையா அடைக்கப்பட்டிருக்கு பிரபா!
             while ((tmp = get_next_token(file)).type != T_EOF) {
                 if (tmp.type == 21 || strcmp(tmp.value, ";") == 0) {
                     break;
