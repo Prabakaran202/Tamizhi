@@ -52,7 +52,7 @@ void scan_headers(FILE *file) {
                             if (skip_t.type == 22 || strcmp(skip_t.value, "{") == 0) scan_brace_count++;
                             if (skip_t.type == 23 || strcmp(skip_t.value, "}") == 0) {
                                 scan_brace_count--;
-                                if (scan_brace_count <= 0) break; // ஃபங்ஷன் பாடி முடிந்தது
+                                if (skip_t.type == 23 || scan_brace_count <= 0) break; // ஃபங்ஷன் பாடி முடிந்தது
                             }
                         }
                         break;
@@ -197,7 +197,7 @@ void parse_statement(FILE *file, Token t) {
                     break;
                 }
             }
-            long post_call_pos = ftell(file); // பங்க்ஷன் காலுக்கு அடுத்த புள்ளியை லாக் செய்கிறோம்
+            long post_call_pos = ftell(file); // பங்க்ஷன் காலுக்கு அடுத்த வரியை லாக் செய்கிறோம்
 
             // Global scope-ல் பங்க்ஷன் பாடியைத் தேடி ரன் செய்கிறது
             clearerr(file);
