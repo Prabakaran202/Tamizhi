@@ -85,7 +85,6 @@ void parse(FILE *file) {
     while ((t = get_next_token(file)).type != T_EOF) {
         if (strcmp(t.value, "முதன்மை") == 0 || strcmp(t.value, "main") == 0) {
             // ஒருவேளை 'fun main' என்று வந்தால் ஓபனிங் பிராக்கெட்டைத் தேடுகிறது
-            long current_chk = ftell(file);
             Token brace_t = get_next_token(file);
             if (brace_t.type != 22 && strcmp(brace_t.value, "{") != 0) {
                 while ((brace_t = get_next_token(file)).type != 22 && brace_t.type != T_EOF);
@@ -93,7 +92,6 @@ void parse(FILE *file) {
             main_pos = ftell(file); // மெயின் பாடியின் துல்லியமான தொடக்கப் புள்ளி
         }
         else if (strcmp(t.value, "பூட்டர்") == 0 || strcmp(t.value, "footer") == 0) {
-            long current_chk = ftell(file);
             Token brace_t = get_next_token(file);
             if (brace_t.type != 22 && strcmp(brace_t.value, "{") != 0) {
                 while ((brace_t = get_next_token(file)).type != 22 && brace_t.type != T_EOF);
@@ -175,7 +173,7 @@ void parse_statement(FILE *file, Token t) {
             tamizhi_gen_str(name_token.value, val_token.value);
         }
     }
-    // 3. வேரியபிள் அப்டேட் அல்லது பங்க்ஷன் கால் (Fix: Perfect Multi-line Body Reader) 🌟
+    // 3. வேரியபிள் அப்டேட் அல்லது பங்க்ஷன் கால்
     else if (t.type == T_ID) {
         char var_name[50];
         strcpy(var_name, t.value); 
@@ -191,15 +189,16 @@ void parse_statement(FILE *file, Token t) {
             }
         } 
         else if (next_t.type == 15 || strcmp(next_t.value, "(") == 0) { // '(' -> பங்க்ஷன் கால்
+            // 🌟 1. நடப்பு பங்க்ஷன் கால் வரியின் செமிகோலன் (;) வரை டோக்கன்களைப் படித்து முடிக்கிறது
             Token tmp;
             while ((tmp = get_next_token(file)).type != T_EOF) {
                 if (tmp.type == 21 || strcmp(tmp.value, ";") == 0) {
                     break;
                 }
             }
-            long post_call_pos = ftell(file); 
+            long post_call_pos = ftell(file); // அடுத்த ஸ்டேட்மென்ட் வரிக்கான புள்ளியை லாக் செய்கிறோம்
 
-            // Global scope-ல் பங்க்ஷன் பாடியைத் தேடி ரன் செய்கிறது
+            // 2. குளோபல் ஸ்கோப்பில் பங்க்ஷன் பாடியைத் தேடிப் பிடிக்கிறது
             clearerr(file);
             rewind(file);
             Token find_f;
@@ -216,29 +215,36 @@ void parse_statement(FILE *file, Token t) {
                 }
             }
 
-            // 🌟 பக்கா ஃபிக்ஸ்: ஃபங்ஷன் பாடியை மெயின் ரீடர் லூப் மூலமே தனி ஸ்ட்ரீமாக இயக்குகிறோம்
+            // 🌟 3. உங்க லாஜிக்: பங்க்ஷன் பாடிக்குள் இருக்கும் வரிகளை செமிகோலன் வரிசையாக இயக்குகிறோம்
             if (func_body_pos != -1L) {
                 clearerr(file);
                 fseek(file, func_body_pos, SEEK_SET);
                 int body_brace_count = 1;
                 Token body_t;
 
-                // உள்-டோக்கன்களை ஓவர்-ஸ்கிப் பண்ணாம, ஒவ்வொரு வரியின் தொடக்கத்தையும் இன்ஜின் கச்சிதமா படிக்கும்!
                 while (body_brace_count > 0 && (body_t = get_next_token(file)).type != T_EOF) {
-                    if (body_t.type == 22 || strcmp(body_t.value, "{") == 0) body_brace_count++;
+                    if (body_t.type == 22 || strcmp(body_t.value, "{") == 0) {
+                        body_brace_count++;
+                    }
                     if (body_t.type == 23 || strcmp(body_t.value, "}") == 0) {
                         body_brace_count--;
-                        if (body_brace_count <= 0) break; 
+                        if (body_brace_count <= 0) break; // ஃபங்ஷன் பாடி முடிந்தது! அடுத்த ஃபங்ஷனுக்குப் போகலாம்!
                     }
-                    parse_statement(file, body_t); 
-
-                    // ஒவ்வொரு ஸ்டேட்மென்ட் முடிந்ததும் தற்போதைய பொசிஷனை லாக் செய்கிறோம்
-                    func_body_pos = ftell(file); 
+                    
+                    // செமிகோலன் இல்லையென்றால், அந்த ஸ்டேட்மென்ட்டின் தொடக்கத்தை மட்டும் அனுப்பி முழு வரியையும் படிக்க வைக்கிறது
+                    if (body_t.type != 21 && strcmp(body_t.value, ";") != 0 && body_t.type != 22 && body_t.type != 23) {
+                        parse_statement(file, body_t);
+                        
+                        // 🌟 வரியின் முடிவு செமிகோலன் (;) வரை உள்-லூப் படித்த பிறகு, பாயிண்டரை அடுத்த செமிகோலன்/ஸ்டேட்மென்ட் பார்க்க லாக் செய்கிறது!
+                        func_body_pos = ftell(file);
+                        fseek(file, func_body_pos, SEEK_SET);
+                    }
                 }
             }
             
+            // 4. பங்க்ஷன் பாடி வெற்றிகரமாக முடிந்ததும், பழைய பூட்டர் காலிற்குப் பிறகு இருக்கும் அடுத்த பங்க்ஷன் காலுக்குப் பாயிண்டர் தாவுகிறது!
             clearerr(file);
-            fseek(file, post_call_pos, SEEK_SET); // பழைய பூட்டர் லொகேஷனுக்கே சேஃபா ரிட்டன்!
+            fseek(file, post_call_pos, SEEK_SET); 
         } else {
             fseek(file, current_pos, SEEK_SET);
         }
