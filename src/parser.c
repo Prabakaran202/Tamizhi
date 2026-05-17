@@ -20,12 +20,12 @@ void skip_to_semicolon(FILE *file) {
 
 void parse_statement(FILE *file, Token t);
 
-// 🌟 புதிய கச்சிதமான ஹெடர் பிரீ-ஸ்கேன் பங்க்ஷன்
+// 🌟 ஹெடர் பிரீ-ஸ்கேன் பங்க்ஷன் (Rewind பக் ஃபிக்ஸ் செய்யப்பட்டது)
 void scan_headers(FILE *file) {
     Token t;
     rewind(file);
     fprintf(stderr, " -> Starting Header Pre-Scan...\n");
-    
+
     while ((t = get_next_token(file)).type != T_EOF) {
         if (is_valid(t) && (strcmp(t.value, "fun") == 0 || t.type == T_FUNC || strcmp(t.value, "நிகழ்") == 0)) {
             Token name = get_next_token(file);
@@ -34,7 +34,7 @@ void scan_headers(FILE *file) {
             }
         }
     }
-    rewind(file); // 🌟 பிரீ-ஸ்கேன் முடிந்ததும் கோப்பு தொடக்கப்புள்ளிக்குத் திரும்புகிறது!
+    rewind(file); 
 }
 
 void parse(FILE *file) {
@@ -62,12 +62,12 @@ void parse(FILE *file) {
         main_generated = 1;
     }
 
-    // 🌟 பிராக்கெட் கவுண்ட் மூலம் மெயின் பிளாக்கை மட்டும் துல்லியமாகப் படிக்கும் லாஜிக்
+    // பிராக்கெட் கவுண்ட் மூலம் மெயின் பிளாக்கை மட்டும் துல்லியமாகப் படிக்கும் லாஜிக்
     while ((t = get_next_token(file)).type != T_EOF) {
         if (strcmp(t.value, "முதன்மை") == 0 || strcmp(t.value, "main") == 0) {
             get_next_token(file); // '{' ஸ்கிப்
 
-            int main_brace_count = 1; // மெயின் ஓபனிங் பிராக்கெட்டைக் கணக்கில் கொள்கிறோம்
+            int main_brace_count = 1; 
 
             while ((t = get_next_token(file)).type != T_EOF) {
                 if (t.type == 22 || strcmp(t.value, "{") == 0) {
@@ -76,7 +76,7 @@ void parse(FILE *file) {
                 if (t.type == 23 || strcmp(t.value, "}") == 0) {
                     main_brace_count--;
                     if (main_brace_count <= 0) {
-                        break; // மெயின் பிளாக்கோட உண்மையான முடிவு பிராக்கெட் வந்தால் மட்டுமே வெளியேறும்!
+                        break; 
                     }
                 }
                 parse_statement(file, t);
@@ -108,7 +108,6 @@ void parse(FILE *file) {
 void parse_statement(FILE *file, Token t) {
     if (!is_valid(t)) return;
 
-    // செமிகோலன் (;) அல்லது நியூலைன் டோக்கனாக இருந்தால் அதை அப்படியே கடந்து செல்லலாம்
     if (t.type == 21 || strcmp(t.value, ";") == 0) return;
 
     // 1. எண்கள் (Num a = 10 ;)
@@ -145,6 +144,67 @@ void parse_statement(FILE *file, Token t) {
             }
         } 
         else if (next_t.type == 15 || strcmp(next_t.value, "(") == 0) { // '(' -> பங்க்ஷன் கால்
-            // STEP 1: Function call முடிகிற செமிகோலன் வரை மட்டும் படித்து அதன் போஸ்ட்-பொசிஷனை எடுக்கிறோம்
             Token tmp;
-            while ((tmp = get_next_token(file)).type !=
+            // 🌟 பக்கா லூப் கண்டிஷன் இங்க முழுமையா அடைக்கப்பட்டிருக்கு பிரபா!
+            while ((tmp = get_next_token(file)).type != T_EOF) {
+                if (tmp.type == 21 || strcmp(tmp.value, ";") == 0) {
+                    break;
+                }
+            }
+            long post_call_pos = ftell(file); 
+
+            // Global scope-ல் பங்க்ஷன் பாடியைத் தேடி ரன் செய்கிறது
+            rewind(file);
+            Token find_f;
+            while ((find_f = get_next_token(file)).type != T_EOF) {
+                if (is_valid(find_f) && (strcmp(find_f.value, "fun") == 0 || find_f.type == T_FUNC || strcmp(find_f.value, "நிகழ்") == 0)) {
+                    Token name = get_next_token(file);
+                    if (is_valid(name) && strcmp(name.value, var_name) == 0) {
+                        while ((find_f = get_next_token(file)).type != 22); // '{' தேடுகிறது
+
+                        int body_brace_count = 1;
+                        while ((find_f = get_next_token(file)).type != T_EOF) {
+                            if (find_f.type == 22 || strcmp(find_f.value, "{") == 0) body_brace_count++;
+                            if (find_f.type == 23 || strcmp(find_f.value, "}") == 0) {
+                                body_brace_count--;
+                                if (body_brace_count <= 0) break; 
+                            }
+                            parse_statement(file, find_f); 
+                        }
+                        break;
+                    }
+                }
+            }
+            fseek(file, post_call_pos, SEEK_SET); 
+        } else {
+            fseek(file, current_pos, SEEK_SET);
+        }
+    }
+    // 4. லூப் (for / சு)
+    else if (t.type == T_FOR || strcmp(t.value, "சு") == 0) {
+        Token limit_token = get_next_token(file); 
+        int limit = 0;
+
+        if (isdigit(limit_token.value[0])) {
+            limit = atoi(limit_token.value);
+        } else {
+            limit = 3; 
+        }
+
+        Token next = get_next_token(file);
+        if (next.type == 22) { // '{'
+            tamizhi_gen_loop_start(limit);
+            Token body_t;
+            while ((body_t = get_next_token(file)).type != 23 && body_t.type != T_EOF) {
+                parse_statement(file, body_t);
+            }
+            tamizhi_gen_loop_end();
+        }
+    }
+    // 5. அச்சிடு (print ;)
+    else if (t.type == T_PRINT || strcmp(t.value, "அச்சிடு") == 0) {
+        Token first = get_next_token(file);
+        if (first.type == 15) first = get_next_token(file); 
+        tamizhi_gen_print(first.value);
+    }
+}
