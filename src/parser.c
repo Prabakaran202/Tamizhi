@@ -113,13 +113,13 @@ void parse_statement(FILE *file, Token t) {
             tamizhi_gen_str(name_token.value, val_token.value);
         }
     }
-    // 3. வேரியபிள் அப்டேட் அல்லது பங்க்ஷன் கால் (a = a + 1 ; அல்லது add() ;) 🌟
+    // 3. வேரியபிள் அப்டேட் அல்லது பங்க்ஷன் கால் (Fix: Sequential Multi-line Execution) 🌟
     else if (t.type == T_ID) {
         char var_name[50];
         strcpy(var_name, t.value); 
         long current_pos = ftell(file);
         Token next_t = get_next_token(file);
-        
+
         if (next_t.type == 20) { // '=' -> வேரியபிள் அப்டேட்
             Token v1 = get_next_token(file);
             Token op = get_next_token(file);
@@ -129,29 +129,39 @@ void parse_statement(FILE *file, Token t) {
             }
         } 
         else if (next_t.type == 15 || strcmp(next_t.value, "(") == 0) { // '(' -> பங்க்ஷன் கால்
-            // பங்க்ஷனோட க்ளோசிங் பிராக்கெட் ')' மற்றும் செமிகோலன் ';' வரை டோக்கனை நகர்த்துகிறோம்
-            while ((next_t = get_next_token(file)).type != 21 && next_t.type != T_EOF && strcmp(next_t.value, ";") != 0);
-            
-            long post_call_pos = ftell(file); // பங்க்ஷன் காலுக்கு அடுத்த வரியின் பொசிஷனை சேமிக்கிறோம்
+            // 🌟 STEP 1: Function call mudiyura semicolon varai mattum padichu athan post-pos-ah edukrom
+            Token tmp;
+            while ((tmp = get_next_token(file)).type != T_EOF) {
+                if (tmp.type == 21 || strcmp(tmp.value, ";") == 0) {
+                    break;
+                }
+            }
+            long post_call_pos = ftell(file); // Function call-uku adutha statement-oda exact point!
 
-            // Phase: பங்க்ஷன் பாடியை தேடி ரன் செய்தல்
+            // STEP 2: Global scope-la function body-ah thedi run pannuthu
             rewind(file);
             Token find_f;
             while ((find_f = get_next_token(file)).type != T_EOF) {
-                if (is_valid(find_f) && (strcmp(find_f.value, "fun") == 0 || find_f.type == T_FUNC)) {
+                if (is_valid(find_f) && (strcmp(find_f.value, "fun") == 0 || find_f.type == T_FUNC || strcmp(find_f.value, "நிகழ்") == 0)) {
                     Token name = get_next_token(file);
                     if (is_valid(name) && strcmp(name.value, var_name) == 0) {
-                        while ((find_f = get_next_token(file)).type != 22); // '{' தேடுகிறது
-                        while ((find_f = get_next_token(file)).type != 23) { // '}' வரும் வரை
-                            parse_statement(file, find_f);
-                            find_f = get_next_token(file);
+                        while ((find_f = get_next_token(file)).type != 22); // '{' thedugirathu
+                        
+                        int body_brace_count = 1;
+                        while ((find_f = get_next_token(file)).type != T_EOF) {
+                            if (find_f.type == 22 || strcmp(find_f.value, "{") == 0) body_brace_count++;
+                            if (find_f.type == 23 || strcmp(find_f.value, "}") == 0) {
+                                body_brace_count--;
+                                if (body_brace_count <= 0) break; 
+                            }
+                            parse_statement(file, find_f); // Function-ku ulle irupavatrai read seiyum
                         }
                         break;
                     }
                 }
             }
-            
-            // பக்கா ஃபிக்ஸ்: பங்க்ஷன் பாடி ரன் ஆகி முடிஞ்சதும், கச்சிதமா அடுத்த வரிக்கு பாயிண்டரை கொண்டு வரோம்!
+
+            // 🌟 STEP 3: Safe Reset - Adutha statement-ai karat-ah edukka pointer reset!
             fseek(file, post_call_pos, SEEK_SET); 
         } else {
             fseek(file, current_pos, SEEK_SET);
@@ -190,7 +200,7 @@ void scan_headers(FILE *file) {
     Token t;
     rewind(file);
     while ((t = get_next_token(file)).type != T_EOF) {
-        if (is_valid(t) && (strcmp(t.value, "fun") == 0 || t.type == T_FUNC)) {
+        if (is_valid(t) && (strcmp(t.value, "fun") == 0 || t.type == T_FUNC || strcmp(t.value, "நிகழ்") == 0)) {
             Token name = get_next_token(file);
             if (is_valid(name)) fprintf(stderr, "    [Header] Registered: %s\n", name.value);
         }
