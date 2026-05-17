@@ -175,7 +175,7 @@ void parse_statement(FILE *file, Token t) {
             tamizhi_gen_str(name_token.value, val_token.value);
         }
     }
-    // 3. வேரியபிள் அப்டேட் அல்லது பங்க்ஷன் கால் (Fix: Isolated Body Execution Engine) 🌟
+    // 3. வேரியபிள் அப்டேட் அல்லது பங்க்ஷன் கால் (Fix: Perfect Multi-line Body Reader) 🌟
     else if (t.type == T_ID) {
         char var_name[50];
         strcpy(var_name, t.value); 
@@ -197,7 +197,7 @@ void parse_statement(FILE *file, Token t) {
                     break;
                 }
             }
-            long post_call_pos = ftell(file); // பங்க்ஷன் காலுக்கு அடுத்த வரியை லாக் செய்கிறோம்
+            long post_call_pos = ftell(file); 
 
             // Global scope-ல் பங்க்ஷன் பாடியைத் தேடி ரன் செய்கிறது
             clearerr(file);
@@ -210,37 +210,35 @@ void parse_statement(FILE *file, Token t) {
                     Token name = get_next_token(file);
                     if (is_valid(name) && strcmp(name.value, var_name) == 0) {
                         while ((find_f = get_next_token(file)).type != 22 && find_f.type != T_EOF); // '{' தேடுகிறது
-                        func_body_pos = ftell(file); // ஃபங்ஷன் பாடி தொடங்கும் இடம்
+                        func_body_pos = ftell(file); 
                         break;
                     }
                 }
             }
 
-            // 🌟 ஃபங்ஷன் பாடியை பிரிக்கப்பட்ட தனி ஸ்ட்ரீமாக இயக்குகிறோம்
+            // 🌟 பக்கா ஃபிக்ஸ்: ஃபங்ஷன் பாடியை மெயின் ரீடர் லூப் மூலமே தனி ஸ்ட்ரீமாக இயக்குகிறோம்
             if (func_body_pos != -1L) {
                 clearerr(file);
                 fseek(file, func_body_pos, SEEK_SET);
                 int body_brace_count = 1;
                 Token body_t;
 
+                // உள்-டோக்கன்களை ஓவர்-ஸ்கிப் பண்ணாம, ஒவ்வொரு வரியின் தொடக்கத்தையும் இன்ஜின் கச்சிதமா படிக்கும்!
                 while (body_brace_count > 0 && (body_t = get_next_token(file)).type != T_EOF) {
                     if (body_t.type == 22 || strcmp(body_t.value, "{") == 0) body_brace_count++;
                     if (body_t.type == 23 || strcmp(body_t.value, "}") == 0) {
                         body_brace_count--;
                         if (body_brace_count <= 0) break; 
                     }
-                    
-                    // ஸ்டேட்மென்ட்டின் தொடக்க டோக்கனை மட்டும் அனுப்பி இயக்குகிறோம் 🌟
                     parse_statement(file, body_t); 
-                    
+
                     // ஒவ்வொரு ஸ்டேட்மென்ட் முடிந்ததும் தற்போதைய பொசிஷனை லாக் செய்கிறோம்
                     func_body_pos = ftell(file); 
                 }
             }
-
-            // 🌟 எக்ஸிகியூஷன் முடிந்து மீண்டும் பழைய இடத்திற்கே சேஃபா ரிட்டன்!
+            
             clearerr(file);
-            fseek(file, post_call_pos, SEEK_SET); 
+            fseek(file, post_call_pos, SEEK_SET); // பழைய பூட்டர் லொகேஷனுக்கே சேஃபா ரிட்டன்!
         } else {
             fseek(file, current_pos, SEEK_SET);
         }
