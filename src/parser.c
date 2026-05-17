@@ -113,7 +113,7 @@ void parse(FILE *file) {
         clearerr(file); // 🌟 மிக முக்கியம்: முந்தைய லூப்பால் ஏற்பட்ட EOF ஸ்டேட்டை சுத்தப்படுத்துகிறது!
         fseek(file, main_pos, SEEK_SET);
         int main_brace_count = 1;
-        
+
         while (main_brace_count > 0 && (t = get_next_token(file)).type != T_EOF) {
             if (t.type == 22 || strcmp(t.value, "{") == 0) {
                 main_brace_count++;
@@ -169,7 +169,7 @@ void parse_statement(FILE *file, Token t) {
             tamizhi_gen_str(name_token.value, val_token.value);
         }
     }
-    // 3. வேரியபிள் அப்டேட் அல்லது பங்க்ஷன் கால் (Fix: Sequential Multi-line Execution) 🌟
+    // 3. வேரியபிள் அப்டேட் அல்லது பங்க்ஷன் கால் (Fix: Isolated Body Execution Engine) 🌟
     else if (t.type == T_ID) {
         char var_name[50];
         strcpy(var_name, t.value); 
@@ -191,30 +191,44 @@ void parse_statement(FILE *file, Token t) {
                     break;
                 }
             }
-            long post_call_pos = ftell(file); 
+            long post_call_pos = ftell(file); // பங்க்ஷன் காலுக்கு அடுத்த வரியை லாக் செய்கிறோம்
 
             // Global scope-ல் பங்க்ஷன் பாடியைத் தேடி ரன் செய்கிறது
+            clearerr(file);
             rewind(file);
             Token find_f;
+            long func_body_pos = -1L;
+
             while ((find_f = get_next_token(file)).type != T_EOF) {
                 if (is_valid(find_f) && (strcmp(find_f.value, "fun") == 0 || find_f.type == T_FUNC || strcmp(find_f.value, "நிகழ்") == 0)) {
                     Token name = get_next_token(file);
                     if (is_valid(name) && strcmp(name.value, var_name) == 0) {
-                        while ((find_f = get_next_token(file)).type != 22); // '{' தேடுகிறது
-
-                        int body_brace_count = 1;
-                        while ((find_f = get_next_token(file)).type != T_EOF) {
-                            if (find_f.type == 22 || strcmp(find_f.value, "{") == 0) body_brace_count++;
-                            if (find_f.type == 23 || strcmp(find_f.value, "}") == 0) {
-                                body_brace_count--;
-                                if (body_brace_count <= 0) break; 
-                            }
-                            parse_statement(file, find_f); 
-                        }
+                        while ((find_f = get_next_token(file)).type != 22 && find_f.type != T_EOF); // '{' தேடுகிறது
+                        func_body_pos = ftell(file); // ஃபங்ஷன் பாடி தொடங்கும் இடம்
                         break;
                     }
                 }
             }
+
+            // 🌟 ஃபங்ஷன் பாடியை பிரிக்கப்பட்ட தனி ஸ்ட்ரீமாக இயக்குகிறோம்
+            if (func_body_pos != -1L) {
+                clearerr(file);
+                fseek(file, func_body_pos, SEEK_SET);
+                int body_brace_count = 1;
+                Token body_t;
+
+                while (body_brace_count > 0 && (body_t = get_next_token(file)).type != T_EOF) {
+                    if (body_t.type == 22 || strcmp(body_t.value, "{") == 0) body_brace_count++;
+                    if (body_t.type == 23 || strcmp(body_t.value, "}") == 0) {
+                        body_brace_count--;
+                        if (body_brace_count <= 0) break; 
+                    }
+                    parse_statement(file, body_t); // ஃபங்ஷனுக்குள் இருப்பவை துல்லியமாக இயங்கும்!
+                }
+            }
+            
+            // 🌟 எக்ஸிகியூஷன் முடிந்து மீண்டும் பழைய இடத்திற்கே சேஃபா ரிட்டன்!
+            clearerr(file);
             fseek(file, post_call_pos, SEEK_SET); 
         } else {
             fseek(file, current_pos, SEEK_SET);
