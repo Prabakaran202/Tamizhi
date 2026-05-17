@@ -42,7 +42,7 @@ void scan_headers(FILE *file) {
                 if (strcmp(name.value, "main") != 0 && strcmp(name.value, "முதன்மை") != 0) {
                     fprintf(stderr, "    [Header] Registered: %s\n", name.value);
                 }
-                
+
                 // 🌟 இந்த ஃபங்ஷனோட மொத்த பாடி பிளாக்கையும் ஸ்கிப் பண்ணிக் கடக்கிறோம்
                 Token skip_t;
                 while ((skip_t = get_next_token(file)).type != T_EOF) {
@@ -70,51 +70,53 @@ void scan_headers(FILE *file) {
     rewind(file); // 🌟 மிக முக்கியம்: மெயின் பாடி படிப்பதற்காக கோப்பு மீண்டும் ரீவைண்ட் செய்யப்படுகிறது!
 }
 
+// 🌟 புதுப்பிக்கப்பட்ட ஸ்டேட்-சேஃப் மெயின் & பூட்டர் எக்ஸிகியூஷன் இன்ஜின்
 void parse(FILE *file) {
     Token t;
+    long main_pos = -1L;
     long footer_pos = -1L;
     fprintf(stderr, "\n[Parser] --- Tamizhi Engine: Universal Analysis Started ---\n");
 
     // Phase 1: பங்க்ஷன்களை மட்டும் ஸ்கேன் செய்து ரிஜிஸ்டர் செய்தல்
     scan_headers(file);
 
-    // Phase 2: பூட்டர் (Footer) எங்குள்ளது எனத் தேடுதல்
+    // Phase 2: மெயின் மற்றும் பூட்டர் பிளாக்குகள் எங்குள்ளது என்று பொசிஷனை மட்டும் லாக் செய்தல் 🌟
     rewind(file);
     while ((t = get_next_token(file)).type != T_EOF) {
-        if (strcmp(t.value, "பூட்டர்") == 0 || strcmp(t.value, "footer") == 0) {
-            footer_pos = ftell(file);
-            break;
+        if (strcmp(t.value, "முதன்மை") == 0 || strcmp(t.value, "main") == 0) {
+            get_next_token(file); // '{' ஸ்கிப்
+            main_pos = ftell(file); // மெயின் பாடியின் தொடக்கப் புள்ளி
+        }
+        else if (strcmp(t.value, "பூட்டர்") == 0 || strcmp(t.value, "footer") == 0) {
+            get_next_token(file); // '{' ஸ்கிப்
+            footer_pos = ftell(file); // பூட்டர் பாடியின் தொடக்கப் புள்ளி
         }
     }
 
     // Phase 3: மெயின் (Main) பகுதிக்குள் இருப்பவற்றை இயக்குதல்
-    rewind(file);
     fprintf(stderr, " -> Phase 2 [Body]: Mapping logic to DNA-VM...\n");
     if (!main_generated) {
         tamizhi_generate_entry(); 
         main_generated = 1;
     }
 
-    // பிராக்கெட் கவுண்ட் மூலம் மெயின் பிளாக்கை மட்டும் துல்லியமாகப் படிக்கும் லாஜிக்
-    while ((t = get_next_token(file)).type != T_EOF) {
-        if (strcmp(t.value, "முதன்மை") == 0 || strcmp(t.value, "main") == 0) {
-            get_next_token(file); // '{' ஸ்கிப்
-
-            int main_brace_count = 1; 
-
-            while ((t = get_next_token(file)).type != T_EOF) {
-                if (t.type == 22 || strcmp(t.value, "{") == 0) {
-                    main_brace_count++;
-                }
-                if (t.type == 23 || strcmp(t.value, "}") == 0) {
-                    main_brace_count--;
-                    if (main_brace_count <= 0) {
-                        break; 
-                    }
-                }
-                parse_statement(file, t);
+    if (main_pos != -1L) {
+        fseek(file, main_pos, SEEK_SET);
+        int main_brace_count = 1;
+        
+        // 🌟 லூப் பாயிண்டர் சிதையாமல் இருக்க கச்சிதமான ரீசெட் மெக்கானிசம்
+        while (main_brace_count > 0 && (t = get_next_token(file)).type != T_EOF) {
+            if (t.type == 22 || strcmp(t.value, "{") == 0) {
+                main_brace_count++;
             }
-            break; 
+            if (t.type == 23 || strcmp(t.value, "}") == 0) {
+                main_brace_count--;
+                if (main_brace_count <= 0) break; 
+            }
+            parse_statement(file, t);
+            
+            // 🌟 ஃபங்ஷன் கால் முடிந்து பாயிண்டர் திரும்பும்போது மெயின் லூப் பொசிஷனை லாக் செய்கிறோம்
+            main_pos = ftell(file); 
         }
     }
 
@@ -122,16 +124,18 @@ void parse(FILE *file) {
     if (footer_pos != -1L) {
         fprintf(stderr, " -> Phase 3 [Footer]: Launching execution...\n");
         fseek(file, footer_pos, SEEK_SET);
-        get_next_token(file); // '{' ஸ்கிப்
 
         int footer_brace_count = 1;
-        while ((t = get_next_token(file)).type != T_EOF) {
+        while (footer_brace_count > 0 && (t = get_next_token(file)).type != T_EOF) {
             if (t.type == 22 || strcmp(t.value, "{") == 0) footer_brace_count++;
             if (t.type == 23 || strcmp(t.value, "}") == 0) {
                 footer_brace_count--;
                 if (footer_brace_count <= 0) break;
             }
             parse_statement(file, t);
+            
+            // 🌟 பூட்டர் லூப் பொசிஷனையும் பத்திரமாக ரீசெட் செய்கிறோம்
+            footer_pos = ftell(file); 
         }
     }
 
