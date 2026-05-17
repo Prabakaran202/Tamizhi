@@ -154,7 +154,10 @@ void parse_statement(FILE *file, Token t) {
     // 1. எண்கள் (Num a = 10 ;)
     if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
         Token name_token = get_next_token(file); 
-        while ((t = get_next_token(file)).type != 20 && t.type != T_EOF); 
+        Token next = get_next_token(file);
+        while (next.type != 20 && next.type != T_EOF) {
+            next = get_next_token(file); 
+        }
         Token val_token = get_next_token(file);
         if (isdigit(val_token.value[0])) {
             tamizhi_gen_var(name_token.value, atoi(val_token.value));
@@ -163,7 +166,10 @@ void parse_statement(FILE *file, Token t) {
     // 2. சரங்கள் (Str s = "Hello" ;)
     else if (t.type == T_STR || strcmp(t.value, "Str") == 0 || strcmp(t.value, "வரி") == 0) {
         Token name_token = get_next_token(file);
-        while ((t = get_next_token(file)).type != 20 && t.type != T_EOF); 
+        Token next = get_next_token(file);
+        while (next.type != 20 && next.type != T_EOF) {
+            next = get_next_token(file);
+        }
         Token val_token = get_next_token(file);
         if (is_valid(val_token)) {
             tamizhi_gen_str(name_token.value, val_token.value);
@@ -191,7 +197,7 @@ void parse_statement(FILE *file, Token t) {
                     break;
                 }
             }
-            long post_call_pos = ftell(file); // பங்க்ஷன் காலுக்கு அடுத்த வரியை லாக் செய்கிறோம்
+            long post_call_pos = ftell(file); // பங்க்ஷன் காலுக்கு அடுத்த புள்ளியை லாக் செய்கிறோம்
 
             // Global scope-ல் பங்க்ஷன் பாடியைத் தேடி ரன் செய்கிறது
             clearerr(file);
@@ -223,10 +229,15 @@ void parse_statement(FILE *file, Token t) {
                         body_brace_count--;
                         if (body_brace_count <= 0) break; 
                     }
-                    parse_statement(file, body_t); // ஃபங்ஷனுக்குள் இருப்பவை துல்லியமாக இயங்கும்!
+                    
+                    // ஸ்டேட்மென்ட்டின் தொடக்க டோக்கனை மட்டும் அனுப்பி இயக்குகிறோம் 🌟
+                    parse_statement(file, body_t); 
+                    
+                    // ஒவ்வொரு ஸ்டேட்மென்ட் முடிந்ததும் தற்போதைய பொசிஷனை லாக் செய்கிறோம்
+                    func_body_pos = ftell(file); 
                 }
             }
-            
+
             // 🌟 எக்ஸிகியூஷன் முடிந்து மீண்டும் பழைய இடத்திற்கே சேஃபா ரிட்டன்!
             clearerr(file);
             fseek(file, post_call_pos, SEEK_SET); 
