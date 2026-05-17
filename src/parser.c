@@ -70,7 +70,7 @@ void scan_headers(FILE *file) {
     rewind(file); // 🌟 மிக முக்கியம்: மெயின் பாடி படிப்பதற்காக கோப்பு மீண்டும் ரீவைண்ட் செய்யப்படுகிறது!
 }
 
-// 🌟 புதுப்பிக்கப்பட்ட ஸ்டேட்-சேஃப் மெயின் & பூட்டர் எக்ஸிகியூஷன் இன்ஜின்
+// 🌟 100% ஸ்டேட்-சேஃப் அண்ட் அக்யூரெட் எக்ஸிகியூஷன் இன்ஜின் (EOF பிளாக் ஃபிக்ஸ் செய்யப்பட்டது)
 void parse(FILE *file) {
     Token t;
     long main_pos = -1L;
@@ -84,12 +84,21 @@ void parse(FILE *file) {
     rewind(file);
     while ((t = get_next_token(file)).type != T_EOF) {
         if (strcmp(t.value, "முதன்மை") == 0 || strcmp(t.value, "main") == 0) {
-            get_next_token(file); // '{' ஸ்கிப்
-            main_pos = ftell(file); // மெயின் பாடியின் தொடக்கப் புள்ளி
+            // ஒருவேளை 'fun main' என்று வந்தால் ஓபனிங் பிராக்கெட்டைத் தேடுகிறது
+            long current_chk = ftell(file);
+            Token brace_t = get_next_token(file);
+            if (brace_t.type != 22 && strcmp(brace_t.value, "{") != 0) {
+                while ((brace_t = get_next_token(file)).type != 22 && brace_t.type != T_EOF);
+            }
+            main_pos = ftell(file); // மெயின் பாடியின் துல்லியமான தொடக்கப் புள்ளி
         }
         else if (strcmp(t.value, "பூட்டர்") == 0 || strcmp(t.value, "footer") == 0) {
-            get_next_token(file); // '{' ஸ்கிப்
-            footer_pos = ftell(file); // பூட்டர் பாடியின் தொடக்கப் புள்ளி
+            long current_chk = ftell(file);
+            Token brace_t = get_next_token(file);
+            if (brace_t.type != 22 && strcmp(brace_t.value, "{") != 0) {
+                while ((brace_t = get_next_token(file)).type != 22 && brace_t.type != T_EOF);
+            }
+            footer_pos = ftell(file); // பூட்டர் பாடியின் துல்லியமான தொடக்கப் புள்ளி
         }
     }
 
@@ -101,10 +110,10 @@ void parse(FILE *file) {
     }
 
     if (main_pos != -1L) {
+        clearerr(file); // 🌟 மிக முக்கியம்: முந்தைய லூப்பால் ஏற்பட்ட EOF ஸ்டேட்டை சுத்தப்படுத்துகிறது!
         fseek(file, main_pos, SEEK_SET);
         int main_brace_count = 1;
         
-        // 🌟 லூப் பாயிண்டர் சிதையாமல் இருக்க கச்சிதமான ரீசெட் மெக்கானிசம்
         while (main_brace_count > 0 && (t = get_next_token(file)).type != T_EOF) {
             if (t.type == 22 || strcmp(t.value, "{") == 0) {
                 main_brace_count++;
@@ -114,15 +123,13 @@ void parse(FILE *file) {
                 if (main_brace_count <= 0) break; 
             }
             parse_statement(file, t);
-            
-            // 🌟 ஃபங்ஷன் கால் முடிந்து பாயிண்டர் திரும்பும்போது மெயின் லூப் பொசிஷனை லாக் செய்கிறோம்
-            main_pos = ftell(file); 
         }
     }
 
     // Phase 4: பூட்டர் (Footer) பகுதிக்குத் தாவி இயக்குதல்
     if (footer_pos != -1L) {
         fprintf(stderr, " -> Phase 3 [Footer]: Launching execution...\n");
+        clearerr(file); // 🌟 ஸ்ட்ரீம் ஸ்டேட்டை மீண்டும் ரீசெட் செய்கிறது!
         fseek(file, footer_pos, SEEK_SET);
 
         int footer_brace_count = 1;
@@ -133,9 +140,6 @@ void parse(FILE *file) {
                 if (footer_brace_count <= 0) break;
             }
             parse_statement(file, t);
-            
-            // 🌟 பூட்டர் லூப் பொசிஷனையும் பத்திரமாக ரீசெட் செய்கிறோம்
-            footer_pos = ftell(file); 
         }
     }
 
