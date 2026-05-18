@@ -68,7 +68,6 @@ void scan_headers(FILE *file) {
                 }
             }
         }
-        // 🌟 உங்க ஐடியா: ஒருவேளை பங்க்ஷனுக்கு வெளியே செமிகோலன் ';' இருந்தால், இந்த லூப் அதை தானாகவே கடந்து அடுத்த 'fun' தேடிச் செல்லும்!
     }
     rewind(file); // பிரீ-ஸ்கேன் முடிந்து மெயின் எக்ஸிகியூஷன் பாடி படிக்க ரீவைண்ட் செய்யப்படுகிறது
 }
@@ -142,8 +141,6 @@ void parse(FILE *file) {
             }
             parse_statement(file, t); // பூட்டர் பிளாக்குக்குள் இருக்கும் ஃபங்ஷன் கால்கள் இயங்கும்
         }
-        // 🌟 உங்க ஐடியா: பூட்டர் க்ளோசிங் பிராக்கெட்டுக்கு வெளியே செமிகோலன் ';' இருந்தாலும், 
-        // லூப் ஏற்கனவே பிரேக் ஆகிவிட்டதால் இன்ஜின் அதை ரீட் பண்ணாமல் பாதுகாப்பாக நிறைவடையும்!
     }
 
     fprintf(stderr, "[Parser] --- Analysis Completed Successfully ---\n\n");
@@ -195,7 +192,6 @@ void parse_statement(FILE *file, Token t) {
             }
         } 
         else if (next_t.type == 15 || strcmp(next_t.value, "(") == 0) { // '(' -> பங்க்ஷன் கால் லாஜிக்
-            // 🌟 நடப்பு பங்க்ஷன் கால் வரியின் செமிகோலன் (;) வரை டோக்கன்களைப் படித்து முடிக்கிறது
             Token tmp;
             while ((tmp = get_next_token(file)).type != T_EOF) {
                 if (tmp.type == 21 || strcmp(tmp.value, ";") == 0) {
@@ -276,10 +272,16 @@ void parse_statement(FILE *file, Token t) {
             tamizhi_gen_loop_end();
         }
     }
-    // 5. அச்சிடு பிளாக் (print ;)
+    // 5. அச்சிடு பிளாக் (print ;) - வேரியபிள் மற்றும் ஸ்ட்ரிங்குகளைத் துல்லியமாகப் பிரிக்கும் புதிய லாஜிக் 🌟
     else if (t.type == T_PRINT || strcmp(t.value, "அச்சிடு") == 0) {
         Token first = get_next_token(file);
-        if (first.type == 15) first = get_next_token(file); 
+        if (first.type == 15) first = get_next_token(file); // '(' இருந்தால் ஸ்கிப்
+        
+        // ஒருவேளை பயனர் தவறுதலாக 'print Num c ;' என எழுதினால் 'Num' ஐ கடந்து துல்லியமாக வேரியபிள் பெயரை மட்டும் எடுக்கிறது
+        if (strcmp(first.value, "Num") == 0 || strcmp(first.value, "எண்") == 0 || strcmp(first.value, "Str") == 0 || strcmp(first.value, "வரி") == 0) {
+            first = get_next_token(file);
+        }
+        
         tamizhi_gen_print(first.value);
     }
 }
