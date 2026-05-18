@@ -138,6 +138,15 @@ void tamizhi_gen_var(char* name, int value) {
 }
 
 void tamizhi_gen_str(char* name, char* value) {
+    for(int i=0; i<var_count; i++) {
+        if(strcmp(symbol_table[i].name, name) == 0) {
+            LLVMValueRef str_ptr = LLVMBuildGlobalStringPtr(builder, value, "str_lit");
+            symbol_table[i].alloca_ptr = str_ptr;
+            symbol_table[i].is_str_type = 1;
+            symbol_table[i].has_static_val = 0;
+            return;
+        }
+    }
     if (var_count >= 100) return;
     LLVMValueRef str_ptr = LLVMBuildGlobalStringPtr(builder, value, "str_lit");
     strcpy(symbol_table[var_count].name, name);
@@ -242,7 +251,7 @@ void tamizhi_gen_if_start(char* var1, char* op, char* var2) {
     if(!v1 || !v2) return;
     LLVMIntPredicate pred = (strcmp(op, "<") == 0) ? LLVMIntSLT : (strcmp(op, ">") == 0) ? LLVMIntSGT : LLVMIntEQ;
     LLVMValueRef cond = LLVMBuildICmp(builder, pred, v1, v2, "if_cond");
-    LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
+    LLVMValueRef func = LLVMGetNamedFunction(module, "main");
     then_block = LLVMAppendBasicBlock(func, "then");
     else_block = LLVMAppendBasicBlock(func, "else");
     merge_block = LLVMAppendBasicBlock(func, "if_cont");
@@ -261,7 +270,7 @@ void tamizhi_gen_if_end() {
 }
 
 void tamizhi_gen_loop_start(int limit) {
-    LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
+    LLVMValueRef func = LLVMGetNamedFunction(module, "main");
 
     char cond_name[32], body_name[32], after_name[32];
     sprintf(cond_name, "loop_cond_%d", loop_counter);
@@ -286,7 +295,6 @@ void tamizhi_gen_loop_start(int limit) {
 }
 
 void tamizhi_gen_loop_end() {
-    LLVMValueRef func = LLVMGetBasicBlockParent(LLVMGetInsertBlock(builder));
     LLVMBasicBlockRef current_body = LLVMGetInsertBlock(builder);
 
     LLVMBasicBlockRef l_cond = LLVMGetPreviousBasicBlock(current_body);
@@ -317,7 +325,7 @@ void tamizhi_codegen_finish() {
     tamizhi_binary_to_dna_storage(out_file);
     remove(out_file);
     fprintf(stderr, "\n[Execution] Running compiled logic...\n");
-    system("lli output.ll"); 
+    system("lli output.bc"); 
     fprintf(stderr, "\n[Codegen] --- Tamizhi Universal Engine: SUCCESS ---\n");
     LLVMDisposeBuilder(builder);
 }
