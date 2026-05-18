@@ -293,32 +293,54 @@ void tamizhi_gen_print(char* var_name) {
 
 void tamizhi_gen_if_start(char* var1, char* op, char* var2) {
     LLVMValueRef v1 = NULL, v2 = NULL;
-    for(int i = 0; i < var_count; i++) 
-        if(strcmp(symbol_table[i].name, var1) == 0) v1 = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v1");
-    if(isdigit(var2[0])) v2 = LLVMConstInt(LLVMInt32Type(), atoi(var2), 0);
-    else {
-        for(int i = 0; i < var_count; i++) 
-            if(strcmp(symbol_table[i].name, var2) == 0) v2 = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v2");
+    for(int i = 0; i < var_count; i++) {
+        if(strcmp(symbol_table[i].name, var1) == 0) {
+            v1 = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v1");
+            break;
+        }
+    }
+    if(isdigit(var2[0])) {
+        v2 = LLVMConstInt(LLVMInt32Type(), atoi(var2), 0);
+    } else {
+        for(int i = 0; i < var_count; i++) {
+            if(strcmp(symbol_table[i].name, var2) == 0) {
+                v2 = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v2");
+                break;
+            }
+        }
     }
     if(!v1 || !v2) return;
-    LLVMIntPredicate pred = (strcmp(op, "<") == 0) ? LLVMIntSLT : (strcmp(op, ">") == 0) ? LLVMIntSGT : LLVMIntEQ;
+    
+    LLVMIntPredicate pred = LLVMIntEQ;
+    if (strcmp(op, "<") == 0) pred = LLVMIntSLT;
+    else if (strcmp(op, ">") == 0) pred = LLVMIntSGT;
+    else if (strcmp(op, "==") == 0) pred = LLVMIntEQ;
+    else if (strcmp(op, "!=") == 0) pred = LLVMIntNE;
+    else if (strcmp(op, "<=") == 0) pred = LLVMIntSLE;
+    else if (strcmp(op, ">=") == 0) pred = LLVMIntSGE;
+
     LLVMValueRef cond = LLVMBuildICmp(builder, pred, v1, v2, "if_cond");
     LLVMValueRef func = LLVMGetNamedFunction(module, "main");
+    
     then_block = LLVMAppendBasicBlock(func, "then");
     else_block = LLVMAppendBasicBlock(func, "else");
     merge_block = LLVMAppendBasicBlock(func, "if_cont");
+    
     LLVMBuildCondBr(builder, cond, then_block, else_block);
     LLVMPositionBuilderAtEnd(builder, then_block);
 }
 
 void tamizhi_gen_else_start() {
-    if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder)) == NULL) LLVMBuildBr(builder, merge_block);
+    if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder)) == NULL) {
+        LLVMBuildBr(builder, merge_block);
+    }
     LLVMPositionBuilderAtEnd(builder, else_block);
 }
 
 void tamizhi_gen_if_end() {
-    if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder)) == NULL) LLVMBuildBr(builder, merge_block);
-    // 🌟 பிக்ஸ்: மெயின் பிளாக்குடன் அசெம்பிளியை துல்லியமாக சிங்க் செய்ய எண்ட்ரி லாக் செய்யப்படுகிறது!
+    if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder)) == NULL) {
+        LLVMBuildBr(builder, merge_block);
+    }
     LLVMPositionBuilderAtEnd(builder, merge_block);
 }
 
