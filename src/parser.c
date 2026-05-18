@@ -5,16 +5,16 @@
 #include <string.h>
 #include <ctype.h>
 
-// மெயின் பிளாக் ஜெனரேட் ஆகிவிட்டதா என்பதை அறியும் ஃப்ளாக் (Flag)
+// 🌟 எல்எல்விஎம் மெயின் பங்க்ஷன் (main) ஒருமுறைக்கு மேல் டூப்ளிகேட் ஆகாமல் தடுக்க உதவும் ஃப்ளாக்
 int main_generated = 0;
 
-// டோக்கன் வேல்யூ காலியாக இல்லாமல் சரியாக உள்ளதா என சரிபார்க்கும் பங்க்ஷன்
+// 🌟 டோக்கன் காலியாக இல்லாமல் சரியாக உள்ளதா என சரிபார்க்கும் பங்க்ஷன்
 int is_valid(Token t) {
     if (strlen(t.value) == 0) return 0;
     return 1;
 }
 
-// செமிகோலன் (Anatomy: ;) வரும் வரை இடையில் இருக்கும் தேவையற்ற டோக்கன்களை தவிர்க்க
+// 🌟 செமிகோலன் (;) வரும் வரை இடையில் இருக்கும் தேவையற்ற டோக்கன்களை தவிர்த்து கடக்க உதவும் பங்க்ஷன்
 void skip_to_semicolon(FILE *file) {
     Token t;
     while ((t = get_next_token(file)).type != 21 && t.type != T_EOF);
@@ -22,30 +22,31 @@ void skip_to_semicolon(FILE *file) {
 
 void parse_statement(FILE *file, Token t);
 
-// 🌟 ஹெடர் பிரீ-ஸ்கேன்: பங்க்ஷன் பாடிக்கு வெளியே செமிகோலன் ';' இருந்தாலும் அதைத் தவிர்த்து பெயர்களை மட்டும் ரெஜிஸ்டர் செய்யும்
+// 🌟 ஹெடர் பிரீ-ஸ்கேன் (Pre-Scan): 
+// கோப்பு முழுக்க தேடி பயனர் எழுதியுள்ள பங்க்ஷன் (fun) பெயர்களை மட்டும் முன்கூட்டியே ரிஜிஸ்டர் செய்யும் இடம்
 void scan_headers(FILE *file) {
     Token t;
     rewind(file); // ஃபைலின் தொடக்கத்திற்கு பாயிண்டரை கொண்டு செல்கிறோம்
     fprintf(stderr, " -> Starting Header Pre-Scan...\n");
 
     while ((t = get_next_token(file)).type != T_EOF) {
-        // 'fun' அல்லது 'நிகழ்' வார்த்தையைப் பார்த்தால் மட்டுமே உள்ளே நுழையும்
+        // 'fun' அல்லது தமிழ் கீவேர்ட் 'நிகழ்' வார்த்தையைப் பார்த்தால் உள்ளே நுழையும்
         if (strcmp(t.value, "fun") == 0 || t.type == T_FUNC || strcmp(t.value, "நிகழ்") == 0) {
             Token name = get_next_token(file);
 
             if (is_valid(name)) {
-                // 'add()' என ஒட்டி வந்தால் பிராக்கெட்டைத் துண்டித்து பெயரை மட்டும் பிரிக்கிறது
+                // ஒருவேளை 'add()' என ஒட்டி வந்தால் பிராக்கெட்டைத் துண்டித்து பெயரை மட்டும் பிரிக்கிறது
                 char *bracket_ptr = strchr(name.value, '(');
                 if (bracket_ptr != NULL) {
                     *bracket_ptr = '\0';
                 }
 
-                // மெயின் பிளாக்கைத் தவிர்த்து மற்றவற்றை குளோபல் பங்க்ஷனாக லாக் செய்கிறது
+                // மெயின் பிளாக்கைத் தவிர்த்து மற்ற தனி பங்க்ஷன்களை மட்டும் கம்பைலருக்கு காட்டுகிறது
                 if (strcmp(name.value, "main") != 0 && strcmp(name.value, "முதன்மை") != 0) {
                     fprintf(stderr, "    [Header] Registered: %s\n", name.value);
                 }
 
-                // பங்க்ஷனோட மொத்த பாடி பிளாக்கையும் ({ லிருந்து }) ஸ்கிப் பண்ணிக் கடக்கிறது
+                // பிரீ-ஸ்கேனின் போது பங்க்ஷனோட மொத்த பாடி பிளாக்கையும் ({ லிருந்து }) ஸ்கிப் பண்ணிக் கடக்கிறது
                 Token skip_t;
                 while ((skip_t = get_next_token(file)).type != T_EOF) {
                     if (skip_t.type == 22 || strcmp(skip_t.value, "{") == 0) {
@@ -59,7 +60,7 @@ void scan_headers(FILE *file) {
                         }
                         break;
                     }
-                    // பிராக்கெட் ஓபன் ஆவதற்குள் அடுத்த 'fun' வார்த்தை வந்தால் லூப் உடையாமல் இருக்க ரீசெட் லாஜிக்
+                    // பிராக்கெட் ஓபன் ஆவதற்குள் அடுத்த 'fun' வந்தால் லூப் உடையாமல் இருக்க பாயிண்டரை ரீசெட் செய்கிறது
                     if (strcmp(skip_t.value, "fun") == 0 || strcmp(skip_t.value, "நிகழ்") == 0) {
                         long back_pos = ftell(file);
                         fseek(file, back_pos - (long)strlen(skip_t.value), SEEK_SET);
@@ -69,26 +70,26 @@ void scan_headers(FILE *file) {
             }
         }
     }
-    rewind(file); // பிரீ-ஸ்கேன் முடிந்து மெயின் எக்ஸிகியூஷன் பாடி படிக்க ரீவைண்ட் செய்யப்படுகிறது
+    rewind(file); // பிரீ-ஸ்கேன் முடிந்து மெயின் எக்ஸிகியூஷன் படிக்க ரீவைண்ட் செய்யப்படுகிறது
 }
 
-// 🌟 மெயின் பார்ஸர் இன்ஜின்: மெயின் மற்றும் பூட்டர் பிளாக்குகளின் பொசிஷனைக் கண்டறிந்து இயக்கும்
+// 🌟 பிரதான பார்ஸர் இன்ஜின் (Main Parser Engine):
+// குறியீட்டின் 'main' மற்றும் 'footer' பிளாக்குகள் எங்குள்ளது என்று கண்டறிந்து இயக்கும் இடம்
 void parse(FILE *file) {
     Token t;
-    long main_pos = -1L;   // மெயின் பாடி தொடங்கும் புள்ளி
-    long footer_pos = -1L; // பூட்டர் பாடி தொடங்கும் புள்ளி
+    long main_pos = -1L;   // மெயின் பாடி தொடங்கும் ஃபைல் பொசிஷன் லாக்
+    long footer_pos = -1L; // பூட்டர் பாடி தொடங்கும் ஃபைல் பொசிஷன் லாக்
     fprintf(stderr, "\n[Parser] --- Tamizhi Engine: Universal Analysis Started ---\n");
 
-    // Phase 1: குளோபல் பங்க்ஷன்களை மட்டும் முன்கூட்டியே ஸ்கேன் செய்து ரிஜிஸ்டர் செய்தல்
+    // Phase 1: குளோபல் பங்க்ஷன்களை முன்கூட்டியே ஸ்கேன் செய்து ரிஜிஸ்டர் செய்தல்
     scan_headers(file);
 
-    // Phase 2: மெயின் மற்றும் பூட்டர் பிளாக்குகள் எங்குள்ளது என்று பொசிஷனை மட்டும் லாக் செய்தல்
+    // Phase 2: மெயின் மற்றும் பூட்டர் பிளாக்குகள் எங்குள்ளது என்று பொசிஷனை மட்டும் கண்டறிந்து லாக் செய்தல்
     rewind(file);
     while ((t = get_next_token(file)).type != T_EOF) {
         if (strcmp(t.value, "முதன்மை") == 0 || strcmp(t.value, "main") == 0) {
             Token brace_t = get_next_token(file);
             if (brace_t.type != 22 && strcmp(brace_t.value, "{") != 0) {
-                // '{' பிராக்கெட் வரும் வரை டோக்கன்களைத் தேடி முன்னோக்கி நகர்கிறது
                 while ((brace_t = get_next_token(file)).type != 22 && brace_t.type != T_EOF);
             }
             main_pos = ftell(file); // மெயின் பாடியின் தொடக்கப் புள்ளி லாக் செய்யப்பட்டது
@@ -102,7 +103,7 @@ void parse(FILE *file) {
         }
     }
 
-    // Phase 3: மெயின் (Main) பகுதிக்குள் இருப்பவற்றை இயக்குதல்
+    // Phase 3: மெயின் (Main) பகுதிக்குள் இருப்பவற்றை முதலில் இயக்குதல்
     fprintf(stderr, " -> Phase 2 [Body]: Mapping logic to DNA-VM...\n");
     if (!main_generated) {
         tamizhi_generate_entry(); // எல்எல்விஎம் (LLVM) சிஸ்டம்கான எண்ட்ரி பாயிண்ட் பில்ட் ஆகிறது
@@ -126,7 +127,7 @@ void parse(FILE *file) {
         }
     }
 
-    // Phase 4: பூட்டர் (Footer) பகுதிக்குத் தாவி இயக்குதல்
+    // Phase 4: பூட்டர் (Footer) பகுதிக்குத் தாவி வரிசையாக இயக்குதல்
     if (footer_pos != -1L) {
         fprintf(stderr, " -> Phase 3 [Footer]: Launching execution...\n");
         clearerr(file); // ஸ்ட்ரீம் எரர் ஸ்டேட்டை மீண்டும் ரீசெட் செய்கிறது
@@ -139,20 +140,21 @@ void parse(FILE *file) {
                 footer_brace_count--;
                 if (footer_brace_count <= 0) break; // பூட்டர் பாடி முடிந்தது!
             }
-            parse_statement(file, t); // பூட்டர் பிளாக்குக்குள் இருக்கும் ஃபங்ஷன் கால்கள் இயங்கும்
+            parse_statement(file, t); // பூட்டர் பிளாக்குக்குள் இருக்கும் ஃபங்ஷன் கால்கள் ஒவ்வொன்றாக இயங்கும்
         }
     }
 
     fprintf(stderr, "[Parser] --- Analysis Completed Successfully ---\n\n");
 }
 
-// 🌟 ஸ்டேட்மென்ட் அனலைசர்: ஒவ்வொரு தனித்தனி வரிகளையும் (Num, Str, ID, Print) பகுப்பாய்வு செய்யும் இடம்
+// 🌟 ஸ்டேட்மென்ட் அனலைசர் (Statement Analyzer): 
+// ஒவ்வொரு தனித்தனி வரிகளையும் (Num, Str, ID, Print, For) பகுப்பாய்வு செய்யும் பிரதான இடம்
 void parse_statement(FILE *file, Token t) {
     if (!is_valid(t)) return;
 
     if (t.type == 21 || strcmp(t.value, ";") == 0) return;
 
-    // 1. எண்கள் பிளாக் (Num a = 10 ;)
+    // 1️⃣ எண்கள் பிளாக் (Num a = 10 ;) -> முழு எண்களை டிக்ளேர் செய்ய
     if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
         Token name_token = get_next_token(file); 
         Token next = get_next_token(file);
@@ -164,7 +166,7 @@ void parse_statement(FILE *file, Token t) {
             tamizhi_gen_var(name_token.value, atoi(val_token.value));
         }
     }
-    // 2. சரங்கள் பிளாக் (Str s = "Hello" ;)
+    // 2️⃣ சரங்கள் பிளாக் (Str s = "Hello" ;) -> உரைகளை டிக்ளேர் செய்ய
     else if (t.type == T_STR || strcmp(t.value, "Str") == 0 || strcmp(t.value, "வரி") == 0) {
         Token name_token = get_next_token(file);
         Token next = get_next_token(file);
@@ -176,31 +178,34 @@ void parse_statement(FILE *file, Token t) {
             tamizhi_gen_str(name_token.value, val_token.value);
         }
     }
-    // 3. ஐடென்டிஃபையர் பிளாக்: வேரியபிள் அப்டேட் அல்லது பங்க்ஷன் கால்
+    // 3️⃣ ஐடென்டிஃபையர் பிளாக் (Identifier Block): வேரியபிள் கணக்கீடு அல்லது ஃபங்ஷன் கால்களைக் கையாளுதல்
     else if (t.type == T_ID) {
         char var_name[50];
         strcpy(var_name, t.value); 
         long current_pos = ftell(file);
         Token next_t = get_next_token(file);
 
-        if (next_t.type == 20) { // '=' -> வேரியபிள் அப்டேட் லாஜிக்
+        // 🅰️ '=' இருந்தால் கணித ஆபரேஷன்கள் (Addition, Subtraction, Multiplication, Division)
+        if (next_t.type == 20) {
             Token v1 = get_next_token(file);
-            Token op = get_next_token(file);
-            if (op.type == 19) { // '+'
+            Token op = get_next_token(file); // கணித ஆபரேட்டர் ரீட் (+, -, *, /)
+            
+            if (op.type == 19 || strcmp(op.value, "+") == 0 || strcmp(op.value, "-") == 0 || strcmp(op.value, "*") == 0 || strcmp(op.value, "/") == 0) {
                 Token v2 = get_next_token(file);
-                tamizhi_gen_var_add(var_name, v1.value, v2.value);
+                tamizhi_gen_math_op(var_name, v1.value, op.value, v2.value); // புதிய ஹைப்ரிட் மேத்ஸ் இன்ஜினுக்கு அனுப்பப்படுகிறது
             }
         } 
-        else if (next_t.type == 15 || strcmp(next_t.value, "(") == 0) { // '(' -> பங்க்ஷன் கால் லாஜிக்
+        // 🅱️ '(' இருந்தால் அது பூட்டர் வழியா நடக்குற ஒரு பங்க்ஷன் கால் (Function Call Flow)
+        else if (next_t.type == 15 || strcmp(next_t.value, "(") == 0) {
             Token tmp;
             while ((tmp = get_next_token(file)).type != T_EOF) {
                 if (tmp.type == 21 || strcmp(tmp.value, ";") == 0) {
                     break;
                 }
             }
-            long post_call_pos = ftell(file); // அடுத்த பங்க்ஷன் காலுக்கான வரியை லாக் செய்கிறோம்
+            long post_call_pos = ftell(file); // தற்போதைய ஃபங்ஷன் கால் முடிந்த வரியை லாக் செய்கிறது
 
-            // குளோபல் ஸ்கோப்பில் பங்க்ஷன் பாடியைத் தேடிப் பிடிக்கிறது
+            // குளோபல் ஸ்கோப்பில் அந்த பங்க்ஷனோட பாடி எங்குள்ளது என்று தேடிப் பிடிக்கிறது
             clearerr(file);
             rewind(file);
             Token find_f;
@@ -217,7 +222,7 @@ void parse_statement(FILE *file, Token t) {
                 }
             }
 
-            // 🌟 லீனியர் ஃப்ளோ கன்ட்ரோல்: பங்க்ஷன் பாடிக்குள் இருக்கும் வரிகளை செமிகோலன் வரிசையாக இயக்குகிறோம்
+            // 🌟 லீனியர் இன்லைன் ஃப்ளோ: பங்க்ஷன் பாடிக்குள் இருக்கும் வரிகளை வரிசையாக மெயின் பிளாக்கிற்குள் இன்லைன் செய்கிறது
             if (func_body_pos != -1L) {
                 clearerr(file);
                 fseek(file, func_body_pos, SEEK_SET);
@@ -230,28 +235,25 @@ void parse_statement(FILE *file, Token t) {
                     }
                     if (body_t.type == 23 || strcmp(body_t.value, "}") == 0) {
                         body_brace_count--;
-                        if (body_brace_count <= 0) break; // ஃபங்ஷன் பாடி முடிந்தது! அடுத்த ஃபங்ஷனுக்குப் போகலாம்!
+                        if (body_brace_count <= 0) break; // பங்க்ஷன் பாடி முடிந்தது
                     }
-                    
-                    // செமிகோலன் அல்லது பிராக்கெட் இல்லை எனில், ஸ்டேட்மென்ட்டின் தொடக்கத்தை அனுப்பி வரியை முழுமையாக படிக்க வைக்கிறது
+
                     if (body_t.type != 21 && strcmp(body_t.value, ";") != 0 && body_t.type != 22 && body_t.type != 23) {
-                        parse_statement(file, body_t);
-                        
-                        // வரியின் முடிவு செமிகோலன் வரை உள்-லூப் படித்த பிறகு, பாயிண்டரை அடுத்த வரியின் தொடக்கத்தில் நிறுத்துகிறது!
+                        parse_statement(file, body_t); // பங்க்ஷனுக்குள் இருக்கும் கோடுகளை மெயினுக்குள் இன்லைனாக ஜெனரேட் செய்கிறது
                         func_body_pos = ftell(file);
                         fseek(file, func_body_pos, SEEK_SET);
                     }
                 }
             }
-            
-            // பங்க்ஷன் பாடி வெற்றிகரமாக முடிந்ததும், பழைய பூட்டர் காலிற்குப் பிறகு இருக்கும் அடுத்த பங்க்ஷன் காலுக்கு பாயிண்டர் திரும்புகிறது
+
+            // பங்க்ஷன் இன்லைன் பில்டிங் வெற்றிகரமாக முடிந்ததும், பழைய பூட்டர் காலிற்குப் பிறகு இருக்கும் அடுத்த வரிக்கு பாயிண்டர் திரும்புகிறது
             clearerr(file);
             fseek(file, post_call_pos, SEEK_SET); 
         } else {
             fseek(file, current_pos, SEEK_SET);
         }
     }
-    // 4. லூப் பிளாக் (for / சு)
+    // 4️⃣ லூப் பிளாக் (for / சு) -> லூப்களைக் கையாளுவதற்கு
     else if (t.type == T_FOR || strcmp(t.value, "சு") == 0) {
         Token limit_token = get_next_token(file); 
         int limit = 0;
@@ -272,16 +274,16 @@ void parse_statement(FILE *file, Token t) {
             tamizhi_gen_loop_end();
         }
     }
-    // 5. அச்சிடு பிளாக் (print ;) - வேரியபிள் மற்றும் ஸ்ட்ரிங்குகளைத் துல்லியமாகப் பிரிக்கும் புதிய லாஜிக் 🌟
+    // 5️⃣ அச்சிடு பிளாக் (print ;) -> திரையில் அவுட்புட் காட்ட
     else if (t.type == T_PRINT || strcmp(t.value, "அச்சிடு") == 0) {
         Token first = get_next_token(file);
         if (first.type == 15) first = get_next_token(file); // '(' இருந்தால் ஸ்கிப்
         
-        // ஒருவேளை பயனர் தவறுதலாக 'print Num c ;' என எழுதினால் 'Num' ஐ கடந்து துல்லியமாக வேரியபிள் பெயரை மட்டும் எடுக்கிறது
+        // ஒருவேளை தவறுதலாக 'print Num c ;' என எழுதினால் 'Num' ஐ கடந்து துல்லியமாக வேரியபிள் பெயரை மட்டும் எடுக்கிறது
         if (strcmp(first.value, "Num") == 0 || strcmp(first.value, "எண்") == 0 || strcmp(first.value, "Str") == 0 || strcmp(first.value, "வரி") == 0) {
             first = get_next_token(file);
         }
         
-        tamizhi_gen_print(first.value);
+        tamizhi_gen_print(first.value); // குளோபல் பிரிண்ட் டிரைவருக்கு அனுப்பப்படுகிறது
     }
 }
