@@ -174,9 +174,22 @@ void tamizhi_gen_print(char* var_name) {
     LLVMValueRef val = NULL;
     int is_string = 0;
 
-    if (isdigit(var_name[0])) {
+    if (var_name[0] == '"' || var_name[strlen(var_name)-1] == '"') {
+        size_t len = strlen(var_name);
+        char clean_str[1024];
+        if (var_name[0] == '"' && len > 2) {
+            strncpy(clean_str, var_name + 1, len - 2);
+            clean_str[len - 2] = '\0';
+        } else {
+            strcpy(clean_str, var_name);
+        }
+        val = LLVMBuildGlobalStringPtr(builder, clean_str, "str_lit");
+        is_string = 1;
+    } 
+    else if (isdigit(var_name[0])) {
         val = LLVMConstInt(LLVMInt32Type(), atoi(var_name), 0);
-    } else {
+    } 
+    else {
         for(int i = 0; i < var_count; i++) {
             if(strcmp(symbol_table[i].name, var_name) == 0) {
                 val = symbol_table[i].alloca_ptr;
@@ -188,19 +201,13 @@ void tamizhi_gen_print(char* var_name) {
                 break;
             }
         }
-        if(!val && i_ptr && strcmp(var_name, "i") == 0) val = LLVMBuildLoad2(builder, LLVMInt32Type(), i_ptr, "load_val");
+        if(!val && i_ptr && strcmp(var_name, "i") == 0) {
+            val = LLVMBuildLoad2(builder, LLVMInt32Type(), i_ptr, "load_val");
+        }
     }
 
     if(!val) {
-        size_t len = strlen(var_name);
-        char clean_str[1024];
-        if(var_name[0] == '"' && len > 2) {
-            strncpy(clean_str, var_name + 1, len - 2);
-            clean_str[len - 2] = '\0';
-        } else {
-            strcpy(clean_str, var_name);
-        }
-        val = LLVMBuildGlobalStringPtr(builder, clean_str, "str_lit");
+        val = LLVMBuildGlobalStringPtr(builder, var_name, "str_lit");
         is_string = 1;
     }
 
