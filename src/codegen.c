@@ -25,6 +25,7 @@ int loop_counter = 0;
 typedef struct {
     char name[50];
     LLVMValueRef alloca_ptr;
+    int is_str_type;
 } Variable;
 
 Variable symbol_table[100];
@@ -124,6 +125,7 @@ void tamizhi_gen_var(char* name, int value) {
     LLVMBuildStore(builder, LLVMConstInt(LLVMInt32Type(), value, 0), alloca);
     strcpy(symbol_table[var_count].name, name);
     symbol_table[var_count].alloca_ptr = alloca;
+    symbol_table[var_count].is_str_type = 0;
     var_count++;
 }
 
@@ -132,6 +134,7 @@ void tamizhi_gen_str(char* name, char* value) {
     LLVMValueRef str_ptr = LLVMBuildGlobalStringPtr(builder, value, "str_lit");
     strcpy(symbol_table[var_count].name, name);
     symbol_table[var_count].alloca_ptr = str_ptr; 
+    symbol_table[var_count].is_str_type = 1;
     var_count++;
 }
 
@@ -160,6 +163,7 @@ void tamizhi_gen_var_add(char* res_name, char* var1, char* var2) {
             target_ptr = LLVMBuildAlloca(builder, LLVMInt32Type(), res_name);
             strcpy(symbol_table[var_count].name, res_name);
             symbol_table[var_count].alloca_ptr = target_ptr;
+            symbol_table[var_count].is_str_type = 0;
             var_count++;
         }
         LLVMBuildStore(builder, sum, target_ptr);
@@ -176,7 +180,7 @@ void tamizhi_gen_print(char* var_name) {
         for(int i = 0; i < var_count; i++) {
             if(strcmp(symbol_table[i].name, var_name) == 0) {
                 val = symbol_table[i].alloca_ptr;
-                if (LLVMGetTypeKind(LLVMTypeOf(val)) == LLVMPointerTypeKind) {
+                if (symbol_table[i].is_str_type) {
                     is_string = 1; 
                 } else {
                     val = LLVMBuildLoad2(builder, LLVMInt32Type(), val, "load_val");
@@ -188,21 +192,16 @@ void tamizhi_gen_print(char* var_name) {
     }
 
     if(!val) {
-        if(var_name[0] == '"') {
-            size_t len = strlen(var_name);
-            char clean_str[1024];
-            if(len > 2) {
-                strncpy(clean_str, var_name + 1, len - 2);
-                clean_str[len - 2] = '\0';
-            } else {
-                strcpy(clean_str, "");
-            }
-            val = LLVMBuildGlobalStringPtr(builder, clean_str, "str_lit");
-            is_string = 1;
+        size_t len = strlen(var_name);
+        char clean_str[1024];
+        if(var_name[0] == '"' && len > 2) {
+            strncpy(clean_str, var_name + 1, len - 2);
+            clean_str[len - 2] = '\0';
         } else {
-            val = LLVMBuildGlobalStringPtr(builder, var_name, "str_lit");
-            is_string = 1;
+            strcpy(clean_str, var_name);
         }
+        val = LLVMBuildGlobalStringPtr(builder, clean_str, "str_lit");
+        is_string = 1;
     }
 
     if(val) {
