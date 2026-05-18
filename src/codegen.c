@@ -116,10 +116,11 @@ void tamizhi_generate_entry() {
 }
 
 void tamizhi_gen_var(char* name, int value) {
-    for(int i=0; i<var_count; i++) {
+    for(int i = 0; i < var_count; i++) {
         if(strcmp(symbol_table[i].name, name) == 0) {
             symbol_table[i].static_val = value;
             symbol_table[i].has_static_val = 1;
+            symbol_table[i].is_str_type = 0;
             if(symbol_table[i].alloca_ptr) {
                 LLVMBuildStore(builder, LLVMConstInt(LLVMInt32Type(), value, 0), symbol_table[i].alloca_ptr);
             }
@@ -138,7 +139,7 @@ void tamizhi_gen_var(char* name, int value) {
 }
 
 void tamizhi_gen_str(char* name, char* value) {
-    for(int i=0; i<var_count; i++) {
+    for(int i = 0; i < var_count; i++) {
         if(strcmp(symbol_table[i].name, name) == 0) {
             LLVMValueRef str_ptr = LLVMBuildGlobalStringPtr(builder, value, "str_lit");
             symbol_table[i].alloca_ptr = str_ptr;
@@ -157,16 +158,19 @@ void tamizhi_gen_str(char* name, char* value) {
 }
 
 void tamizhi_gen_var_add(char* res_name, char* var1, char* var2) {
-    int val1 = 0, val2 = 0;
+    LLVMValueRef v1_val = NULL, v2_val = NULL;
+    int static_v1 = 0, static_v2 = 0;
     int f1 = 0, f2 = 0;
 
     if(isdigit(var1[0])) {
-        val1 = atoi(var1);
+        v1_val = LLVMConstInt(LLVMInt32Type(), atoi(var1), 0);
+        static_v1 = atoi(var1);
         f1 = 1;
     } else {
-        for(int i=0; i<var_count; i++) {
-            if(strcmp(symbol_table[i].name, var1) == 0 && symbol_table[i].has_static_val) {
-                val1 = symbol_table[i].static_val;
+        for(int i = 0; i < var_count; i++) {
+            if(strcmp(symbol_table[i].name, var1) == 0) {
+                v1_val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v1");
+                static_v1 = symbol_table[i].static_val;
                 f1 = 1;
                 break;
             }
@@ -174,21 +178,51 @@ void tamizhi_gen_var_add(char* res_name, char* var1, char* var2) {
     }
 
     if(isdigit(var2[0])) {
-        val2 = atoi(var2);
+        v2_val = LLVMConstInt(LLVMInt32Type(), atoi(var2), 0);
+        static_v2 = atoi(var2);
         f2 = 1;
     } else {
-        for(int i=0; i<var_count; i++) {
-            if(strcmp(symbol_table[i].name, var2) == 0 && symbol_table[i].has_static_val) {
-                val2 = symbol_table[i].static_val;
+        for(int i = 0; i < var_count; i++) {
+            if(strcmp(symbol_table[i].name, var2) == 0) {
+                v2_val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v2");
+                static_v2 = symbol_table[i].static_val;
                 f2 = 1;
                 break;
             }
         }
     }
 
-    if(f1 && f2) {
-        int total = val1 + val2;
-        tamizhi_gen_var(res_name, total);
+    if(v1_val && v2_val) {
+        LLVMValueRef sum = LLVMBuildAdd(builder, v1_val, v2_val, "sum_tmp");
+        LLVMValueRef target_ptr = NULL;
+        int found_idx = -1;
+
+        for(int i = 0; i < var_count; i++) {
+            if(strcmp(symbol_table[i].name, res_name) == 0) {
+                target_ptr = symbol_table[i].alloca_ptr;
+                found_idx = i;
+                break;
+            }
+        }
+
+        if(!target_ptr) {
+            if (var_count < 100) {
+                target_ptr = LLVMBuildAlloca(builder, LLVMInt32Type(), res_name);
+                strcpy(symbol_table[var_count].name, res_name);
+                symbol_table[var_count].alloca_ptr = target_ptr;
+                symbol_table[var_count].is_str_type = 0;
+                found_idx = var_count;
+                var_count++;
+            }
+        }
+
+        if(target_ptr && found_idx != -1) {
+            LLVMBuildStore(builder, sum, target_ptr);
+            if(f1 && f2) {
+                symbol_table[found_idx].static_val = static_v1 + static_v2;
+                symbol_table[found_idx].has_static_val = 1;
+            }
+        }
     }
 }
 
@@ -198,13 +232,11 @@ void tamizhi_gen_print(char* var_name) {
 
     for(int i = 0; i < var_count; i++) {
         if(strcmp(symbol_table[i].name, var_name) == 0) {
+            val = symbol_table[i].alloca_ptr;
             if (symbol_table[i].is_str_type) {
-                val = symbol_table[i].alloca_ptr;
                 is_string = 1; 
-            } else if (symbol_table[i].has_static_val) {
-                val = LLVMConstInt(LLVMInt32Type(), symbol_table[i].static_val, 0);
             } else {
-                val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "load_val");
+                val = LLVMBuildLoad2(builder, LLVMInt32Type(), val, "load_val");
             }
             break;
         }
