@@ -26,6 +26,8 @@ typedef struct {
     char name[50];
     LLVMValueRef alloca_ptr;
     int is_str_type;
+    int has_static_val;
+    int static_val;
 } Variable;
 
 Variable symbol_table[100];
@@ -116,7 +118,11 @@ void tamizhi_generate_entry() {
 void tamizhi_gen_var(char* name, int value) {
     for(int i=0; i<var_count; i++) {
         if(strcmp(symbol_table[i].name, name) == 0) {
-            LLVMBuildStore(builder, LLVMConstInt(LLVMInt32Type(), value, 0), symbol_table[i].alloca_ptr);
+            symbol_table[i].static_val = value;
+            symbol_table[i].has_static_val = 1;
+            if(symbol_table[i].alloca_ptr) {
+                LLVMBuildStore(builder, LLVMConstInt(LLVMInt32Type(), value, 0), symbol_table[i].alloca_ptr);
+            }
             return;
         }
     }
@@ -126,6 +132,8 @@ void tamizhi_gen_var(char* name, int value) {
     strcpy(symbol_table[var_count].name, name);
     symbol_table[var_count].alloca_ptr = alloca;
     symbol_table[var_count].is_str_type = 0;
+    symbol_table[var_count].static_val = value;
+    symbol_table[var_count].has_static_val = 1;
     var_count++;
 }
 
@@ -135,38 +143,43 @@ void tamizhi_gen_str(char* name, char* value) {
     strcpy(symbol_table[var_count].name, name);
     symbol_table[var_count].alloca_ptr = str_ptr; 
     symbol_table[var_count].is_str_type = 1;
+    symbol_table[var_count].has_static_val = 0;
     var_count++;
 }
 
 void tamizhi_gen_var_add(char* res_name, char* var1, char* var2) {
-    LLVMValueRef v1_val = NULL, v2_val = NULL;
-    if(isdigit(var1[0])) v1_val = LLVMConstInt(LLVMInt32Type(), atoi(var1), 0);
-    else {
-        for(int i=0; i<var_count; i++) 
-            if(strcmp(symbol_table[i].name, var1) == 0) v1_val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v1");
-    }
-    if(isdigit(var2[0])) v2_val = LLVMConstInt(LLVMInt32Type(), atoi(var2), 0);
-    else {
-        for(int i=0; i<var_count; i++) 
-            if(strcmp(symbol_table[i].name, var2) == 0) v2_val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v2");
-    }
-    if(v1_val && v2_val) {
-        LLVMValueRef sum = LLVMBuildAdd(builder, v1_val, v2_val, "sum_tmp");
-        LLVMValueRef target_ptr = NULL;
+    int val1 = 0, val2 = 0;
+    int f1 = 0, f2 = 0;
+
+    if(isdigit(var1[0])) {
+        val1 = atoi(var1);
+        f1 = 1;
+    } else {
         for(int i=0; i<var_count; i++) {
-            if(strcmp(symbol_table[i].name, res_name) == 0) {
-                target_ptr = symbol_table[i].alloca_ptr;
+            if(strcmp(symbol_table[i].name, var1) == 0 && symbol_table[i].has_static_val) {
+                val1 = symbol_table[i].static_val;
+                f1 = 1;
                 break;
             }
         }
-        if(!target_ptr) {
-            target_ptr = LLVMBuildAlloca(builder, LLVMInt32Type(), res_name);
-            strcpy(symbol_table[var_count].name, res_name);
-            symbol_table[var_count].alloca_ptr = target_ptr;
-            symbol_table[var_count].is_str_type = 0;
-            var_count++;
+    }
+
+    if(isdigit(var2[0])) {
+        val2 = atoi(var2);
+        f2 = 1;
+    } else {
+        for(int i=0; i<var_count; i++) {
+            if(strcmp(symbol_table[i].name, var2) == 0 && symbol_table[i].has_static_val) {
+                val2 = symbol_table[i].static_val;
+                f2 = 1;
+                break;
+            }
         }
-        LLVMBuildStore(builder, sum, target_ptr);
+    }
+
+    if(f1 && f2) {
+        int total = val1 + val2;
+        tamizhi_gen_var(res_name, total);
     }
 }
 
@@ -174,40 +187,38 @@ void tamizhi_gen_print(char* var_name) {
     LLVMValueRef val = NULL;
     int is_string = 0;
 
-    if (var_name[0] == '"' || var_name[strlen(var_name)-1] == '"') {
+    for(int i = 0; i < var_count; i++) {
+        if(strcmp(symbol_table[i].name, var_name) == 0) {
+            if (symbol_table[i].is_str_type) {
+                val = symbol_table[i].alloca_ptr;
+                is_string = 1; 
+            } else if (symbol_table[i].has_static_val) {
+                val = LLVMConstInt(LLVMInt32Type(), symbol_table[i].static_val, 0);
+            } else {
+                val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "load_val");
+            }
+            break;
+        }
+    }
+
+    if(!val && i_ptr && strcmp(var_name, "i") == 0) {
+        val = LLVMBuildLoad2(builder, LLVMInt32Type(), i_ptr, "load_val");
+    }
+
+    if(!val && isdigit(var_name[0])) {
+        val = LLVMConstInt(LLVMInt32Type(), atoi(var_name), 0);
+    }
+
+    if(!val) {
         size_t len = strlen(var_name);
         char clean_str[1024];
-        if (var_name[0] == '"' && len > 2) {
+        if((var_name[0] == '"' || var_name[0] == '\'') && len > 2) {
             strncpy(clean_str, var_name + 1, len - 2);
             clean_str[len - 2] = '\0';
         } else {
             strcpy(clean_str, var_name);
         }
         val = LLVMBuildGlobalStringPtr(builder, clean_str, "str_lit");
-        is_string = 1;
-    } 
-    else if (isdigit(var_name[0])) {
-        val = LLVMConstInt(LLVMInt32Type(), atoi(var_name), 0);
-    } 
-    else {
-        for(int i = 0; i < var_count; i++) {
-            if(strcmp(symbol_table[i].name, var_name) == 0) {
-                val = symbol_table[i].alloca_ptr;
-                if (symbol_table[i].is_str_type) {
-                    is_string = 1; 
-                } else {
-                    val = LLVMBuildLoad2(builder, LLVMInt32Type(), val, "load_val");
-                }
-                break;
-            }
-        }
-        if(!val && i_ptr && strcmp(var_name, "i") == 0) {
-            val = LLVMBuildLoad2(builder, LLVMInt32Type(), i_ptr, "load_val");
-        }
-    }
-
-    if(!val) {
-        val = LLVMBuildGlobalStringPtr(builder, var_name, "str_lit");
         is_string = 1;
     }
 
