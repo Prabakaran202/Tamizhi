@@ -5,10 +5,13 @@
 #include <string.h>
 #include <ctype.h>
 
+// 🌟 புதிய எல்எல்விஎம் மேத்ஸ் ஆபரேட்டர் ஃபங்ஷன் டிக்ளரேஷன் (கம்பைலர் எரர் பிக்ஸ்!)
+void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2);
+
 // 🌟 எல்எல்விஎம் மெயின் பங்க்ஷன் (main) ஒருமுறைக்கு மேல் டூப்ளிகேட் ஆகாமல் தடுக்க உதவும் ஃப்ளாக்
 int main_generated = 0;
 
-// 🌟 டோக்கன் காலியாக இல்லாமல் சரியாக உள்ளதா என சரிபார்க்கும் பங்க்ஷன்
+// 🌟 டோக்கன் வேல்யூ காலியாக இல்லாமல் சரியாக உள்ளதா என சரிபார்க்கும் பங்க்ஷன்
 int is_valid(Token t) {
     if (strlen(t.value) == 0) return 0;
     return 1;
@@ -203,7 +206,7 @@ void parse_statement(FILE *file, Token t) {
                     break;
                 }
             }
-            long post_call_pos = ftell(file); // தற்போதைய ஃபங்ஷன் கால் முடிந்த வரியை லாக் செய்கிறது
+            long post_call_pos = ftell(file); // தற்போதைய ஃபங்ஷன் கால் முடிந்த வரியை லாக் செய்கிறோம்
 
             // குளோபல் ஸ்கோப்பில் அந்த பங்க்ஷனோட பாடி எங்குள்ளது என்று தேடிப் பிடிக்கிறது
             clearerr(file);
