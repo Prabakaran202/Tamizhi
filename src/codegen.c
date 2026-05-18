@@ -157,21 +157,23 @@ void tamizhi_gen_str(char* name, char* value) {
     var_count++;
 }
 
-void tamizhi_gen_var_add(char* res_name, char* var1, char* var2) {
+void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2) {
     LLVMValueRef v1_val = NULL, v2_val = NULL;
-    int static_v1 = 0, static_v2 = 0;
+    int s_val1 = 0, s_val2 = 0;
     int f1 = 0, f2 = 0;
 
     if(isdigit(var1[0])) {
         v1_val = LLVMConstInt(LLVMInt32Type(), atoi(var1), 0);
-        static_v1 = atoi(var1);
+        s_val1 = atoi(var1);
         f1 = 1;
     } else {
         for(int i = 0; i < var_count; i++) {
             if(strcmp(symbol_table[i].name, var1) == 0) {
+                if(symbol_table[i].has_static_val) {
+                    s_val1 = symbol_table[i].static_val;
+                    f1 = 1;
+                }
                 v1_val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v1");
-                static_v1 = symbol_table[i].static_val;
-                f1 = 1;
                 break;
             }
         }
@@ -179,34 +181,52 @@ void tamizhi_gen_var_add(char* res_name, char* var1, char* var2) {
 
     if(isdigit(var2[0])) {
         v2_val = LLVMConstInt(LLVMInt32Type(), atoi(var2), 0);
-        static_v2 = atoi(var2);
+        s_val2 = atoi(var2);
         f2 = 1;
     } else {
         for(int i = 0; i < var_count; i++) {
             if(strcmp(symbol_table[i].name, var2) == 0) {
+                if(symbol_table[i].has_static_val) {
+                    s_val2 = symbol_table[i].static_val;
+                    f2 = 1;
+                }
                 v2_val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v2");
-                static_v2 = symbol_table[i].static_val;
-                f2 = 1;
                 break;
             }
         }
     }
 
     if(v1_val && v2_val) {
-        LLVMValueRef sum = LLVMBuildAdd(builder, v1_val, v2_val, "sum_tmp");
-        LLVMValueRef target_ptr = NULL;
-        int found_idx = -1;
+        LLVMValueRef math_res = NULL;
+        int calculated_val = 0;
 
-        for(int i = 0; i < var_count; i++) {
-            if(strcmp(symbol_table[i].name, res_name) == 0) {
-                target_ptr = symbol_table[i].alloca_ptr;
-                found_idx = i;
-                break;
-            }
+        if (strcmp(op, "+") == 0) {
+            math_res = LLVMBuildAdd(builder, v1_val, v2_val, "add_tmp");
+            calculated_val = s_val1 + s_val2;
+        } else if (strcmp(op, "-") == 0) {
+            math_res = LLVMBuildSub(builder, v1_val, v2_val, "sub_tmp");
+            calculated_val = s_val1 - s_val2;
+        } else if (strcmp(op, "*") == 0) {
+            math_res = LLVMBuildMul(builder, v1_val, v2_val, "mul_tmp");
+            calculated_val = s_val1 * s_val2;
+        } else if (strcmp(op, "/") == 0) {
+            math_res = LLVMBuildSDiv(builder, v1_val, v2_val, "div_tmp");
+            if (s_val2 != 0) calculated_val = s_val1 / s_val2;
         }
 
-        if(!target_ptr) {
-            if (var_count < 100) {
+        if (math_res) {
+            LLVMValueRef target_ptr = NULL;
+            int found_idx = -1;
+
+            for(int i = 0; i < var_count; i++) {
+                if(strcmp(symbol_table[i].name, res_name) == 0) {
+                    target_ptr = symbol_table[i].alloca_ptr;
+                    found_idx = i;
+                    break;
+                }
+            }
+
+            if(!target_ptr && var_count < 100) {
                 target_ptr = LLVMBuildAlloca(builder, LLVMInt32Type(), res_name);
                 strcpy(symbol_table[var_count].name, res_name);
                 symbol_table[var_count].alloca_ptr = target_ptr;
@@ -214,13 +234,13 @@ void tamizhi_gen_var_add(char* res_name, char* var1, char* var2) {
                 found_idx = var_count;
                 var_count++;
             }
-        }
 
-        if(target_ptr && found_idx != -1) {
-            LLVMBuildStore(builder, sum, target_ptr);
-            if(f1 && f2) {
-                symbol_table[found_idx].static_val = static_v1 + static_v2;
-                symbol_table[found_idx].has_static_val = 1;
+            if(target_ptr && found_idx != -1) {
+                LLVMBuildStore(builder, math_res, target_ptr);
+                if(f1 && f2) {
+                    symbol_table[found_idx].static_val = calculated_val;
+                    symbol_table[found_idx].has_static_val = 1;
+                }
             }
         }
     }
@@ -298,6 +318,7 @@ void tamizhi_gen_else_start() {
 
 void tamizhi_gen_if_end() {
     if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder)) == NULL) LLVMBuildBr(builder, merge_block);
+    // 🌟 பிக்ஸ்: மெயின் பிளாக்குடன் அசெம்பிளியை துல்லியமாக சிங்க் செய்ய எண்ட்ரி லாக் செய்யப்படுகிறது!
     LLVMPositionBuilderAtEnd(builder, merge_block);
 }
 
