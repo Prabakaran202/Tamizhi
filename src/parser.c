@@ -5,13 +5,13 @@
 #include <string.h>
 #include <ctype.h>
 
-// 🌟 புதிய எல்எல்விஎம் மேத்ஸ் ஆபரேட்டர் ஃபங்ஷன் டிக்ளரேஷன் (கம்பைலர் எரர் பிக்ஸ்!)
+// 🌟 புதிய எல்எல்விஎம் மேத்ஸ் ஆபரேட்டர் ஃபங்ஷன் டிக்ளரேஷன் (கம்பைலர் எரர் வராமல் தடுக்க!)
 void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2);
 
 // 🌟 எல்எல்விஎம் மெயின் பங்க்ஷன் (main) ஒருமுறைக்கு மேல் டூப்ளிகேட் ஆகாமல் தடுக்க உதவும் ஃப்ளாக்
 int main_generated = 0;
 
-// 🌟 டோக்கன் வேல்யூ காலியாக இல்லாமல் சரியாக உள்ளதா என சரிபார்க்கும் பங்க்ஷன்
+// 🌟 டோக்கன் காலியாக இல்லாமல் சரியாக உள்ளதா என சரிபார்க்கும் பங்க்ஷன்
 int is_valid(Token t) {
     if (strlen(t.value) == 0) return 0;
     return 1;
@@ -192,7 +192,7 @@ void parse_statement(FILE *file, Token t) {
         if (next_t.type == 20) {
             Token v1 = get_next_token(file);
             Token op = get_next_token(file); // கணித ஆபரேட்டர் ரீட் (+, -, *, /)
-            
+
             if (op.type == 19 || strcmp(op.value, "+") == 0 || strcmp(op.value, "-") == 0 || strcmp(op.value, "*") == 0 || strcmp(op.value, "/") == 0) {
                 Token v2 = get_next_token(file);
                 tamizhi_gen_math_op(var_name, v1.value, op.value, v2.value); // புதிய ஹைப்ரிட் மேத்ஸ் இன்ஜினுக்கு அனுப்பப்படுகிறது
@@ -281,12 +281,19 @@ void parse_statement(FILE *file, Token t) {
     else if (t.type == T_PRINT || strcmp(t.value, "அச்சிடு") == 0) {
         Token first = get_next_token(file);
         if (first.type == 15) first = get_next_token(file); // '(' இருந்தால் ஸ்கிப்
-        
+
         // ஒருவேளை தவறுதலாக 'print Num c ;' என எழுதினால் 'Num' ஐ கடந்து துல்லியமாக வேரியபிள் பெயரை மட்டும் எடுக்கிறது
         if (strcmp(first.value, "Num") == 0 || strcmp(first.value, "எண்") == 0 || strcmp(first.value, "Str") == 0 || strcmp(first.value, "வரி") == 0) {
             first = get_next_token(file);
         }
-        
+
         tamizhi_gen_print(first.value); // குளோபல் பிரிண்ட் டிரைவருக்கு அனுப்பப்படுகிறது
+
+        // 🌟 டோக்கன் லீக் பிக்ஸ்: பிரிண்ட் ஸ்டேட்மென்ட் முடிந்ததும் அந்த வரியின் செமிகோலனை (;) கச்சிதமாக முழுங்கி பாயிண்டரை நகர்த்துகிறது!
+        long check_pos = ftell(file);
+        Token semi = get_next_token(file);
+        if (semi.type != 21 && strcmp(semi.value, ";") != 0) {
+            fseek(file, check_pos, SEEK_SET); // செமிகோலன் இல்லை என்றால் பழைய பொசிஷனுக்கே திரும்புகிறது
+        }
     }
 }
