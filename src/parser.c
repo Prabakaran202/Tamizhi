@@ -5,19 +5,15 @@
 #include <string.h>
 #include <ctype.h>
 
-// 🌟 புதிய எல்எல்விஎம் மேத்ஸ் ஆபரேட்டர் ஃபங்ஷன் டிக்ளரேஷன் (கம்பைலர் எரர் வராமல் தடுக்க!)
 void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2);
 
-// 🌟 எல்எல்விஎம் மெயின் பங்க்ஷன் (main) ஒருமுறைக்கு மேல் டூப்ளிகேட் ஆகாமல் தடுக்க உதவும் ஃப்ளாக்
 int main_generated = 0;
 
-// 🌟 டோக்கன் வேல்யூ காலியாக இல்லாமல் சரியாக உள்ளதா என சரிபார்க்கும் பங்க்ஷன்
 int is_valid(Token t) {
     if (strlen(t.value) == 0) return 0;
     return 1;
 }
 
-// 🌟 செமிகோலன் (;) வரும் வரை இடையில் இருக்கும் தேவையற்ற டோக்கன்களை தவிர்த்து கடக்க உதவும் பங்க்ஷன்
 void skip_to_semicolon(FILE *file) {
     Token t;
     while ((t = get_next_token(file)).type != 21 && t.type != T_EOF);
@@ -25,31 +21,25 @@ void skip_to_semicolon(FILE *file) {
 
 void parse_statement(FILE *file, Token t);
 
-// 🌟 ஹெடர் பிரீ-ஸ்கேன் (Pre-Scan): 
-// கோப்பு முழுக்க தேடி பயனர் எழுதியுள்ள பங்க்ஷன் (fun) பெயர்களை மட்டும் முன்கூட்டியே ரிஜிஸ்டர் செய்யும் இடம்
 void scan_headers(FILE *file) {
     Token t;
-    rewind(file); // ஃபைலின் தொடக்கத்திற்கு பாயிண்டரை கொண்டு செல்கிறோம்
+    rewind(file);
     fprintf(stderr, " -> Starting Header Pre-Scan...\n");
 
     while ((t = get_next_token(file)).type != T_EOF) {
-        // 'fun' அல்லது தமிழ் கீவேர்ட் 'நிகழ்' வார்த்தையைப் பார்த்தால் உள்ளே நுழையும்
         if (strcmp(t.value, "fun") == 0 || t.type == T_FUNC || strcmp(t.value, "நிகழ்") == 0) {
             Token name = get_next_token(file);
 
             if (is_valid(name)) {
-                // ஒருவேளை 'add()' என ஒட்டி வந்தால் பிராக்கெட்டைத் துண்டித்து பெயரை மட்டும் பிரிக்கிறது
                 char *bracket_ptr = strchr(name.value, '(');
                 if (bracket_ptr != NULL) {
                     *bracket_ptr = '\0';
                 }
 
-                // மெயின் பிளாக்கைத் தவிர்த்து மற்ற தனி பங்க்ஷன்களை மட்டும் கம்பைலருக்கு காட்டுகிறது
                 if (strcmp(name.value, "main") != 0 && strcmp(name.value, "முதன்மை") != 0) {
                     fprintf(stderr, "    [Header] Registered: %s\n", name.value);
                 }
 
-                // பிரீ-ஸ்கேனின் போது பங்க்ஷனோட மொத்த பாடி பிளாக்கையும் ({ லிருந்து }) ஸ்கிப் பண்ணிக் கடக்கிறது
                 Token skip_t;
                 while ((skip_t = get_next_token(file)).type != T_EOF) {
                     if (skip_t.type == 22 || strcmp(skip_t.value, "{") == 0) {
@@ -58,12 +48,11 @@ void scan_headers(FILE *file) {
                             if (skip_t.type == 22 || strcmp(skip_t.value, "{") == 0) scan_brace_count++;
                             if (skip_t.type == 23 || strcmp(skip_t.value, "}") == 0) {
                                 scan_brace_count--;
-                                if (skip_t.type == 23 || scan_brace_count <= 0) break; // பாடி பிளாக் முடிந்தது
+                                if (skip_t.type == 23 || scan_brace_count <= 0) break;
                             }
                         }
                         break;
                     }
-                    // பிராக்கெட் ஓபன் ஆவதற்குள் அடுத்த 'fun' வந்தால் லூப் உடையாமல் இருக்க பாயிண்டரை ரீசெட் செய்கிறது
                     if (strcmp(skip_t.value, "fun") == 0 || strcmp(skip_t.value, "நிகழ்") == 0) {
                         long back_pos = ftell(file);
                         fseek(file, back_pos - (long)strlen(skip_t.value), SEEK_SET);
@@ -73,21 +62,17 @@ void scan_headers(FILE *file) {
             }
         }
     }
-    rewind(file); // பிரீ-ஸ்கேன் முடிந்து மெயின் எக்ஸிகியூஷன் படிக்க ரீவைண்ட் செய்யப்படுகிறது
+    rewind(file);
 }
 
-// 🌟 பிரதான பார்ஸர் இன்ஜின் (Main Parser Engine):
-// குறியீட்டின் 'main' மற்றும் 'footer' பிளாக்குகள் எங்குள்ளது என்று கண்டறிந்து இயக்கும் இடம்
 void parse(FILE *file) {
     Token t;
-    long main_pos = -1L;   // மெயின் பாடி தொடங்கும் ஃபைல் பொசிஷன் லாக்
-    long footer_pos = -1L; // பூட்டர் பாடி தொடங்கும் ஃபைல் பொசிஷன் லாக்
+    long main_pos = -1L;
+    long footer_pos = -1L;
     fprintf(stderr, "\n[Parser] --- Tamizhi Engine: Universal Analysis Started ---\n");
 
-    // Phase 1: குளோபல் பங்க்ஷன்களை முன்கூட்டியே ஸ்கேன் செய்து ரிஜிஸ்டர் செய்தல்
     scan_headers(file);
 
-    // Phase 2: மெயின் மற்றும் பூட்டர் பிளாக்குகள் எங்குள்ளது என்று பொசிஷனை மட்டும் கண்டறிந்து லாக் செய்தல்
     rewind(file);
     while ((t = get_next_token(file)).type != T_EOF) {
         if (strcmp(t.value, "முதன்மை") == 0 || strcmp(t.value, "main") == 0) {
@@ -95,26 +80,25 @@ void parse(FILE *file) {
             if (brace_t.type != 22 && strcmp(brace_t.value, "{") != 0) {
                 while ((brace_t = get_next_token(file)).type != 22 && brace_t.type != T_EOF);
             }
-            main_pos = ftell(file); // மெயின் பாடியின் தொடக்கப் புள்ளி லாக் செய்யப்பட்டது
+            main_pos = ftell(file);
         }
         else if (strcmp(t.value, "பூட்டர்") == 0 || strcmp(t.value, "footer") == 0) {
             Token brace_t = get_next_token(file);
             if (brace_t.type != 22 && strcmp(brace_t.value, "{") != 0) {
                 while ((brace_t = get_next_token(file)).type != 22 && brace_t.type != T_EOF);
             }
-            footer_pos = ftell(file); // பூட்டர் பாடியின் தொடக்கப் புள்ளி லாக் செய்யப்பட்டது
+            footer_pos = ftell(file);
         }
     }
 
-    // Phase 3: மெயின் (Main) பகுதிக்குள் இருப்பவற்றை முதலில் இயக்குதல்
     fprintf(stderr, " -> Phase 2 [Body]: Mapping logic to DNA-VM...\n");
     if (!main_generated) {
-        tamizhi_generate_entry(); // எல்எல்விஎம் (LLVM) சிஸ்டம்கான எண்ட்ரி பாயிண்ட் பில்ட் ஆகிறது
+        tamizhi_generate_entry(); 
         main_generated = 1;
     }
 
     if (main_pos != -1L) {
-        clearerr(file); // முந்தைய லூப்பால் ஏற்பட்ட எண்ட்-ஆஃப்-ஃபைல் (EOF) ஸ்டேட்டை சுத்தப்படுத்துகிறது
+        clearerr(file);
         fseek(file, main_pos, SEEK_SET);
         int main_brace_count = 1;
 
@@ -126,14 +110,13 @@ void parse(FILE *file) {
                 main_brace_count--;
                 if (main_brace_count <= 0) break; 
             }
-            parse_statement(file, t); // மெயின் பாடிக்குள் இருக்கும் வரிகள் ஒவ்வொன்றாக இயங்கும்
+            parse_statement(file, t);
         }
     }
 
-    // Phase 4: பூட்டர் (Footer) பகுதிக்குத் தாவி வரிசையாக இயக்குதல்
     if (footer_pos != -1L) {
         fprintf(stderr, " -> Phase 3 [Footer]: Launching execution...\n");
-        clearerr(file); // ஸ்ட்ரீம் எரர் ஸ்டேட்டை மீண்டும் ரீசெட் செய்கிறது
+        clearerr(file);
         fseek(file, footer_pos, SEEK_SET);
 
         int footer_brace_count = 1;
@@ -141,24 +124,21 @@ void parse(FILE *file) {
             if (t.type == 22 || strcmp(t.value, "{") == 0) footer_brace_count++;
             if (t.type == 23 || strcmp(t.value, "}") == 0) {
                 footer_brace_count--;
-                if (footer_brace_count <= 0) break; // பூட்டர் பாடி முடிந்தது!
+                if (footer_brace_count <= 0) break;
             }
-            parse_statement(file, t); // பூட்டர் பிளாக்குக்குள் இருக்கும் ஃபங்ஷன் கால்கள் ஒவ்வொன்றாக இயங்கும்
+            parse_statement(file, t);
         }
     }
 
     fprintf(stderr, "[Parser] --- Analysis Completed Successfully ---\n\n");
 }
 
-// 🌟 ஸ்டேட்மென்ட் அனலைசர் (Statement Analyzer): 
-// ஒவ்வொரு தனித்தனி வரிகளையும் (Num, Str, ID, Print, For, If-Else) பகுப்பாய்வு செய்யும் பிரதான இடம்
 void parse_statement(FILE *file, Token t) {
     extern int var_count;
     if (!is_valid(t)) return;
 
     if (t.type == 21 || strcmp(t.value, ";") == 0) return;
 
-    // 1️⃣ எண்கள் பிளாக் (Num a = 10 ;) -> முழு எண்களை டிக்ளேர் செய்ய
     if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
         Token name_token = get_next_token(file); 
         Token next = get_next_token(file);
@@ -170,7 +150,6 @@ void parse_statement(FILE *file, Token t) {
             tamizhi_gen_var(name_token.value, atoi(val_token.value));
         }
     }
-    // 2️⃣ சரங்கள் பிளாக் (Str s = "Hello" ;) -> உரைகளை டிக்ளேர் செய்ய
     else if (t.type == T_STR || strcmp(t.value, "Str") == 0 || strcmp(t.value, "வரி") == 0) {
         Token name_token = get_next_token(file);
         Token next = get_next_token(file);
@@ -182,24 +161,21 @@ void parse_statement(FILE *file, Token t) {
             tamizhi_gen_str(name_token.value, val_token.value);
         }
     }
-    // 3️⃣ ஐடென்டிஃபையர் பிளாக் (Identifier Block): வேரியபிள் கணக்கீடு அல்லது ஃபங்ஷன் கால்களைக் கையாளுதல்
     else if (t.type == T_ID) {
         char var_name[50];
         strcpy(var_name, t.value); 
         long current_pos = ftell(file);
         Token next_t = get_next_token(file);
 
-        // 🅰️ '=' அல்லது தமிழ் குறியீடு இருந்தால் கணித ஆபரேஷன்கள் (+, -, *, /)
         if (next_t.type == 20 || strcmp(next_t.value, "=") == 0) {
             Token v1 = get_next_token(file);
-            Token op = get_next_token(file); 
+            Token op = get_next_token(file);
             
             if (op.type == 19 || strcmp(op.value, "+") == 0 || strcmp(op.value, "-") == 0 || strcmp(op.value, "*") == 0 || strcmp(op.value, "/") == 0) {
                 Token v2 = get_next_token(file);
-                tamizhi_gen_math_op(var_name, v1.value, op.value, v2.value); 
+                tamizhi_gen_math_op(var_name, v1.value, op.value, v2.value);
             }
         } 
-        // 🅱️ '(' இருந்தால் அது பூட்டர் வழியா நடக்குற ஒரு பங்க்ஷன் கால் (Function Call Flow)
         else if (next_t.type == 15 || strcmp(next_t.value, "(") == 0) {
             Token tmp;
             while ((tmp = get_next_token(file)).type != T_EOF) {
@@ -207,9 +183,8 @@ void parse_statement(FILE *file, Token t) {
                     break;
                 }
             }
-            long post_call_pos = ftell(file); 
+            long post_call_pos = ftell(file);
 
-            // குளோபல் ஸ்கோப்பில் அந்த பங்க்ஷனோட பாடி எங்குள்ளது என்று தேடிப் பிடிக்கிறது
             clearerr(file);
             rewind(file);
             Token find_f;
@@ -219,21 +194,20 @@ void parse_statement(FILE *file, Token t) {
                 if (is_valid(find_f) && (strcmp(find_f.value, "fun") == 0 || find_f.type == T_FUNC || strcmp(find_f.value, "நிகழ்") == 0)) {
                     Token name = get_next_token(file);
                     if (is_valid(name) && strcmp(name.value, var_name) == 0) {
-                        while ((find_f = get_next_token(file)).type != 22 && find_f.type != T_EOF); 
+                        while ((find_f = get_next_token(file)).type != 22 && find_f.type != T_EOF);
                         func_body_pos = ftell(file); 
                         break;
                     }
                 }
             }
 
-            // 🌟 லோக்கல் ஸ்கோப் மெமரி மேனேஜ்மென்ட் பிக்ஸ்: பங்க்ஷனுக்குள் இருக்கும் வேரியபிள்களை லோக்கலாக கையாள்கிறது
             if (func_body_pos != -1L) {
                 clearerr(file);
                 fseek(file, func_body_pos, SEEK_SET);
                 int body_brace_count = 1;
                 Token body_t;
 
-                int previous_var_count = var_count; // 🌟 முந்தைய வேரியபிள் கவுண்ட்டை லாக் செய்கிறது
+                int previous_var_count = var_count;
 
                 while (body_brace_count > 0 && (body_t = get_next_token(file)).type != T_EOF) {
                     if (body_t.type == 22 || strcmp(body_t.value, "{") == 0) {
@@ -241,16 +215,16 @@ void parse_statement(FILE *file, Token t) {
                     }
                     if (body_t.type == 23 || strcmp(body_t.value, "}") == 0) {
                         body_brace_count--;
-                        if (body_brace_count <= 0) break; 
+                        if (body_brace_count <= 0) break;
                     }
 
                     if (body_t.type != 21 && strcmp(body_t.value, ";") != 0 && body_t.type != 22 && body_t.type != 23) {
-                        parse_statement(file, body_t); 
+                        parse_statement(file, body_t);
                         func_body_pos = ftell(file);
                         fseek(file, func_body_pos, SEEK_SET);
                     }
                 }
-                var_count = previous_var_count; // 🌟 லோக்கல் பங்க்ஷன் முடிந்ததும் மெமரியை கச்சிதமாக ரீசெட் செய்கிறது!
+                var_count = previous_var_count;
             }
 
             clearerr(file);
@@ -259,28 +233,6 @@ void parse_statement(FILE *file, Token t) {
             fseek(file, current_pos, SEEK_SET);
         }
     }
-    // 4️⃣ லூப் பிளாக் (for / சு) -> லூப்களைக் கையாளுவதற்கு
-    else if (t.type == T_FOR || strcmp(t.value, "சு") == 0) {
-        Token limit_token = get_next_token(file); 
-        int limit = 0;
-
-        if (isdigit(limit_token.value[0])) {
-            limit = atoi(limit_token.value);
-        } else {
-            limit = 3; 
-        }
-
-        Token next = get_next_token(file);
-        if (next.type == 22) {
-            tamizhi_gen_loop_start(limit);
-            Token body_t;
-            while ((body_t = get_next_token(file)).type != 23 && body_t.type != T_EOF) {
-                parse_statement(file, body_t);
-            }
-            tamizhi_gen_loop_end();
-        }
-    }
-    // 5️⃣ அச்சிடு பிளாக் (print ;) -> திரையில் அவுட்புட் காட்ட
     else if (t.type == T_PRINT || strcmp(t.value, "அச்சிடு") == 0) {
         Token first = get_next_token(file);
         if (first.type == 15) first = get_next_token(file); 
@@ -301,25 +253,56 @@ void parse_statement(FILE *file, Token t) {
             fseek(file, check_pos, SEEK_SET);
         }
     }
-    // 6️⃣ புதிய இஃப்-எல்ஸ் பிளாக் (if / எனில்) -> கண்டிஷனல் கண்ட்ரோல் ஃப்ளோ லாஜிக் 🌟
-    else if (strcmp(t.value, "if") == 0 || strcmp(t.value, "எனில்") == 0) {
-        Token open_bracket = get_next_token(file); // '(' ரீட் செய்கிறது
-        Token v1 = get_next_token(file);           // முதல் வேரியபிள்
-        Token op = get_next_token(file);           // கம்பாரோசன் ஆபரேட்டர் (<, >, ==, !=)
-        Token v2 = get_next_token(file);           // இரண்டாம் மதிப்பு
-        Token close_bracket = get_next_token(file); // ')' ரீட் செய்கிறது
-        
-        tamizhi_gen_if_start(v1.value, op.value, v2.value); // எல்எல்விஎம் 'then' மற்றும் 'else' பிளாக்குகளை உருவாக்குகிறது
-        
+    else if (t.type == T_FOR || strcmp(t.value, "சு") == 0) {
+        Token limit_token = get_next_token(file); 
+        int limit = 0;
+
+        if (isdigit(limit_token.value[0])) {
+            limit = atoi(limit_token.value);
+        } else {
+            limit = 3; 
+        }
+
         Token next = get_next_token(file);
-        if (next.type == 22 || strcmp(next.value, "{") == 0) {
+        if (next.type == 22) {
+            tamizhi_gen_loop_start(limit);
+            Token body_t;
+            while ((body_t = get_next_token(file)).type != 23 && body_t.type != T_EOF) {
+                parse_statement(file, body_t);
+            }
+            tamizhi_gen_loop_end();
+        }
+    }
+    else if (strcmp(t.value, "if") == 0 || strcmp(t.value, "எனில்") == 0) {
+        Token next_t = get_next_token(file);
+        if (strcmp(next_t.value, "(") == 0) {
+            next_t = get_next_token(file);
+        }
+        
+        char v1_buf[50], op_buf[10], v2_buf[50];
+        strcpy(v1_buf, next_t.value);
+        
+        Token op_t = get_next_token(file);
+        strcpy(op_buf, op_t.value);
+        
+        Token v2_t = get_next_token(file);
+        strcpy(v2_buf, v2_t.value);
+        
+        Token close_t = get_next_token(file);
+        if (strcmp(close_t.value, ")") == 0) {
+            close_t = get_next_token(file);
+        }
+        
+        tamizhi_gen_if_start(v1_buf, op_buf, v2_buf);
+        
+        if (close_t.type == 22 || strcmp(close_t.value, "{") == 0) {
             int if_brace_count = 1;
             Token if_body_t;
             while (if_brace_count > 0 && (if_body_t = get_next_token(file)).type != T_EOF) {
                 if (if_body_t.type == 22 || strcmp(if_body_t.value, "{") == 0) if_brace_count++;
                 if (if_body_t.type == 23 || strcmp(if_body_t.value, "}") == 0) {
                     if_brace_count--;
-                    if (if_brace_count <= 0) break; // இஃப் பாடி முடிந்தது
+                    if (if_brace_count <= 0) break;
                 }
                 parse_statement(file, if_body_t);
             }
@@ -327,9 +310,8 @@ void parse_statement(FILE *file, Token t) {
         
         long else_pos = ftell(file);
         Token else_t = get_next_token(file);
-        // ஒருவேளை பயனர் 'else' அல்லது 'இல்லை எனில்' பிளாக் எழுதியிருந்தால் மட்டும் உள்ளே நுழையும்
         if (strcmp(else_t.value, "else") == 0 || strcmp(else_t.value, "இல்லை எனில்") == 0) {
-            tamizhi_gen_else_start(); // எல்எல்விஎம் பில்டரை 'else' பிளாக்கிற்குள் நகர்த்துகிறது
+            tamizhi_gen_else_start();
             Token else_brace = get_next_token(file);
             if (else_brace.type == 22 || strcmp(else_brace.value, "{") == 0) {
                 int else_brace_count = 1;
@@ -338,14 +320,14 @@ void parse_statement(FILE *file, Token t) {
                     if (else_body_t.type == 22 || strcmp(else_body_t.value, "{") == 0) else_brace_count++;
                     if (else_body_t.type == 23 || strcmp(else_body_t.value, "}") == 0) {
                         else_brace_count--;
-                        if (else_brace_count <= 0) break; // எல்ஸ் பாடி முடிந்தது
+                        if (else_brace_count <= 0) break;
                     }
                     parse_statement(file, else_body_t);
                 }
             }
         } else {
-            fseek(file, else_pos, SEEK_SET); // 'else' பிளாக் இல்லையெனில் பாயிண்டரை பழைய இடத்திற்கே திருப்புகிறது
+            fseek(file, else_pos, SEEK_SET);
         }
-        tamizhi_gen_if_end(); // எல்எல்விஎம் பில்டரை பாதுகாப்பாக 'merge' பிளாக்கிற்குள் கொண்டு வந்து சீக்வென்ஷியலா மாத்துகிறது!
+        tamizhi_gen_if_end();
     }
 }
