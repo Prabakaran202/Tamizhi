@@ -286,16 +286,21 @@ void parse_statement(FILE *file, Token t) {
         strcpy(op_buf, op_t.value);
         
         Token v2_t = get_next_token(file);
+        // 🌟 ஸ்பேசிங் பக் பிக்ஸ்: ஒருவேளை '34)' என ஒட்டி வந்தால் பிராக்கெட்டைத் துண்டித்து மதிப்பை மட்டும் பிரிக்கிறது
+        char *end_bracket_ptr = strchr(v2_t.value, ')');
+        if (end_bracket_ptr != NULL) {
+            *end_bracket_ptr = '\0';
+        }
         strcpy(v2_buf, v2_t.value);
         
-        Token close_t = get_next_token(file);
-        if (strcmp(close_t.value, ")") == 0) {
-            close_t = get_next_token(file);
+        Token next = get_next_token(file);
+        if (strcmp(next.value, ")") == 0) {
+            next = get_next_token(file);
         }
         
         tamizhi_gen_if_start(v1_buf, op_buf, v2_buf);
         
-        if (close_t.type == 22 || strcmp(close_t.value, "{") == 0) {
+        if (next.type == 22 || strcmp(next.value, "{") == 0) {
             int if_brace_count = 1;
             Token if_body_t;
             while (if_brace_count > 0 && (if_body_t = get_next_token(file)).type != T_EOF) {
