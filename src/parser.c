@@ -5,16 +5,20 @@
 #include <string.h>
 #include <ctype.h>
 
+// 🌟 புதிய எல்எல்விஎம் மேத்ஸ் மற்றும் டெர்னரி ஆபரேட்டர் ஃபங்ஷன் டிக்ளரேஷன்கள்
 void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2);
-void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* true_val, char* false_val);
+void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* var2, char* true_val, char* false_val);
 
+// 🌟 எல்எல்விஎம் மெயின் பங்க்ஷன் (main) ஒருமுறைக்கு மேல் டூப்ளிகேட் ஆகாமல் தடுக்க உதவும் ஃப்ளாக்
 int main_generated = 0;
 
+// 🌟 டோக்கன் வேல்யூ காலியாக இல்லாமல் சரியாக உள்ளதா என சரிபார்க்கும் பங்க்ஷன்
 int is_valid(Token t) {
     if (strlen(t.value) == 0) return 0;
     return 1;
 }
 
+// 🌟 செமிகோலன் (;) வரும் வரை இடையில் இருக்கும் தேவையற்ற டோக்கன்களை தவிர்த்து கடக்க உதவும் பங்க்ஷன்
 void skip_to_semicolon(FILE *file) {
     Token t;
     while ((t = get_next_token(file)).type != 21 && t.type != T_EOF);
@@ -22,6 +26,7 @@ void skip_to_semicolon(FILE *file) {
 
 void parse_statement(FILE *file, Token t);
 
+// 🌟 ஹெடர் பிரீ-ஸ்கேன் (Pre-Scan): கோப்பு முழுக்க பங்க்ஷன் (fun) பெயர்களை மட்டும் முன்கூட்டியே ரிஜிஸ்டர் செய்யும் இடம்
 void scan_headers(FILE *file) {
     Token t;
     rewind(file);
@@ -66,6 +71,7 @@ void scan_headers(FILE *file) {
     rewind(file);
 }
 
+// 🌟 பிரதான பார்ஸர் இன்ஜின் (Main Parser Engine): main மற்றும் footer பிளாக்குகளை இயக்கும் இடம்
 void parse(FILE *file) {
     Token t;
     long main_pos = -1L;
@@ -134,12 +140,14 @@ void parse(FILE *file) {
     fprintf(stderr, "[Parser] --- Analysis Completed Successfully ---\n\n");
 }
 
+// 🌟 ஸ்டேட்மென்ட் அனலைசர் (Statement Analyzer): வரிகளை பகுப்பாய்வு செய்யும் பிரதான இடம்
 void parse_statement(FILE *file, Token t) {
     extern int var_count;
     if (!is_valid(t)) return;
 
     if (t.type == 21 || strcmp(t.value, ";") == 0) return;
 
+    // 1️⃣ எண்கள் பிளாக் (Num a = 10 ;) -> முழு எண்களை டிக்ளேர் செய்ய
     if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
         Token name_token = get_next_token(file); 
         Token next = get_next_token(file);
@@ -151,6 +159,7 @@ void parse_statement(FILE *file, Token t) {
             tamizhi_gen_var(name_token.value, atoi(val_token.value));
         }
     }
+    // 2️⃣ சரங்கள் பிளாக் (Str s = "Hello" ;) -> உரைகளை டிக்ளேர் செய்ய
     else if (t.type == T_STR || strcmp(t.value, "Str") == 0 || strcmp(t.value, "வரி") == 0) {
         Token name_token = get_next_token(file);
         Token next = get_next_token(file);
@@ -162,16 +171,19 @@ void parse_statement(FILE *file, Token t) {
             tamizhi_gen_str(name_token.value, val_token.value);
         }
     }
+    // 3️⃣ ஐடென்டிஃபையர் பிளாக் (Identifier Block): மேத்ஸ் ஆபரேஷன், டெர்னரி எக்ஸ்பிரஷன் அல்லது ஃபங்ஷன் கால்கள்
     else if (t.type == T_ID) {
         char var_name[50];
         strcpy(var_name, t.value); 
         long current_pos = ftell(file);
         Token next_t = get_next_token(file);
 
+        // 🅰️ '=' குறியீடு இருந்தால் உள்ளே நுழையும்
         if (next_t.type == 20 || strcmp(next_t.value, "=") == 0) {
             Token v1 = get_next_token(file);
             Token op_or_keyword = get_next_token(file);
             
+            // 🌟 அட்வான்ஸ்டு டெர்னரி சிங்கிள்-லைன் கண்டிஷனல் அசைன்மென்ட் ஃபீச்சர் (Ternary Flow)
             if (strcmp(op_or_keyword.value, "if") == 0 || strcmp(op_or_keyword.value, "எனில்") == 0) {
                 Token cond_v1 = get_next_token(file);
                 if (strcmp(cond_v1.value, "(") == 0) {
@@ -195,11 +207,13 @@ void parse_statement(FILE *file, Token t) {
                     tamizhi_gen_ternary(var_name, cond_v1.value, cond_pred.value, clean_v2, v1.value, false_val.value);
                 }
             }
+            // 🌟 சாதாரண கணித ஆபரேஷன்கள் பிளாக் (+, -, *, /)
             else if (op_or_keyword.type == 19 || strcmp(op_or_keyword.value, "+") == 0 || strcmp(op_or_keyword.value, "-") == 0 || strcmp(op_or_keyword.value, "*") == 0 || strcmp(op_or_keyword.value, "/") == 0) {
                 Token v2 = get_next_token(file);
                 tamizhi_gen_math_op(var_name, v1.value, op_or_keyword.value, v2.value);
             }
         } 
+        // 🅱️ '(' இருந்தால் பூட்டர் வழியா நடக்குற ஃபங்ஷன் இன்லைன் கால்
         else if (next_t.type == 15 || strcmp(next_t.value, "(") == 0) {
             Token tmp;
             while ((tmp = get_next_token(file)).type != T_EOF) {
@@ -225,6 +239,7 @@ void parse_statement(FILE *file, Token t) {
                 }
             }
 
+            // 🌟 லோக்கல் ஸ்கோப் மெமரி மேனேஜ்மென்ட் லாஜிக்
             if (func_body_pos != -1L) {
                 clearerr(file);
                 fseek(file, func_body_pos, SEEK_SET);
@@ -248,7 +263,7 @@ void parse_statement(FILE *file, Token t) {
                         fseek(file, func_body_pos, SEEK_SET);
                     }
                 }
-                var_count = previous_var_count;
+                var_count = previous_var_count; // லோக்கல் பங்க்ஷன் முடிந்ததும் மெமரியை கச்சிதமாக ரீசெட் செய்கிறது
             }
 
             clearerr(file);
@@ -257,6 +272,7 @@ void parse_statement(FILE *file, Token t) {
             fseek(file, current_pos, SEEK_SET);
         }
     }
+    // 4️⃣ அச்சிடு பிளாக் (print ;) -> திரையில் அவுட்புட் காட்ட
     else if (t.type == T_PRINT || strcmp(t.value, "அச்சிடு") == 0) {
         Token first = get_next_token(file);
         if (first.type == 15) first = get_next_token(file); 
@@ -277,6 +293,7 @@ void parse_statement(FILE *file, Token t) {
             fseek(file, check_pos, SEEK_SET);
         }
     }
+    // 5️⃣ லூப் பிளாக் (for / சு) -> லூப்களைக் கையாளுவதற்கு
     else if (t.type == T_FOR || strcmp(t.value, "சு") == 0) {
         Token limit_token = get_next_token(file); 
         int limit = 0;
@@ -297,6 +314,7 @@ void parse_statement(FILE *file, Token t) {
             tamizhi_gen_loop_end();
         }
     }
+    // 6️⃣ மல்டி-லைன் இஃப்-எல்ஸ் பிளாக் (if / எனில்) -> நிபந்தனைகளைக் கையாள
     else if (strcmp(t.value, "if") == 0 || strcmp(t.value, "எனில்") == 0) {
         Token next_t = get_next_token(file);
         if (strcmp(next_t.value, "(") == 0) {
