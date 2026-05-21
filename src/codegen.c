@@ -363,12 +363,18 @@ void tamizhi_gen_if_end() {
 
 void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* true_val, char* false_val) {
     LLVMValueRef val1 = NULL, val2 = NULL;
-    for (int i = 0; i < var_count; i++) {
-        if (strcmp(symbol_table[i].name, v1) == 0) {
-            val1 = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "t_v1");
-            break;
+    
+    if (isdigit(v1[0])) {
+        val1 = LLVMConstInt(LLVMInt32Type(), atoi(v1), 0);
+    } else {
+        for (int i = 0; i < var_count; i++) {
+            if (strcmp(symbol_table[i].name, v1) == 0) {
+                val1 = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "t_v1");
+                break;
+            }
         }
     }
+    
     if (isdigit(v2[0])) {
         val2 = LLVMConstInt(LLVMInt32Type(), atoi(v2), 0);
     } else {
@@ -379,7 +385,9 @@ void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* tru
             }
         }
     }
-    if (!val1 || !val2) return;
+    
+    if (!val1) val1 = LLVMConstInt(LLVMInt32Type(), 0, 0);
+    if (!val2) val2 = LLVMConstInt(LLVMInt32Type(), 0, 0);
 
     LLVMIntPredicate pred = LLVMIntEQ;
     if (strcmp(op, "<") == 0) pred = LLVMIntSLT;
@@ -392,6 +400,7 @@ void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* tru
     LLVMValueRef cond = LLVMBuildICmp(builder, pred, val1, val2, "ternary_cond");
 
     LLVMValueRef t_val = NULL, f_val = NULL;
+    
     if (isdigit(true_val[0])) {
         t_val = LLVMConstInt(LLVMInt32Type(), atoi(true_val), 0);
     } else {
@@ -402,17 +411,33 @@ void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* tru
             }
         }
     }
-    if (isdigit(false_val[0])) {
-        f_val = LLVMConstInt(LLVMInt32Type(), atoi(false_val), 0);
+    
+    char clean_false[50];
+    strcpy(clean_false, false_val);
+    char *semi_p = strchr(clean_false, ';');
+    if (semi_p != NULL) *semi_p = '\0';
+    
+    char *trim_p = clean_false;
+    while(isspace(*trim_p)) trim_p++;
+    int len = strlen(trim_p);
+    while(len > 0 && isspace(trim_p[len-1])) {
+        trim_p[len-1] = '\0';
+        len--;
+    }
+
+    if (isdigit(trim_p[0])) {
+        f_val = LLVMConstInt(LLVMInt32Type(), atoi(trim_p), 0);
     } else {
         for (int i = 0; i < var_count; i++) {
-            if (strcmp(symbol_table[i].name, false_val) == 0) {
+            if (strcmp(symbol_table[i].name, trim_p) == 0) {
                 f_val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "f_val");
                 break;
             }
         }
     }
-    if (!t_val || !f_val) return;
+    
+    if (!t_val) t_val = LLVMConstInt(LLVMInt32Type(), 0, 0);
+    if (!f_val) f_val = LLVMConstInt(LLVMInt32Type(), 0, 0);
 
     LLVMValueRef select_res = LLVMBuildSelect(builder, cond, t_val, f_val, "ternary_sel");
 
