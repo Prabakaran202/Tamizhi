@@ -43,7 +43,7 @@ Token get_next_token(FILE *file) {
         return token;
     }
 
-    // 🧵 புதிய அப்டேட்: சரங்களைக் கையாளுதல் (String Literals)
+    // 🧵 சரங்களைக் கையாளுதல்
     if (c == '"') {
         int i = 0;
         while ((c = fgetc(file)) != '"' && c != EOF) {
@@ -54,7 +54,7 @@ Token get_next_token(FILE *file) {
         return token;
     }
 
-    // தமிழ் மற்றும் ஆங்கில எழுத்துக்களைக் கையாளுதல்
+    // தமிழ் மற்றும் ஆங்கில எழுத்துக்கள்
     if (isalpha(c) || (unsigned char)c > 127) {
         int i = 0;
         do {
@@ -86,9 +86,11 @@ Token get_next_token(FILE *file) {
 
     if (c == '(') token.type = 15;
     else if (c == ')') token.type = 16;
-    else if (c == ';') token.type = 17;
+    // ⭐ இங்கே 21-ஐ செமிகோலனுக்குக் கொடுத்துள்ளேன், பார்ஸர் இதைத்தான் தேடும்
+    else if (c == ';') token.type = 21; 
     else if (c == '<') token.type = 18;
-    else if (c == '>') token.type = 21;
+    // ⭐ கிரட்டர்தேன் குறியீட்டுக்கு வேறொரு எண் (எ.கா: 24) கொடுத்துள்ளேன்
+    else if (c == '>') token.type = 24; 
     else if (c == '+') token.type = 19;
     else if (c == '-') token.type = 56; 
     else if (c == '=') token.type = 20;
