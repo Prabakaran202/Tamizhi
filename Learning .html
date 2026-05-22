@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ta">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>தமிழி டாக்குமெண்டேஷன் | w3schools ஸ்டைல்</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { display: flex; background-color: #f1f1f1; height: 100vh; overflow: hidden; }
+        
+        /* 🚥 இடப்பக்க மெனு (Sidebar) */
+        .sidebar { width: 260px; background-color: #fff; border-right: 1px solid #dfe3e6; overflow-y: auto; height: 100%; padding-top: 15px; }
+        .sidebar h2 { padding: 10px 20px; font-size: 20px; color: #28a745; border-bottom: 2px solid #28a745; margin-bottom: 10px; }
+        .sidebar a { display: block; padding: 10px 20px; color: #3a3a3a; text-decoration: none; font-size: 15px; transition: 0.2s; }
+        .sidebar a:hover { background-color: #f1f1f1; color: #000; padding-left: 25px; }
+        .sidebar a.active { background-color: #28a745; color: white; font-weight: bold; }
+
+        /* 📝 வலப்பக்க கன்டென்ட் ஏரியா (Main Content) */
+        .content-area { flex: 1; padding: 40px; overflow-y: auto; height: 100%; background-color: #fff; }
+        h1 { font-size: 32px; color: #222; margin-bottom: 15px; }
+        p { font-size: 16px; color: #555; line-height: 1.6; margin-bottom: 25px; }
+        
+        /* 🖥️ w3schools கோட் பாக்ஸ் ஸ்டைல் (Code Box Layout) */
+        .w3-example { background-color: #e7e9eb; padding: 20px; border-radius: 5px; margin-bottom: 30px; border-left: 4px solid #28a745; }
+        .w3-example h3 { font-size: 18px; margin-bottom: 10px; color: #000; }
+        .code-container { background-color: #22272e; color: #adbac7; padding: 15px; border-radius: 4px; font-family: 'Courier New', Courier, monospace; font-size: 14px; white-space: pre-wrap; overflow-x: auto; line-height: 1.5; }
+        
+        /* C-Style வண்ணங்கள் (Syntax Highlighting Colors) */
+        .keyword { color: #f47067; font-weight: bold; }
+        .type { color: #6cb6ff; }
+        .string { color: #96d0ff; }
+        .comment { color: #768390; font-style: italic; }
+        .function { color: #dcbdfb; }
+        
+        hr { border: 0; height: 1px; background: #dfe3e6; margin: 30px 0; }
+        .footer-note { text-align: center; color: #777; font-size: 14px; margin-top: 5px; padding: 20px; background: #fafafa; border-top: 1px solid #dfe3e6; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>தமிழி கையேடு</h2>
+        <a href="#intro" class="active">1. அறிமுகம்</a>
+        <a href="#variables">2. மாறிகள் (Variables)</a>
+        <a href="#math">3. கணித இன்ஜின் (Math)</a>
+        <a href="#ternary">4. டெர்னரி ஆபரேட்டர்</a>
+        <a href="#loops">5. சுழற்சிகள் (Loops)</a>
+        <a href="#footer-block">6. பூட்டர் ஆர்கிடெக்சர்</a>
+    </div>
+
+    <div class="content-area">
+        
+        <div id="intro">
+            <h1>தமிழி மொழி கையேடு (Tamizhi Language Documentation)</h1>
+            <p>தமிழி என்பது எல்எல்விஎம் (LLVM AOT) இன்ஜின் மற்றும் ஏஓடி கம்பைலேஷன் மெக்கானிசம் கொண்டு உருவாக்கப்பட்ட ஒரு நவீன, அதிவேக எக்ஸ்பிரஷன்-டிரைவன் புரோகிராமிங் மொழியாகும். இது பழைய மல்டி-லைன் பிளாக்குகளை நீக்கிவிட்டு, மிகக் கச்சிதமான சிங்கிள்-லைன் லீனியர் சிண்டாக்ஸ் அமைப்பைக் கொண்டுள்ளது.</p>
+        </div>
+
+        <hr>
+
+        <div id="variables">
+            <h2>2. மாறிகள் டிக்ளரேஷன் (Variables Setup)</h2>
+            <p>தமிழி மொழியில் முழு எண்களைக் குறிக்க <span class="keyword">Num</span> அல்லது <span class="keyword">எண்</span> கீவேர்டும், உரைகளைக் குறிக்க <span class="keyword">Str</span> அல்லது <span class="keyword">வரி</span> கீவேர்டும் பயன்படுத்தப்படுகிறது.</p>
+            
+            <div class="w3-example">
+                <h3>உதாரணம்:</h3>
+                <div class="code-container"><span class="type">Num</span> வேரியபிள்_பெயர் = <span class="string">10</span> ;
+<span class="type">Str</span> மொழி = <span class="string">"தமிழி மொழி"</span> ;
+<span class="function">print</span> மொழி ;</div>
+            </div>
+        </div>
+
+        <hr>
+
+        <div id="math">
+            <h2>3. கணித செயல்பாடுகள் (Math Engine)</h2>
+            <p>எல்எல்விஎம் நேடிவ் ஆர்கிடெக்சர் கொண்டு கூட்டல், கழித்தல், பெருக்கல் மற்றும் வகுத்தல் செயல்பாடுகள் சிம்பல் டேபிளின் லோக்கல் ஸ்கோப் மாறாமல் துல்லியமாகச் செய்யப்படுகின்றன.</p>
+            
+            <div class="w3-example">
+                <h3>உதாரணம்:</h3>
+                <div class="code-container"><span class="type">Num</span> முதல்_எண் = <span class="string">150</span> ;
+<span class="type">Num</span> இரண்டாம்_எண் = <span class="string">50</span> ;
+<span class="type">Num</span> விடை = முதல்_எண் - இரண்டாம்_எண் ;</div>
+            </div>
+        </div>
+
+        <hr>
+
+        <div id="ternary">
+            <h2>4. சிங்கிள்-லைன் டெர்னரி கண்டிஷன் (Advanced Ternary Expression)</h2>
+            <p>தமிழி மொழியில் தேவையற்ற மல்டி-லைன் இஃப்-எல்ஸ் கிளைப்பிரிவுகள் கிடையாது. மாறாக, <span class="keyword">LLVMBuildSelect</span> ஏபி மூலம் சிபிஇயு லெவலில் நேரடியாக வேலை செய்யும் சிங்கிள்-லைன் டெர்னரி ஆபரேட்டர் மட்டுமே பயன்படுத்தப்படுகிறது.</p>
+            
+            <div class="w3-example">
+                <h3>உதாரணம்:</h3>
+                <div class="code-container"><span class="type">Num</span> வேகம் = <span class="string">95</span> ;
+<span class="type">Num</span> எல்லை = <span class="string">80</span> ;
+<span class="comment">// கண்டிஷன் உண்மையானால் 1, இல்லையெனில் 0 அசைன் ஆகும்!</span>
+<span class="type">Num</span> எச்சரிக்கை = <span class="string">1</span> <span class="keyword">if</span> (வேகம் > எல்லை) <span class="keyword">else</span> <span class="string">0</span> ;</div>
+            </div>
+        </div>
+
+        <hr>
+
+        <div id="loops">
+            <h2>5. அதிவேக சுழற்சிகள் (Fast Looping Driver)</h2>
+            <p><span class="keyword">for</span> அல்லது தமிழ் கீவேர்ட் <span class="keyword">சு</span> கொண்டு லூப்களை இயக்கலாம். லூப்பின் உள்ளே இருக்கும் கவுண்ட்டர் மதிப்பை <span class="type">i</span> மூலம் நேரடியாக அச்சிட முடியும்.</p>
+            
+            <div class="w3-example">
+                <h3>உதாரணம்:</h3>
+                <div class="code-container"><span class="keyword">for</span> <span class="string">5</span> {
+    <span class="function">print</span> i ; <span class="comment">// 0 முதல் 4 வரை அச்சிடும்</span>
+}</div>
+            </div>
+        </div>
+
+        <hr>
+
+        <div id="footer-block">
+            <h2>6. பூட்டர் ஆர்கிடெக்சர் (Universal Footer Layout)</h2>
+            <p>தமிழி மொழியின் பிரத்யேக அம்சம் இதுவாகும். முதன்மை (main) பிளாக் ரன் ஆகி முடிந்த பிறகு, சிஸ்டத்தின் இறுதி செயலாக்க புள்ளியாக <span class="keyword">footer</span> பிளாக் இயங்கி, அனைத்து பங்க்ஷன் வரிகளையும் கச்சிதமாக இன்லைன் செய்யும்.</p>
+            
+            <div class="w3-example">
+                <h3>முழுமையான கட்டமைப்பு உதாரணம்:</h3>
+                <div class="code-container"><span class="keyword">fun</span> <span class="function">முதன்மை</span> {
+    <span class="function">print</span> <span class="string">"மெயின் இன்ஜின்"</span> ;
+}
+
+<span class="keyword">footer</span> {
+    <span class="function">print</span> <span class="string">"பூட்டர் கோர்"</span> ;
+}</div>
+            </div>
+        </div>
+        
+        <div class="footer-note">
+            © 2026 Developer Labs. Powered by Tamizhi Compiler Infrastructure.
+        </div>
+    </div>
+
+</body>
+</html>
