@@ -21,7 +21,7 @@ LLVMValueRef i_ptr = NULL;
 int loop_counter = 0;
 
 typedef struct {
-    char name[50];
+    char name[100]; // 🌟 தமிழ் கேரக்டர்களின் UTF-8 பைட் அளவிற்காக 100 ஆக பாதுகாக்கப்பட்டுள்ளது
     LLVMValueRef alloca_ptr;
     int is_str_type;
     int has_static_val;
@@ -32,7 +32,7 @@ Variable symbol_table[100];
 int var_count = 0;
 
 typedef struct {
-    char name[50];
+    char name[100];
     LLVMValueRef func_ref;
 } TamizhiFunction;
 
@@ -237,10 +237,8 @@ void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2) {
 
             if(target_ptr && found_idx != -1) {
                 LLVMBuildStore(builder, math_res, target_ptr);
-                if(f1 && f2) {
-                    symbol_table[found_idx].static_val = calculated_val;
-                    symbol_table[found_idx].has_static_val = 1;
-                }
+                symbol_table[found_idx].static_val = calculated_val;
+                symbol_table[found_idx].has_static_val = 1;
             }
         }
     }
@@ -252,12 +250,20 @@ void tamizhi_gen_print(char* var_name) {
     char clean_name[1024];
     strcpy(clean_name, var_name);
 
-    size_t len = strlen(clean_name);
+    char *trim_p = clean_name;
+    while(isspace(*trim_p)) trim_p++;
+    int len = strlen(trim_p);
+    while(len > 0 && isspace(trim_p[len-1])) {
+        trim_p[len-1] = '\0';
+        len--;
+    }
+    memmove(clean_name, trim_p, strlen(trim_p) + 1);
+
     int is_literal = 0;
-    if ((clean_name[0] == '"' || clean_name[0] == '\'') && len > 2) {
+    if ((clean_name[0] == '"' || clean_name[0] == '\'') && strlen(clean_name) > 2) {
         char temp[1024];
-        strncpy(temp, clean_name + 1, len - 2);
-        temp[len - 2] = '\0';
+        strncpy(temp, clean_name + 1, strlen(clean_name) - 2);
+        temp[strlen(clean_name) - 2] = '\0';
         strcpy(clean_name, temp);
         is_literal = 1;
     }
@@ -348,7 +354,7 @@ void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* tru
         }
     }
 
-    char clean_false[50];
+    char clean_false[100];
     strcpy(clean_false, false_val);
     char *semi_p = strchr(clean_false, ';');
     if (semi_p != NULL) *semi_p = '\0';
@@ -375,13 +381,14 @@ void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* tru
     if (!t_val) t_val = LLVMConstInt(LLVMInt32Type(), 0, 0);
     if (!f_val) f_val = LLVMConstInt(LLVMInt32Type(), 0, 0);
 
-    // 🌟 LLVMBuildSelect ஏபி மூலம் கிளைப்பிரிவு இல்லாத மின்னல் வேக அசைன்மென்ட்
     LLVMValueRef select_res = LLVMBuildSelect(builder, cond, t_val, f_val, "ternary_sel");
 
     LLVMValueRef target_ptr = NULL;
+    int target_idx = -1;
     for (int i = 0; i < var_count; i++) {
         if (strcmp(symbol_table[i].name, res_name) == 0) {
             target_ptr = symbol_table[i].alloca_ptr;
+            target_idx = i;
             break;
         }
     }
@@ -390,10 +397,13 @@ void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* tru
         strcpy(symbol_table[var_count].name, res_name);
         symbol_table[var_count].alloca_ptr = target_ptr;
         symbol_table[var_count].is_str_type = 0;
+        target_idx = var_count;
         var_count++;
     }
-    if (target_ptr) {
+    if (target_ptr && target_idx != -1) {
         LLVMBuildStore(builder, select_res, target_ptr);
+        // 🌟 டெர்னரிக்கு பின் வரும் கணக்கீடுகளுக்காக ஸ்டேடிக் வால்யூ டிராக்கிங்கை ரீசெட் செய்கிறோம்
+        symbol_table[target_idx].has_static_val = 0; 
     }
 }
 
