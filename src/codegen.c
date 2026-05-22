@@ -18,8 +18,6 @@ LLVMTypeRef printf_type;
 LLVMValueRef printf_func;
 LLVMValueRef i_ptr = NULL; 
 
-LLVMBasicBlockRef then_block, else_block, merge_block;
-
 int loop_counter = 0;
 
 typedef struct {
@@ -164,7 +162,7 @@ void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2) {
     int s_val1 = 0, s_val2 = 0;
     int f1 = 0, f2 = 0;
 
-    if(isdigit(var1[0])) {
+    if(isdigit(var1[0]) || var1[0] == '-') {
         v1_val = LLVMConstInt(LLVMInt32Type(), atoi(var1), 0);
         s_val1 = atoi(var1);
         f1 = 1;
@@ -181,7 +179,7 @@ void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2) {
         }
     }
 
-    if(isdigit(var2[0])) {
+    if(isdigit(var2[0]) || var2[0] == '-') {
         v2_val = LLVMConstInt(LLVMInt32Type(), atoi(var2), 0);
         s_val2 = atoi(var2);
         f2 = 1;
@@ -282,7 +280,7 @@ void tamizhi_gen_print(char* var_name) {
         val = LLVMBuildLoad2(builder, LLVMInt32Type(), i_ptr, "load_val");
     }
 
-    if(!val && isdigit(clean_name[0]) && !is_literal) {
+    if(!val && (isdigit(clean_name[0]) || clean_name[0] == '-') && !is_literal) {
         val = LLVMConstInt(LLVMInt32Type(), atoi(clean_name), 0);
     }
 
@@ -299,72 +297,10 @@ void tamizhi_gen_print(char* var_name) {
     }
 }
 
-void tamizhi_gen_if_start(char* var1, char* op, char* var2) {
-    LLVMValueRef v1 = NULL, v2 = NULL;
-    for(int i = 0; i < var_count; i++) {
-        if(strcmp(symbol_table[i].name, var1) == 0) {
-            v1 = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v1");
-            break;
-        }
-    }
-    if(isdigit(var2[0])) {
-        v2 = LLVMConstInt(LLVMInt32Type(), atoi(var2), 0);
-    } else {
-        for(int i = 0; i < var_count; i++) {
-            if(strcmp(symbol_table[i].name, var2) == 0) {
-                v2 = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "v2");
-                break;
-            }
-        }
-    }
-    if(!v1 || !v2) return;
-    
-    LLVMIntPredicate pred = LLVMIntEQ;
-    if (strcmp(op, "<") == 0) pred = LLVMIntSLT;
-    else if (strcmp(op, ">") == 0) pred = LLVMIntSGT;
-    else if (strcmp(op, "==") == 0) pred = LLVMIntEQ;
-    else if (strcmp(op, "!=") == 0) pred = LLVMIntNE;
-    else if (strcmp(op, "<=") == 0) pred = LLVMIntSLE;
-    else if (strcmp(op, ">=") == 0) pred = LLVMIntSGE;
-
-    LLVMValueRef cond = LLVMBuildICmp(builder, pred, v1, v2, "if_cond");
-    LLVMValueRef func = LLVMGetNamedFunction(module, "main");
-    
-    then_block = LLVMAppendBasicBlock(func, "then");
-    else_block = LLVMAppendBasicBlock(func, "else");
-    merge_block = LLVMAppendBasicBlock(func, "if_cont");
-    
-    LLVMBuildCondBr(builder, cond, then_block, else_block);
-    LLVMPositionBuilderAtEnd(builder, then_block);
-}
-
-void tamizhi_gen_else_start() {
-    LLVMBasicBlockRef current_bb = LLVMGetInsertBlock(builder);
-    if (LLVMGetBasicBlockTerminator(current_bb) == NULL) {
-        LLVMBuildBr(builder, merge_block);
-    }
-    LLVMPositionBuilderAtEnd(builder, else_block);
-}
-
-void tamizhi_gen_if_end() {
-    LLVMBasicBlockRef current_bb = LLVMGetInsertBlock(builder);
-    if (LLVMGetBasicBlockTerminator(current_bb) == NULL) {
-        LLVMBuildBr(builder, merge_block);
-    }
-    
-    LLVMPositionBuilderAtEnd(builder, else_block);
-    if (LLVMGetBasicBlockTerminator(else_block) == NULL) {
-        LLVMPositionBuilderAtEnd(builder, else_block);
-        LLVMBuildBr(builder, merge_block);
-    }
-    
-    LLVMPositionBuilderAtEnd(builder, merge_block);
-}
-
 void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* true_val, char* false_val) {
     LLVMValueRef val1 = NULL, val2 = NULL;
-    
-    if (isdigit(v1[0])) {
+
+    if (isdigit(v1[0]) || v1[0] == '-') {
         val1 = LLVMConstInt(LLVMInt32Type(), atoi(v1), 0);
     } else {
         for (int i = 0; i < var_count; i++) {
@@ -374,8 +310,8 @@ void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* tru
             }
         }
     }
-    
-    if (isdigit(v2[0])) {
+
+    if (isdigit(v2[0]) || v2[0] == '-') {
         val2 = LLVMConstInt(LLVMInt32Type(), atoi(v2), 0);
     } else {
         for (int i = 0; i < var_count; i++) {
@@ -385,7 +321,7 @@ void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* tru
             }
         }
     }
-    
+
     if (!val1) val1 = LLVMConstInt(LLVMInt32Type(), 0, 0);
     if (!val2) val2 = LLVMConstInt(LLVMInt32Type(), 0, 0);
 
@@ -400,8 +336,8 @@ void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* tru
     LLVMValueRef cond = LLVMBuildICmp(builder, pred, val1, val2, "ternary_cond");
 
     LLVMValueRef t_val = NULL, f_val = NULL;
-    
-    if (isdigit(true_val[0])) {
+
+    if (isdigit(true_val[0]) || true_val[0] == '-') {
         t_val = LLVMConstInt(LLVMInt32Type(), atoi(true_val), 0);
     } else {
         for (int i = 0; i < var_count; i++) {
@@ -411,12 +347,12 @@ void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* tru
             }
         }
     }
-    
+
     char clean_false[50];
     strcpy(clean_false, false_val);
     char *semi_p = strchr(clean_false, ';');
     if (semi_p != NULL) *semi_p = '\0';
-    
+
     char *trim_p = clean_false;
     while(isspace(*trim_p)) trim_p++;
     int len = strlen(trim_p);
@@ -425,7 +361,7 @@ void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* tru
         len--;
     }
 
-    if (isdigit(trim_p[0])) {
+    if (isdigit(trim_p[0]) || trim_p[0] == '-') {
         f_val = LLVMConstInt(LLVMInt32Type(), atoi(trim_p), 0);
     } else {
         for (int i = 0; i < var_count; i++) {
@@ -435,10 +371,11 @@ void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* tru
             }
         }
     }
-    
+
     if (!t_val) t_val = LLVMConstInt(LLVMInt32Type(), 0, 0);
     if (!f_val) f_val = LLVMConstInt(LLVMInt32Type(), 0, 0);
 
+    // 🌟 LLVMBuildSelect ஏபி மூலம் கிளைப்பிரிவு இல்லாத மின்னல் வேக அசைன்மென்ட்
     LLVMValueRef select_res = LLVMBuildSelect(builder, cond, t_val, f_val, "ternary_sel");
 
     LLVMValueRef target_ptr = NULL;
