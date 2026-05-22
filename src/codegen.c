@@ -51,7 +51,7 @@ typedef struct {
 TamizhiFunction function_table[50];
 int func_count = 0;
 
-// 🌟 விளிம்புகளில் இருக்கும் ஸ்பேஸ்களை சுத்தமாக்கும் ட்ரிம் மெக்கானிசம்
+// 🌟 கோடெஜன் லெவலில் பெயர்களை சுத்தமாக்கும் பக்கா ட்ரிம் மெக்கானிசம்
 void tamizhi_codegen_trim(char *str) {
     char *trim_p = str;
     while(isspace((unsigned char)*trim_p)) trim_p++;
@@ -63,19 +63,31 @@ void tamizhi_codegen_trim(char *str) {
     memmove(str, trim_p, strlen(trim_p) + 1);
 }
 
-// 🌟 என்ட்ரி பிளாக்கில் பாதுகாப்பாக மெமரி ஒதுக்கும் செயல்பாடு
+// ======================================================================
+// 🌟 ஆண்ட்ராய்டு ARM64 பாயிண்டர் சிதைவு இல்லாத தற்காலிக ரோல்பேக் அலோகேஷன்
+// ======================================================================
 LLVMValueRef create_entry_alloca(LLVMValueRef function, LLVMTypeRef type, const char* name) {
-    LLVMBuilderRef temp_builder = LLVMCreateBuilder();
-    LLVMBasicBlockRef entry = LLVMGetEntryBasicBlock(function);
-    LLVMValueRef first_inst = LLVMGetFirstInstruction(entry);
-
-    if (first_inst)
-        LLVMPositionBuilderBefore(temp_builder, first_inst);
-    else
-        LLVMPositionBuilderAtEnd(temp_builder, entry);
-
-    LLVMValueRef alloca = LLVMBuildAlloca(temp_builder, type, name);
-    LLVMDisposeBuilder(temp_builder);
+    // மெயின் பில்டர் இப்போ இருக்குற தற்போதைய இன்செர்ட் பிளாக்கை லாக் செய்து வைப்போம்
+    LLVMBasicBlockRef current_bb = LLVMGetInsertBlock(builder);
+    
+    // மெயின் ஃபங்ஷனோட என்ட்ரி பிளாக்கின் தொடக்கத்திற்கு பில்டரை தற்காலிகமாக கொண்டு செல்வோம்
+    LLVMBasicBlockRef entry_bb = LLVMGetEntryBasicBlock(function);
+    LLVMValueRef first_inst = LLVMGetFirstInstruction(entry_bb);
+    
+    if (first_inst) {
+        LLVMPositionBuilderBefore(builder, first_inst);
+    } else {
+        LLVMPositionBuilderAtEnd(builder, entry_bb);
+    }
+    
+    // மெயின் பில்டரைக் கொண்டே பாதுகாப்பாக அலோகேட் செய்கிறோம் (No temp_builder crash)
+    LLVMValueRef alloca = LLVMBuildAlloca(builder, type, name);
+    
+    // அலோகேட் செய்து முடித்தவுடன் பில்டரை பழைய பொசிஷனுக்கே கச்சிதமாக ரோல்பேக் செய்கிறோம்!
+    if (current_bb) {
+        LLVMPositionBuilderAtEnd(builder, current_bb);
+    }
+    
     return alloca;
 }
 
@@ -120,10 +132,14 @@ void tamizhi_codegen_init() {
     module = LLVMModuleCreateWithName("tamizhi_engine");
     builder = LLVMCreateBuilder();
 
-    char *target_triple = LLVMGetDefaultTargetTriple();
+    // 🌟 பிரபாவின் மேஜிக்கலான மெமரி-சேஃப் டார்கெட் ட்ரிப்பிள் மேனேஜ்மென்ட் ஃபிக்ஸ்!
+    char *target_triple = NULL;
     #ifdef __ANDROID__
-    target_triple = "aarch64-unknown-linux-android30";
+    target_triple = strdup("aarch64-unknown-linux-android30");
+    #else
+    target_triple = LLVMGetDefaultTargetTriple();
     #endif
+
     LLVMSetTarget(module, target_triple);
 
     char *error = NULL;
@@ -145,7 +161,13 @@ void tamizhi_codegen_init() {
     printf_func = LLVMAddFunction(module, "printf", printf_type);
 
     fprintf(stderr, " [Codegen] LLVM Engine Initialized with Target: %s\n", target_triple);
-    LLVMDisposeMessage(target_triple); // 🌟 மெமரி லீக் பிக்ஸ்
+
+    // 🌟 பிரபாவின் கண்டிஷனல் மெமரி டிஸ்போஸ் ஃபிக்ஸ்
+    #ifdef __ANDROID__
+    free(target_triple);
+    #else
+    LLVMDisposeMessage(target_triple);
+    #endif
 }
 
 void tamizhi_generate_entry() {
@@ -176,7 +198,6 @@ void tamizhi_gen_var(char* name, int value) {
     }
     if (var_count >= 100) return;
 
-    // 🌟 பாதுகாப்பான என்ட்ரி பிளாக் அலோகேஷன்
     LLVMValueRef alloca = create_entry_alloca(func, LLVMInt32Type(), clean_res);
     LLVMBuildStore(builder, LLVMConstInt(LLVMInt32Type(), value, 0), alloca);
 
@@ -341,7 +362,6 @@ void tamizhi_gen_print(char* var_name) {
         }
     }
 
-    // 🌟 நெஸ்டட் ஸ்டேக் லெவலில் லூப் கவுண்ட்டர் டிராக்கிங்
     if(!val && loop_top >= 0 && strcmp(clean_name, "i") == 0) {
         val = LLVMBuildLoad2(builder, LLVMInt32Type(), loop_stack[loop_top].i_ptr, "load_val");
     }
@@ -465,7 +485,6 @@ void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* tru
     }
 }
 
-// 🌟 புதிய பக்-ஃப்ரீ நெஸ்டட் ஸ்டேக் லூப் தொடக்கம்
 void tamizhi_gen_loop_start(int limit) {
     LLVMValueRef func = LLVMGetNamedFunction(module, "main");
     loop_top++;
@@ -493,7 +512,6 @@ void tamizhi_gen_loop_start(int limit) {
     LLVMPositionBuilderAtEnd(builder, ctx->body_block);
 }
 
-// 🌟 புதிய பக்-ஃப்ரீ நெஸ்டட் ஸ்டேக் லூப் முடிவு
 void tamizhi_gen_loop_end() {
     if(loop_top < 0) return;
     LoopContext* ctx = &loop_stack[loop_top];
@@ -507,7 +525,6 @@ void tamizhi_gen_loop_end() {
     loop_top--;
 }
 
-// 🌟 மெமரி கசிவு இல்லாத கச்சிதமான த்ரெட்டிங் டிஸ்ட்ராயர்
 void tamizhi_codegen_destroy() {
     if(target_machine) LLVMDisposeTargetMachine(target_machine);
     if(builder) LLVMDisposeBuilder(builder);
@@ -524,16 +541,4 @@ void tamizhi_codegen_finish() {
     const char *out_file = "output.o";
     if (target_machine) {
         if (LLVMTargetMachineEmitToFile(target_machine, module, (char*)out_file, LLVMObjectFile, &error)) {
-            fprintf(stderr, " [Codegen Error] Failed to emit machine code: %s\n", error);
-            LLVMDisposeMessage(error);
-        }
-    }
-    tamizhi_binary_to_dna_storage(out_file);
-    remove(out_file);
-    fprintf(stderr, "\n[Execution] Running compiled logic...\n");
-    system("lli output.bc"); 
-    fprintf(stderr, "\n[Codegen] --- Tamizhi Universal Engine: SUCCESS ---\n");
-    
-    // கம்ப்ளீட் கிளீன் அப் ரிசோர்ஸ் காலி செய்தல்
-    tamizhi_codegen_destroy();
-}
+            fprintf(stderr, " [
