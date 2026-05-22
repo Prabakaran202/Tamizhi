@@ -5,20 +5,25 @@
 #include <string.h>
 #include <ctype.h>
 
-// 🌟 எல்எல்விஎம் கோடெஜன் பங்க்ஷன்களின் முன்-டிக்ளரேஷன் (Forward Declarations)
 void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2);
 void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* var2, char* true_val, char* false_val);
 
-// 🌟 எல்எல்விஎம் மெயின் பங்க்ஷன் (main) ஒருமுறைக்கு மேல் டூப்ளிகேட் ஆகாமல் தடுக்க உதவும் ஃப்ளாக்
 int main_generated = 0;
 
-// 🌟 டோக்கன் வேல்யூ காலியாக இல்லாமல் சரியாக உள்ளதா என சரிபார்க்கும் பங்க்ஷன்
 int is_valid(Token t) {
     if (strlen(t.value) == 0) return 0;
     return 1;
 }
 
-// 🌟 செமிகோலன் (;) வரும் வரை இடையில் இருக்கும் தேவையற்ற டோக்கன்களை தவிர்த்து கடக்க உதவும் பங்க்ஷன்
+// 🌟 டோக்கன் வேல்யூவில் இருக்கும் தேவையற்ற ஸ்பேஸ்களை சுத்தமாக்கும் ட்ரிம் பங்க்ஷன்
+void tamizhi_trim_token(char *str) {
+    int len = strlen(str);
+    while (len > 0 && (isspace((unsigned char)str[len - 1]) || str[len - 1] == ';')) {
+        str[len - 1] = '\0';
+        len--;
+    }
+}
+
 void skip_to_semicolon(FILE *file) {
     Token t;
     while ((t = get_next_token(file)).type != 21 && t.type != T_EOF);
@@ -26,7 +31,6 @@ void skip_to_semicolon(FILE *file) {
 
 void parse_statement(FILE *file, Token t);
 
-// 🌟 ஹெடர் பிரீ-ஸ்கேன் (Pre-Scan): கோப்பு முழுக்க பங்க்ஷன் (fun) பெயர்களை மட்டும் முன்கூட்டியே ரிஜிஸ்டர் செய்யும் இடம்
 void scan_headers(FILE *file) {
     Token t;
     rewind(file);
@@ -71,7 +75,6 @@ void scan_headers(FILE *file) {
     rewind(file);
 }
 
-// 🌟 பிரதான பார்ஸர் இன்ஜின் (Main Parser Engine): main மற்றும் footer பிளாக்குகளை இயக்கும் இடம்
 void parse(FILE *file) {
     Token t;
     long main_pos = -1L;
@@ -82,7 +85,6 @@ void parse(FILE *file) {
 
     rewind(file);
     while ((t = get_next_token(file)).type != T_EOF) {
-        // 🌟 'main {' அல்லது ஸ்பேஸ் இல்லாத 'main()' கட்டமைப்பை கச்சிதமாக பிரிக்கும் லாஜிக்
         if (strcmp(t.value, "முதன்மை") == 0 || strcmp(t.value, "main") == 0 || strncmp(t.value, "main", 4) == 0) {
             long check_pos = ftell(file);
             Token brace_t = get_next_token(file);
@@ -118,7 +120,6 @@ void parse(FILE *file) {
         main_generated = 1;
     }
 
-    // 🌟 மெயின் பிளாக்கின் எல்லை பாதுகாப்பு வளையம் (Main Block Scope Secured)
     if (main_pos != -1L) {
         clearerr(file);
         fseek(file, main_pos, SEEK_SET);
@@ -141,7 +142,6 @@ void parse(FILE *file) {
         }
     }
 
-    // 🌟 பூட்டர் பிளாக்கின் எல்லை பாதுகாப்பு வளையம் (Footer Block Scope Secured)
     if (footer_pos != -1L) {
         fprintf(stderr, " -> Phase 3 [Footer]: Launching execution...\n");
         clearerr(file);
@@ -172,14 +172,12 @@ void parse(FILE *file) {
     fprintf(stderr, "[Parser] --- Analysis Completed Successfully ---\n\n");
 }
 
-// 🌟 ஸ்டேட்மென்ட் அனலைசர் (Statement Analyzer): வரிகளை பகுப்பாய்வு செய்யும் பிரதான இடம்
 void parse_statement(FILE *file, Token t) {
     extern int var_count;
     if (!is_valid(t)) return;
 
     if (t.type == 21 || strcmp(t.value, ";") == 0) return;
 
-    // 1️⃣ எண்கள் பிளாக் (Num a = 10 ;) -> முழு எண்களை டிக்ளேர் செய்ய 🌟 (தமிழ் கீவேர்ட் சிங்க் பிக்ஸ் செய்யப்பட்ட இடம்)
     if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
         Token name_token = get_next_token(file); 
         Token next = get_next_token(file);
@@ -187,11 +185,12 @@ void parse_statement(FILE *file, Token t) {
             next = get_next_token(file); 
         }
         Token val_token = get_next_token(file);
+        tamizhi_trim_token(val_token.value);
+        
         if (isdigit(val_token.value[0]) || val_token.value[0] == '-') {
             tamizhi_gen_var(name_token.value, atoi(val_token.value));
         }
     }
-    // 2️⃣ சரங்கள் பிளாக் (Str s = "Hello" ;) -> உரைகளை டிக்ளேர் செய்ய
     else if (t.type == T_STR || strcmp(t.value, "Str") == 0 || strcmp(t.value, "வரி") == 0 || strcmp(t.value, "Str ") == 0) {
         Token name_token = get_next_token(file);
         Token next = get_next_token(file);
@@ -203,7 +202,6 @@ void parse_statement(FILE *file, Token t) {
             tamizhi_gen_str(name_token.value, val_token.value);
         }
     }
-    // 3️⃣ ஐடென்டிஃபையர் பிளாக் (Identifier Block): கணித ஆபரேஷன், டெர்னரி எக்ஸ்பிரஷன் அல்லது ஃபங்ஷன் கால்கள்
     else if (t.type == T_ID) {
         char var_name[100];
         strcpy(var_name, t.value); 
@@ -211,10 +209,9 @@ void parse_statement(FILE *file, Token t) {
         Token next_t = get_next_token(file);
 
         if (next_t.type == 20 || strcmp(next_t.value, "=") == 0) {
-            Token v1 = get_next_token(file);
+            Token v1 = get_next_token(file); // 🌟 v1 டோக்கனை ரீட் செய்யும் லாஜிக் பாதுகாக்கப்பட்டது!
             Token op_or_keyword = get_next_token(file);
             
-            // 🌟 அட்வான்ஸ்டு டெர்னரி சிங்கிள்-லைன் கண்டிஷனல் அசைன்மென்ட் ஃபீச்சர் (Ternary Flow)
             if (strcmp(op_or_keyword.value, "if") == 0 || strcmp(op_or_keyword.value, "எனர்") == 0 || strcmp(op_or_keyword.value, "எனில்") == 0) {
                 Token cond_v1 = get_next_token(file);
                 if (strcmp(cond_v1.value, "(") == 0) {
@@ -238,13 +235,13 @@ void parse_statement(FILE *file, Token t) {
                     tamizhi_gen_ternary(var_name, cond_v1.value, cond_pred.value, clean_v2, v1.value, false_val.value);
                 }
             }
-            // 🌟 சாதாரண கணித ஆபரேஷன்கள் பிளாக் (+, -, *, /)
             else if (op_or_keyword.type == 19 || strcmp(op_or_keyword.value, "+") == 0 || strcmp(op_or_keyword.value, "-") == 0 || strcmp(op_or_keyword.value, "*") == 0 || strcmp(op_or_keyword.value, "/") == 0) {
                 Token v2 = get_next_token(file);
+                tamizhi_trim_token(v1.value);
+                tamizhi_trim_token(v2.value);
                 tamizhi_gen_math_op(var_name, v1.value, op_or_keyword.value, v2.value);
             }
         } 
-        // 🅱️ '(' இருந்தால் பூட்டர் வழியா நடக்குற ஃபங்ஷன் இன்லைன் கால்
         else if (next_t.type == 15 || strcmp(next_t.value, "(") == 0) {
             Token tmp;
             while ((tmp = get_next_token(file)).type != T_EOF) {
@@ -277,7 +274,6 @@ void parse_statement(FILE *file, Token t) {
                 }
             }
 
-            // 🌟 லோக்கல் ஸ்கோப் மெமரி மேனேஜ்மென்ட் லாஜிக்
             if (func_body_pos != -1L) {
                 clearerr(file);
                 fseek(file, func_body_pos, SEEK_SET);
@@ -301,7 +297,7 @@ void parse_statement(FILE *file, Token t) {
                         fseek(file, func_body_pos, SEEK_SET);
                     }
                 }
-                var_count = previous_var_count; // லோக்கல் பங்க்ஷன் முடிந்ததும் மெமரியை கச்சிதமாக ரீசெட் செய்கிறது
+                var_count = previous_var_count;
             }
 
             clearerr(file);
@@ -310,7 +306,6 @@ void parse_statement(FILE *file, Token t) {
             fseek(file, current_pos, SEEK_SET);
         }
     }
-    // 4️⃣ அச்சிடு பிளாக் (print ;) -> திரையில் அவுட்புட் காட்ட
     else if (t.type == T_PRINT || strcmp(t.value, "அச்சிடு") == 0) {
         Token first = get_next_token(file);
         if (first.type == 15) first = get_next_token(file); 
@@ -322,6 +317,7 @@ void parse_statement(FILE *file, Token t) {
         char clean_target[256];
         memset(clean_target, 0, sizeof(clean_target));
         strncpy(clean_target, first.value, sizeof(clean_target) - 1);
+        tamizhi_trim_token(clean_target);
 
         tamizhi_gen_print(clean_target);
 
@@ -331,7 +327,6 @@ void parse_statement(FILE *file, Token t) {
             fseek(file, check_pos, SEEK_SET);
         }
     }
-    // 5️⃣ லூப் பிளாக் (for / சு) -> லூப்களைக் கையாளுவதற்கு
     else if (t.type == T_FOR || strcmp(t.value, "சு") == 0) {
         Token limit_token = get_next_token(file); 
         int limit = 0;
