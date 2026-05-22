@@ -82,12 +82,26 @@ void parse(FILE *file) {
 
     rewind(file);
     while ((t = get_next_token(file)).type != T_EOF) {
-        if (strcmp(t.value, "முதன்மை") == 0 || strcmp(t.value, "main") == 0 || strcmp(t.value, "main()") == 0) {
+        // 🌟 'main {' அல்லது ஸ்பேஸ் இல்லாத 'main()' கட்டமைப்பை கச்சிதமாக பிரிக்கும் லாஜிக்
+        if (strcmp(t.value, "முதன்மை") == 0 || strcmp(t.value, "main") == 0 || strncmp(t.value, "main", 4) == 0) {
+            long check_pos = ftell(file);
             Token brace_t = get_next_token(file);
-            if (brace_t.type != 22 && strcmp(brace_t.value, "{") != 0) {
-                while ((brace_t = get_next_token(file)).type != 22 && brace_t.type != T_EOF);
+            if (brace_t.type == 22 || strcmp(brace_t.value, "{") == 0) {
+                main_pos = ftell(file);
+            } else {
+                while ((brace_t = get_next_token(file)).type != T_EOF) {
+                    if (brace_t.type == 22 || strcmp(brace_t.value, "{") == 0) {
+                        main_pos = ftell(file);
+                        break;
+                    }
+                    if (strcmp(brace_t.value, "footer") == 0 || strcmp(brace_t.value, "பூட்டர்") == 0) {
+                        break;
+                    }
+                }
             }
-            main_pos = ftell(file);
+            if (main_pos != -1L) {
+                fseek(file, check_pos, SEEK_SET);
+            }
         }
         else if (strcmp(t.value, "பூட்டர்") == 0 || strcmp(t.value, "footer") == 0) {
             Token brace_t = get_next_token(file);
@@ -104,6 +118,7 @@ void parse(FILE *file) {
         main_generated = 1;
     }
 
+    // 🌟 மெயின் பிளாக்கின் எல்லை பாதுகாப்பு வளையம் (Main Block Scope Secured)
     if (main_pos != -1L) {
         clearerr(file);
         fseek(file, main_pos, SEEK_SET);
@@ -126,6 +141,7 @@ void parse(FILE *file) {
         }
     }
 
+    // 🌟 பூட்டர் பிளாக்கின் எல்லை பாதுகாப்பு வளையம் (Footer Block Scope Secured)
     if (footer_pos != -1L) {
         fprintf(stderr, " -> Phase 3 [Footer]: Launching execution...\n");
         clearerr(file);
@@ -163,7 +179,7 @@ void parse_statement(FILE *file, Token t) {
 
     if (t.type == 21 || strcmp(t.value, ";") == 0) return;
 
-    // 1️⃣ எண்கள் பிளாக் (Num a = 10 ;) -> முழு எண்களை டிக்ளேர் செய்ய
+    // 1️⃣ எண்கள் பிளாக் (Num a = 10 ;) -> முழு எண்களை டிக்ளேர் செய்ய 🌟 (தமிழ் கீவேர்ட் சிங்க் பிக்ஸ் செய்யப்பட்ட இடம்)
     if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
         Token name_token = get_next_token(file); 
         Token next = get_next_token(file);
@@ -171,7 +187,7 @@ void parse_statement(FILE *file, Token t) {
             next = get_next_token(file); 
         }
         Token val_token = get_next_token(file);
-        if (isdigit(val_token.value[0])) {
+        if (isdigit(val_token.value[0]) || val_token.value[0] == '-') {
             tamizhi_gen_var(name_token.value, atoi(val_token.value));
         }
     }
@@ -199,7 +215,7 @@ void parse_statement(FILE *file, Token t) {
             Token op_or_keyword = get_next_token(file);
             
             // 🌟 அட்வான்ஸ்டு டெர்னரி சிங்கிள்-லைன் கண்டிஷனல் அசைன்மென்ட் ஃபீச்சர் (Ternary Flow)
-            if (strcmp(op_or_keyword.value, "if") == 0 || strcmp(op_or_keyword.value, "எனில்") == 0) {
+            if (strcmp(op_or_keyword.value, "if") == 0 || strcmp(op_or_keyword.value, "எனர்") == 0 || strcmp(op_or_keyword.value, "எனில்") == 0) {
                 Token cond_v1 = get_next_token(file);
                 if (strcmp(cond_v1.value, "(") == 0) {
                     cond_v1 = get_next_token(file);
@@ -285,7 +301,7 @@ void parse_statement(FILE *file, Token t) {
                         fseek(file, func_body_pos, SEEK_SET);
                     }
                 }
-                var_count = previous_var_count;
+                var_count = previous_var_count; // லோக்கல் பங்க்ஷன் முடிந்ததும் மெமரியை கச்சிதமாக ரீசெட் செய்கிறது
             }
 
             clearerr(file);
