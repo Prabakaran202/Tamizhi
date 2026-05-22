@@ -16,12 +16,24 @@ LLVMBuilderRef builder;
 LLVMTargetMachineRef target_machine = NULL; 
 LLVMTypeRef printf_type;
 LLVMValueRef printf_func;
-LLVMValueRef i_ptr = NULL; 
 
 int loop_counter = 0;
 
+// ==========================================
+// 🌟 நெஸ்டட் லூப் ஆதரவிற்கான ஸ்டேக் கட்டமைப்பு
+// ==========================================
 typedef struct {
-    char name[100]; // 🌟 தமிழ் கேரக்டர்களின் UTF-8 பைட் அளவிற்காக 100 ஆக பாதுகாக்கப்பட்டுள்ளது
+    LLVMValueRef i_ptr;
+    LLVMBasicBlockRef cond_block;
+    LLVMBasicBlockRef body_block;
+    LLVMBasicBlockRef after_block;
+} LoopContext;
+
+LoopContext loop_stack[100];
+int loop_top = -1;
+
+typedef struct {
+    char name[100]; 
     LLVMValueRef alloca_ptr;
     int is_str_type;
     int has_static_val;
@@ -38,6 +50,34 @@ typedef struct {
 
 TamizhiFunction function_table[50];
 int func_count = 0;
+
+// 🌟 விளிம்புகளில் இருக்கும் ஸ்பேஸ்களை சுத்தமாக்கும் ட்ரிம் மெக்கானிசம்
+void tamizhi_codegen_trim(char *str) {
+    char *trim_p = str;
+    while(isspace((unsigned char)*trim_p)) trim_p++;
+    int len = strlen(trim_p);
+    while(len > 0 && isspace((unsigned char)trim_p[len-1])) {
+        trim_p[len-1] = '\0';
+        len--;
+    }
+    memmove(str, trim_p, strlen(trim_p) + 1);
+}
+
+// 🌟 என்ட்ரி பிளாக்கில் பாதுகாப்பாக மெமரி ஒதுக்கும் செயல்பாடு
+LLVMValueRef create_entry_alloca(LLVMValueRef function, LLVMTypeRef type, const char* name) {
+    LLVMBuilderRef temp_builder = LLVMCreateBuilder();
+    LLVMBasicBlockRef entry = LLVMGetEntryBasicBlock(function);
+    LLVMValueRef first_inst = LLVMGetFirstInstruction(entry);
+
+    if (first_inst)
+        LLVMPositionBuilderBefore(temp_builder, first_inst);
+    else
+        LLVMPositionBuilderAtEnd(temp_builder, entry);
+
+    LLVMValueRef alloca = LLVMBuildAlloca(temp_builder, type, name);
+    LLVMDisposeBuilder(temp_builder);
+    return alloca;
+}
 
 void tamizhi_generate_universal_bitcode(const char* filename) {
     if (LLVMWriteBitcodeToFile(module, filename) != 0) {
@@ -105,6 +145,7 @@ void tamizhi_codegen_init() {
     printf_func = LLVMAddFunction(module, "printf", printf_type);
 
     fprintf(stderr, " [Codegen] LLVM Engine Initialized with Target: %s\n", target_triple);
+    LLVMDisposeMessage(target_triple); // 🌟 மெமரி லீக் பிக்ஸ்
 }
 
 void tamizhi_generate_entry() {
@@ -116,8 +157,14 @@ void tamizhi_generate_entry() {
 }
 
 void tamizhi_gen_var(char* name, int value) {
+    char clean_res[100];
+    snprintf(clean_res, sizeof(clean_res), "%s", name);
+    tamizhi_codegen_trim(clean_res);
+
+    LLVMValueRef func = LLVMGetNamedFunction(module, "main");
+
     for(int i = 0; i < var_count; i++) {
-        if(strcmp(symbol_table[i].name, name) == 0) {
+        if(strcmp(symbol_table[i].name, clean_res) == 0) {
             symbol_table[i].static_val = value;
             symbol_table[i].has_static_val = 1;
             symbol_table[i].is_str_type = 0;
@@ -128,9 +175,12 @@ void tamizhi_gen_var(char* name, int value) {
         }
     }
     if (var_count >= 100) return;
-    LLVMValueRef alloca = LLVMBuildAlloca(builder, LLVMInt32Type(), name);
+
+    // 🌟 பாதுகாப்பான என்ட்ரி பிளாக் அலோகேஷன்
+    LLVMValueRef alloca = create_entry_alloca(func, LLVMInt32Type(), clean_res);
     LLVMBuildStore(builder, LLVMConstInt(LLVMInt32Type(), value, 0), alloca);
-    strcpy(symbol_table[var_count].name, name);
+
+    snprintf(symbol_table[var_count].name, sizeof(symbol_table[var_count].name), "%s", clean_res);
     symbol_table[var_count].alloca_ptr = alloca;
     symbol_table[var_count].is_str_type = 0;
     symbol_table[var_count].static_val = value;
@@ -139,8 +189,12 @@ void tamizhi_gen_var(char* name, int value) {
 }
 
 void tamizhi_gen_str(char* name, char* value) {
+    char clean_res[100];
+    snprintf(clean_res, sizeof(clean_res), "%s", name);
+    tamizhi_codegen_trim(clean_res);
+
     for(int i = 0; i < var_count; i++) {
-        if(strcmp(symbol_table[i].name, name) == 0) {
+        if(strcmp(symbol_table[i].name, clean_res) == 0) {
             LLVMValueRef str_ptr = LLVMBuildGlobalStringPtr(builder, value, "str_lit");
             symbol_table[i].alloca_ptr = str_ptr;
             symbol_table[i].is_str_type = 1;
@@ -150,7 +204,7 @@ void tamizhi_gen_str(char* name, char* value) {
     }
     if (var_count >= 100) return;
     LLVMValueRef str_ptr = LLVMBuildGlobalStringPtr(builder, value, "str_lit");
-    strcpy(symbol_table[var_count].name, name);
+    snprintf(symbol_table[var_count].name, sizeof(symbol_table[var_count].name), "%s", clean_res);
     symbol_table[var_count].alloca_ptr = str_ptr; 
     symbol_table[var_count].is_str_type = 1;
     symbol_table[var_count].has_static_val = 0;
@@ -158,17 +212,22 @@ void tamizhi_gen_str(char* name, char* value) {
 }
 
 void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2) {
+    char clean_res[100], clean_v1[100], clean_v2[100];
+    snprintf(clean_res, sizeof(clean_res), "%s", res_name); tamizhi_codegen_trim(clean_res);
+    snprintf(clean_v1, sizeof(clean_v1), "%s", var1); tamizhi_codegen_trim(clean_v1);
+    snprintf(clean_v2, sizeof(clean_v2), "%s", var2); tamizhi_codegen_trim(clean_v2);
+
     LLVMValueRef v1_val = NULL, v2_val = NULL;
     int s_val1 = 0, s_val2 = 0;
     int f1 = 0, f2 = 0;
 
-    if(isdigit(var1[0]) || var1[0] == '-') {
-        v1_val = LLVMConstInt(LLVMInt32Type(), atoi(var1), 0);
-        s_val1 = atoi(var1);
+    if(isdigit(clean_v1[0]) || clean_v1[0] == '-') {
+        v1_val = LLVMConstInt(LLVMInt32Type(), atoi(clean_v1), 0);
+        s_val1 = atoi(clean_v1);
         f1 = 1;
     } else {
         for(int i = 0; i < var_count; i++) {
-            if(strcmp(symbol_table[i].name, var1) == 0) {
+            if(strcmp(symbol_table[i].name, clean_v1) == 0) {
                 if(symbol_table[i].has_static_val) {
                     s_val1 = symbol_table[i].static_val;
                     f1 = 1;
@@ -179,13 +238,13 @@ void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2) {
         }
     }
 
-    if(isdigit(var2[0]) || var2[0] == '-') {
-        v2_val = LLVMConstInt(LLVMInt32Type(), atoi(var2), 0);
-        s_val2 = atoi(var2);
+    if(isdigit(clean_v2[0]) || clean_v2[0] == '-') {
+        v2_val = LLVMConstInt(LLVMInt32Type(), atoi(clean_v2), 0);
+        s_val2 = atoi(clean_v2);
         f2 = 1;
     } else {
         for(int i = 0; i < var_count; i++) {
-            if(strcmp(symbol_table[i].name, var2) == 0) {
+            if(strcmp(symbol_table[i].name, clean_v2) == 0) {
                 if(symbol_table[i].has_static_val) {
                     s_val2 = symbol_table[i].static_val;
                     f2 = 1;
@@ -210,6 +269,11 @@ void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2) {
             math_res = LLVMBuildMul(builder, v1_val, v2_val, "mul_tmp");
             calculated_val = s_val1 * s_val2;
         } else if (strcmp(op, "/") == 0) {
+            // 🌟 ஜீரோ வகுத்தல் பாதுகாப்பு வளையம் (Safe Division)
+            if(f2 && s_val2 == 0) {
+                fprintf(stderr, "[Runtime Error] Division by zero!\n");
+                return;
+            }
             math_res = LLVMBuildSDiv(builder, v1_val, v2_val, "div_tmp");
             if (s_val2 != 0) calculated_val = s_val1 / s_val2;
         }
@@ -219,7 +283,7 @@ void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2) {
             int found_idx = -1;
 
             for(int i = 0; i < var_count; i++) {
-                if(strcmp(symbol_table[i].name, res_name) == 0) {
+                if(strcmp(symbol_table[i].name, clean_res) == 0) {
                     target_ptr = symbol_table[i].alloca_ptr;
                     found_idx = i;
                     break;
@@ -227,8 +291,9 @@ void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2) {
             }
 
             if(!target_ptr && var_count < 100) {
-                target_ptr = LLVMBuildAlloca(builder, LLVMInt32Type(), res_name);
-                strcpy(symbol_table[var_count].name, res_name);
+                LLVMValueRef func = LLVMGetNamedFunction(module, "main");
+                target_ptr = create_entry_alloca(func, LLVMInt32Type(), clean_res);
+                snprintf(symbol_table[var_count].name, sizeof(symbol_table[var_count].name), "%s", clean_res);
                 symbol_table[var_count].alloca_ptr = target_ptr;
                 symbol_table[var_count].is_str_type = 0;
                 found_idx = var_count;
@@ -237,8 +302,10 @@ void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2) {
 
             if(target_ptr && found_idx != -1) {
                 LLVMBuildStore(builder, math_res, target_ptr);
-                symbol_table[found_idx].static_val = calculated_val;
-                symbol_table[found_idx].has_static_val = 1;
+                if(f1 && f2) {
+                    symbol_table[found_idx].static_val = calculated_val;
+                    symbol_table[found_idx].has_static_val = 1;
+                }
             }
         }
     }
@@ -248,16 +315,8 @@ void tamizhi_gen_print(char* var_name) {
     LLVMValueRef val = NULL;
     int is_string = 0;
     char clean_name[1024];
-    strcpy(clean_name, var_name);
-
-    char *trim_p = clean_name;
-    while(isspace(*trim_p)) trim_p++;
-    int len = strlen(trim_p);
-    while(len > 0 && isspace(trim_p[len-1])) {
-        trim_p[len-1] = '\0';
-        len--;
-    }
-    memmove(clean_name, trim_p, strlen(trim_p) + 1);
+    snprintf(clean_name, sizeof(clean_name), "%s", var_name);
+    tamizhi_codegen_trim(clean_name);
 
     int is_literal = 0;
     if ((clean_name[0] == '"' || clean_name[0] == '\'') && strlen(clean_name) > 2) {
@@ -282,8 +341,9 @@ void tamizhi_gen_print(char* var_name) {
         }
     }
 
-    if(!val && i_ptr && strcmp(clean_name, "i") == 0) {
-        val = LLVMBuildLoad2(builder, LLVMInt32Type(), i_ptr, "load_val");
+    // 🌟 நெஸ்டட் ஸ்டேக் லெவலில் லூப் கவுண்ட்டர் டிராக்கிங்
+    if(!val && loop_top >= 0 && strcmp(clean_name, "i") == 0) {
+        val = LLVMBuildLoad2(builder, LLVMInt32Type(), loop_stack[loop_top].i_ptr, "load_val");
     }
 
     if(!val && (isdigit(clean_name[0]) || clean_name[0] == '-') && !is_literal) {
@@ -304,24 +364,31 @@ void tamizhi_gen_print(char* var_name) {
 }
 
 void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* true_val, char* false_val) {
+    char clean_res[100], clean_v1[100], clean_v2[100], clean_t[100], clean_f[100];
+    snprintf(clean_res, sizeof(clean_res), "%s", res_name); tamizhi_codegen_trim(clean_res);
+    snprintf(clean_v1, sizeof(clean_v1), "%s", v1); tamizhi_codegen_trim(clean_v1);
+    snprintf(clean_v2, sizeof(clean_v2), "%s", v2); tamizhi_codegen_trim(clean_v2);
+    snprintf(clean_t, sizeof(clean_t), "%s", true_val); tamizhi_codegen_trim(clean_t);
+    snprintf(clean_f, sizeof(clean_f), "%s", false_val); tamizhi_codegen_trim(clean_f);
+
     LLVMValueRef val1 = NULL, val2 = NULL;
 
-    if (isdigit(v1[0]) || v1[0] == '-') {
-        val1 = LLVMConstInt(LLVMInt32Type(), atoi(v1), 0);
+    if (isdigit(clean_v1[0]) || clean_v1[0] == '-') {
+        val1 = LLVMConstInt(LLVMInt32Type(), atoi(clean_v1), 0);
     } else {
         for (int i = 0; i < var_count; i++) {
-            if (strcmp(symbol_table[i].name, v1) == 0) {
+            if (strcmp(symbol_table[i].name, clean_v1) == 0) {
                 val1 = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "t_v1");
                 break;
             }
         }
     }
 
-    if (isdigit(v2[0]) || v2[0] == '-') {
-        val2 = LLVMConstInt(LLVMInt32Type(), atoi(v2), 0);
+    if (isdigit(clean_v2[0]) || clean_v2[0] == '-') {
+        val2 = LLVMConstInt(LLVMInt32Type(), atoi(clean_v2), 0);
     } else {
         for (int i = 0; i < var_count; i++) {
-            if (strcmp(symbol_table[i].name, v2) == 0) {
+            if (strcmp(symbol_table[i].name, clean_v2) == 0) {
                 val2 = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "t_v2");
                 break;
             }
@@ -343,35 +410,26 @@ void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* tru
 
     LLVMValueRef t_val = NULL, f_val = NULL;
 
-    if (isdigit(true_val[0]) || true_val[0] == '-') {
-        t_val = LLVMConstInt(LLVMInt32Type(), atoi(true_val), 0);
+    if (isdigit(clean_t[0]) || clean_t[0] == '-') {
+        t_val = LLVMConstInt(LLVMInt32Type(), atoi(clean_t), 0);
     } else {
         for (int i = 0; i < var_count; i++) {
-            if (strcmp(symbol_table[i].name, true_val) == 0) {
+            if (strcmp(symbol_table[i].name, clean_t) == 0) {
                 t_val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "t_val");
                 break;
             }
         }
     }
 
-    char clean_false[100];
-    strcpy(clean_false, false_val);
-    char *semi_p = strchr(clean_false, ';');
+    char *semi_p = strchr(clean_f, ';');
     if (semi_p != NULL) *semi_p = '\0';
+    tamizhi_codegen_trim(clean_f);
 
-    char *trim_p = clean_false;
-    while(isspace(*trim_p)) trim_p++;
-    int len = strlen(trim_p);
-    while(len > 0 && isspace(trim_p[len-1])) {
-        trim_p[len-1] = '\0';
-        len--;
-    }
-
-    if (isdigit(trim_p[0]) || trim_p[0] == '-') {
-        f_val = LLVMConstInt(LLVMInt32Type(), atoi(trim_p), 0);
+    if (isdigit(clean_f[0]) || clean_f[0] == '-') {
+        f_val = LLVMConstInt(LLVMInt32Type(), atoi(clean_f), 0);
     } else {
         for (int i = 0; i < var_count; i++) {
-            if (strcmp(symbol_table[i].name, trim_p) == 0) {
+            if (strcmp(symbol_table[i].name, clean_f) == 0) {
                 f_val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "f_val");
                 break;
             }
@@ -386,15 +444,16 @@ void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* tru
     LLVMValueRef target_ptr = NULL;
     int target_idx = -1;
     for (int i = 0; i < var_count; i++) {
-        if (strcmp(symbol_table[i].name, res_name) == 0) {
+        if (strcmp(symbol_table[i].name, clean_res) == 0) {
             target_ptr = symbol_table[i].alloca_ptr;
             target_idx = i;
             break;
         }
     }
     if (!target_ptr && var_count < 100) {
-        target_ptr = LLVMBuildAlloca(builder, LLVMInt32Type(), res_name);
-        strcpy(symbol_table[var_count].name, res_name);
+        LLVMValueRef func = LLVMGetNamedFunction(module, "main");
+        target_ptr = create_entry_alloca(func, LLVMInt32Type(), clean_res);
+        snprintf(symbol_table[var_count].name, sizeof(symbol_table[var_count].name), "%s", clean_res);
         symbol_table[var_count].alloca_ptr = target_ptr;
         symbol_table[var_count].is_str_type = 0;
         target_idx = var_count;
@@ -402,48 +461,57 @@ void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* tru
     }
     if (target_ptr && target_idx != -1) {
         LLVMBuildStore(builder, select_res, target_ptr);
-        // 🌟 டெர்னரிக்கு பின் வரும் கணக்கீடுகளுக்காக ஸ்டேடிக் வால்யூ டிராக்கிங்கை ரீசெட் செய்கிறோம்
         symbol_table[target_idx].has_static_val = 0; 
     }
 }
 
+// 🌟 புதிய பக்-ஃப்ரீ நெஸ்டட் ஸ்டேக் லூப் தொடக்கம்
 void tamizhi_gen_loop_start(int limit) {
     LLVMValueRef func = LLVMGetNamedFunction(module, "main");
+    loop_top++;
+    LoopContext* ctx = &loop_stack[loop_top];
 
     char cond_name[32], body_name[32], after_name[32];
-    sprintf(cond_name, "loop_cond_%d", loop_counter);
-    sprintf(body_name, "loop_body_%d", loop_counter);
-    sprintf(after_name, "loop_after_%d", loop_counter);
+    snprintf(cond_name, sizeof(cond_name), "loop_cond_%d", loop_counter);
+    snprintf(body_name, sizeof(body_name), "loop_body_%d", loop_counter);
+    snprintf(after_name, sizeof(after_name), "loop_after_%d", loop_counter);
     loop_counter++;
 
-    LLVMBasicBlockRef l_cond = LLVMAppendBasicBlock(func, cond_name);
-    LLVMBasicBlockRef l_body = LLVMAppendBasicBlock(func, body_name);
-    LLVMBasicBlockRef l_after = LLVMAppendBasicBlock(func, after_name);
+    ctx->cond_block = LLVMAppendBasicBlock(func, cond_name);
+    ctx->body_block = LLVMAppendBasicBlock(func, body_name);
+    ctx->after_block = LLVMAppendBasicBlock(func, after_name);
 
-    i_ptr = LLVMBuildAlloca(builder, LLVMInt32Type(), "i");
-    LLVMBuildStore(builder, LLVMConstInt(LLVMInt32Type(), 0, 0), i_ptr);
-    LLVMBuildBr(builder, l_cond);
+    ctx->i_ptr = create_entry_alloca(func, LLVMInt32Type(), "i");
+    LLVMBuildStore(builder, LLVMConstInt(LLVMInt32Type(), 0, 0), ctx->i_ptr);
+    LLVMBuildBr(builder, ctx->cond_block);
 
-    LLVMPositionBuilderAtEnd(builder, l_cond);
-    LLVMValueRef i_val = LLVMBuildLoad2(builder, LLVMInt32Type(), i_ptr, "i_val");
-    LLVMValueRef cond = LLVMBuildICmp(builder, LLVMIntSLT, i_val, LLVMConstInt(LLVMInt32Type(), limit, 0), "tmp_cond");
-    LLVMBuildCondBr(builder, cond, l_body, l_after);
+    LLVMPositionBuilderAtEnd(builder, ctx->cond_block);
+    LLVMValueRef i_val = LLVMBuildLoad2(builder, LLVMInt32Type(), ctx->i_ptr, "i_val");
+    LLVMValueRef cond = LLVMBuildICmp(builder, LLVMIntSLT, i_val, LLVMConstInt(LLVMInt32Type(), limit, 0), "loop_cond");
+    LLVMBuildCondBr(builder, cond, ctx->body_block, ctx->after_block);
 
-    LLVMPositionBuilderAtEnd(builder, l_body);
+    LLVMPositionBuilderAtEnd(builder, ctx->body_block);
 }
 
+// 🌟 புதிய பக்-ஃப்ரீ நெஸ்டட் ஸ்டேக் லூப் முடிவு
 void tamizhi_gen_loop_end() {
-    LLVMBasicBlockRef current_body = LLVMGetInsertBlock(builder);
+    if(loop_top < 0) return;
+    LoopContext* ctx = &loop_stack[loop_top];
 
-    LLVMBasicBlockRef l_cond = LLVMGetPreviousBasicBlock(current_body);
-    LLVMBasicBlockRef l_after = LLVMGetNextBasicBlock(current_body);
-
-    LLVMValueRef i_val = LLVMBuildLoad2(builder, LLVMInt32Type(), i_ptr, "i_val");
+    LLVMValueRef i_val = LLVMBuildLoad2(builder, LLVMInt32Type(), ctx->i_ptr, "i_val");
     LLVMValueRef next_val = LLVMBuildAdd(builder, i_val, LLVMConstInt(LLVMInt32Type(), 1, 0), "next_i");
-    LLVMBuildStore(builder, next_val, i_ptr);
+    LLVMBuildStore(builder, next_val, ctx->i_ptr);
 
-    LLVMBuildBr(builder, l_cond); 
-    LLVMPositionBuilderAtEnd(builder, l_after);
+    LLVMBuildBr(builder, ctx->cond_block); 
+    LLVMPositionBuilderAtEnd(builder, ctx->after_block);
+    loop_top--;
+}
+
+// 🌟 மெமரி கசிவு இல்லாத கச்சிதமான த்ரெட்டிங் டிஸ்ட்ராயர்
+void tamizhi_codegen_destroy() {
+    if(target_machine) LLVMDisposeTargetMachine(target_machine);
+    if(builder) LLVMDisposeBuilder(builder);
+    if(module) LLVMDisposeModule(module);
 }
 
 void tamizhi_codegen_finish() {
@@ -465,5 +533,7 @@ void tamizhi_codegen_finish() {
     fprintf(stderr, "\n[Execution] Running compiled logic...\n");
     system("lli output.bc"); 
     fprintf(stderr, "\n[Codegen] --- Tamizhi Universal Engine: SUCCESS ---\n");
-    LLVMDisposeBuilder(builder);
+    
+    // கம்ப்ளீட் கிளீன் அப் ரிசோர்ஸ் காலி செய்தல்
+    tamizhi_codegen_destroy();
 }
