@@ -5,7 +5,7 @@
 #include <string.h>
 #include <ctype.h>
 
-// 🌟 எல்எல்விஎம் கோடெஜன் பங்க்ஷன்களின் முன்-டிக்ளரேஷன்
+// 🌟 எல்எல்விஎம் கோடெஜன் பங்க்ஷன்களின் முன்-டிக்ளரேஷன் (Forward Declarations)
 void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2);
 void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* var2, char* true_val, char* false_val);
 
@@ -82,7 +82,7 @@ void parse(FILE *file) {
 
     rewind(file);
     while ((t = get_next_token(file)).type != T_EOF) {
-        if (strcmp(t.value, "முதன்மை") == 0 || strcmp(t.value, "main") == 0) {
+        if (strcmp(t.value, "முதன்மை") == 0 || strcmp(t.value, "main") == 0 || strcmp(t.value, "main()") == 0) {
             Token brace_t = get_next_token(file);
             if (brace_t.type != 22 && strcmp(brace_t.value, "{") != 0) {
                 while ((brace_t = get_next_token(file)).type != 22 && brace_t.type != T_EOF);
@@ -109,13 +109,18 @@ void parse(FILE *file) {
         fseek(file, main_pos, SEEK_SET);
         int main_brace_count = 1;
 
-        while (main_brace_count > 0 && (t = get_next_token(file)).type != T_EOF) {
+        while (main_brace_count > 0) {
+            t = get_next_token(file);
+            if (t.type == T_EOF) break;
+
             if (t.type == 22 || strcmp(t.value, "{") == 0) {
                 main_brace_count++;
+                continue;
             }
             if (t.type == 23 || strcmp(t.value, "}") == 0) {
                 main_brace_count--;
                 if (main_brace_count <= 0) break; 
+                continue;
             }
             parse_statement(file, t);
         }
@@ -128,7 +133,6 @@ void parse(FILE *file) {
 
         int footer_brace_count = 1;
         while (footer_brace_count > 0) {
-            long pre_tok_pos = ftell(file);
             t = get_next_token(file);
             if (t.type == T_EOF) break;
 
@@ -183,7 +187,7 @@ void parse_statement(FILE *file, Token t) {
             tamizhi_gen_str(name_token.value, val_token.value);
         }
     }
-    // 3️⃣ ஐடென்டிஃபையர் பிளாக் (Identifier Block): மேத்ஸ் ஆபரேஷன், டெர்னரி எக்ஸ்பிரஷன் அல்லது ஃபங்ஷன் கால்கள்
+    // 3️⃣ ஐடென்டிஃபையர் பிளாக் (Identifier Block): கணித ஆபரேஷன், டெர்னரி எக்ஸ்பிரஷன் அல்லது ஃபங்ஷன் கால்கள்
     else if (t.type == T_ID) {
         char var_name[100];
         strcpy(var_name, t.value); 
@@ -257,6 +261,7 @@ void parse_statement(FILE *file, Token t) {
                 }
             }
 
+            // 🌟 லோக்கல் ஸ்கோப் மெமரி மேனேஜ்மென்ட் லாஜிக்
             if (func_body_pos != -1L) {
                 clearerr(file);
                 fseek(file, func_body_pos, SEEK_SET);
