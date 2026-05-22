@@ -541,4 +541,25 @@ void tamizhi_codegen_finish() {
     const char *out_file = "output.o";
     if (target_machine) {
         if (LLVMTargetMachineEmitToFile(target_machine, module, (char*)out_file, LLVMObjectFile, &error)) {
-            fprintf(stderr, " [
+            fprintf(stderr, " [Codegen Error] Failed to emit machine code: %s\n", error);
+            LLVMDisposeMessage(error);
+        }
+    }
+    
+    // 🌟 பிரபாவின் பக்கா AOT கம்பைலேஷன் பைய்ன்லைன் எக்ஸிகியூஷன்!
+    tamizhi_binary_to_dna_storage(out_file);
+    remove(out_file);
+    
+    fprintf(stderr, "\n[Execution] Running compiled logic...\n");
+    // அண்ட்ராய்டு / லினக்ஸ் சிஸ்டம் பைப்லைன் ரன்டைம் எக்ஸிகியூஷன்
+    #ifdef __ANDROID__
+    system("llc output.bc -filetype=obj -o output.o");
+    system("clang output.o -o output");
+    system("./output");
+    #else
+    system("lli output.bc"); 
+    #endif
+
+    fprintf(stderr, "\n[Codegen] --- Tamizhi Universal Engine: SUCCESS ---\n");
+    tamizhi_codegen_destroy();
+}
