@@ -4,7 +4,7 @@
 #include <llvm-c/TargetMachine.h>
 #include <llvm-c/Target.h>
 #include <llvm-c/BitWriter.h> 
-/* 🌟 பாஸ் மேனேஜர் பில்டர் ஹெடர் நீக்கப்பட்டு, லோக்கல் ஸ்கேலார் ஹெடர்கள் மட்டும் பயன்படுத்தப்படுகிறது */
+/* 🌟 பாஸ் மேனேஜர் பில்டர் ஹெடர் நீக்கப்பட்டு, நவீன LLVM-க்கான ஸ்கேலார் ஹெடர்கள் பயன்படுத்தப்படுகிறது */
 #include <llvm-c/Transforms/Scalar.h>
 #include <llvm-c/Transforms/Utils.h>
 #include <stdio.h>
@@ -526,22 +526,23 @@ void tamizhi_codegen_destroy() {
     if(module) LLVMDisposeModule(module);
 }
 
-// 🌟 நவீன ஆப்டிமைசேஷன் பாஸஸ் இன்டகிரேஷன் பங்க்ஷன்க்
+// 🌟 நவீன ஆப்டிமைசேஷன் பாஸஸ் இன்டகிரேஷன் பங்க்ஷன்
 static void tamizhi_optimize_module() {
     fprintf(stderr, " [Optimizer] Constructing Scalar Pass Management Pipelines...\n");
     LLVMPassManagerRef pass_manager = LLVMCreatePassManager();
-    
+
     // mem2reg: ஸ்டாக் மெமரி மாறிகளை சிபிஇயு ரெஜிஸ்டர்களாக மாற்றும்
     LLVMAddPromoteMemoryToRegisterPass(pass_manager);
-    
+
     // இன்ஸ்ட்ரக்ஷன் கம்பைனிங்: எக்ஸ்பிரஷன்களை சுருக்கும்
     LLVMAddInstructionCombiningPass(pass_manager);
-    
+
     // GVN: டூப்ளிகேட் கோடுகளை நீக்கும்
     LLVMAddGVNPass(pass_manager);
-    
+
     // CFG Simplification: தேவையற்ற ஜம்ப்களை நீக்கும்
     LLVMAddCFGSimplificationPass(pass_manager);
-    
+
     LLVMRunPassManager(pass_manager, module);
-    LLVMDisposePassManager(pass_manage
+    LLVMDisposePassManager(pass_manager);
+    fprintf(stderr
