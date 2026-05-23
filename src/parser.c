@@ -224,19 +224,42 @@ void parse_statement(FILE *file, Token t) {
 
         if (next_t.type == 20 || strcmp(next_t.value, "=") == 0) {
             Token v1 = get_next_token(file); 
-
-            // 🌟 மாஸ்டர் பிக்ஸ்: தமிழ் யூனிகோட் டோக்கன் ஆப்செட்டை சீரமைக்க லோக்கல் ரீட் செய்யப்படுகிறது
-            long backup_op_pos = ftell(file);
-            Token op_or_keyword = get_next_token(file);
-
-            // ஒருவேளை லெக்சர் பஃபர்ல ஸ்பேஸ்னால டோக்கன் மாறினால், 'if' கீவேர்டுக்காக ரீ-ஸ்கேன் செய்யப்படுகிறது
+            
+            // 🌟 மாஸ்டர் லுக்அஹெட்: வரியின் அடுத்த 4 டோக்கன்களுக்குள் 'if' இருக்கிறதா என்று முன்கூட்டியே ஸ்கேன் செய்கிறோம்
+            long lookahead_pos = ftell(file);
+            int is_ternary_line = 0;
+            Token check_t;
+            
+            // ஒருவேளை v1 மதிப்பே 'if' ஆக இருந்தாலும் அது டெர்னரிதான்
             if (strcmp(v1.value, "if") == 0 || v1.type == T_IF) {
-                op_or_keyword = v1;
-                v1.value[0] = '0'; v1.value[1] = '\0'; // டிஃபால்ட் மதிப்பு அலைன்மென்ட்
+                is_ternary_line = 1;
+            } else {
+                for (int scan_idx = 0; scan_idx < 4; scan_idx++) {
+                    check_t = get_next_token(file);
+                    if (strcmp(check_t.value, "if") == 0 || check_t.type == T_IF) {
+                        is_ternary_line = 1;
+                        break;
+                    }
+                    if (check_t.type == 21 || strcmp(check_t.value, ";") == 0 || check_t.type == T_EOF) {
+                        break;
+                    }
+                }
             }
+            
+            // லுக்அஹெட் ஸ்கேன் முடிந்ததும் ஃபைல் பாயிண்டரை பழைய இடத்திற்கே ரீசெட் செய்கிறோம்
+            fseek(file, lookahead_pos, SEEK_SET);
 
-            // அட்வான்ஸ்டு டெர்னரி கண்டிஷனல் எக்ஸ்பிரஷன் பைப்லைன்
-            if (strcmp(op_or_keyword.value, "if") == 0 || op_or_keyword.type == T_IF || strcmp(v1.value, "if") == 0) {
+            // 🌟 1. அட்வான்ஸ்டு டெர்னரி கண்டிஷனல் எக்ஸ்பிரஷன் பைப்லைன்
+            if (is_ternary_line) {
+                Token op_or_keyword = get_next_token(file);
+                
+                // ஒருவேளை ஆப்செட் காரணமாக டோக்கன் மாறினால் 'if' கீவேர்டை சீரமைக்கிறோம்
+                if (strcmp(op_or_keyword.value, "if") != 0 && op_or_keyword.type != T_IF) {
+                    while ((op_or_keyword = get_next_token(file)).type != T_EOF) {
+                        if (strcmp(op_or_keyword.value, "if") == 0 || op_or_keyword.type == T_IF) break;
+                    }
+                }
+
                 Token cond_v1 = get_next_token(file);
                 if (strcmp(cond_v1.value, "(") == 0) {
                     cond_v1 = get_next_token(file);
@@ -261,12 +284,15 @@ void parse_statement(FILE *file, Token t) {
                     fprintf(stderr, "[Syntax Error] வரி %d: டெர்னரி நிபந்தனையில் 'else' பிளாக் விடுபட்டுள்ளது\n", t.line);
                 }
             }
-            // எல்எல்விஎம் நேடிவ் மேத்ஸ் லாஜிக் ரன்டைம்
-            else if (op_or_keyword.type == 19 || strcmp(op_or_keyword.value, "+") == 0 || strcmp(op_or_keyword.value, "-") == 0 || strcmp(op_or_keyword.value, "*") == 0 || strcmp(op_or_keyword.value, "/") == 0) {
-                Token v2 = get_next_token(file);
-                tamizhi_trim_token(v1.value);
-                tamizhi_trim_token(v2.value);
-                tamizhi_gen_math_op(var_name, v1.value, op_or_keyword.value, v2.value);
+            // 🌟 2. எல்எல்விஎம் நேடிவ் மேத்ஸ் லாஜிக் ரன்டைம்
+            else {
+                Token op_or_keyword = get_next_token(file);
+                if (op_or_keyword.type == 19 || strcmp(op_or_keyword.value, "+") == 0 || strcmp(op_or_keyword.value, "-") == 0 || strcmp(op_or_keyword.value, "*") == 0 || strcmp(op_or_keyword.value, "/") == 0) {
+                    Token v2 = get_next_token(file);
+                    tamizhi_trim_token(v1.value);
+                    tamizhi_trim_token(v2.value);
+                    tamizhi_gen_math_op(var_name, v1.value, op_or_keyword.value, v2.value);
+                }
             }
         } 
         // நிகழ்வு (Function Call) பகுப்பாய்வு
