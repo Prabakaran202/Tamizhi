@@ -77,20 +77,27 @@ Token get_next_token(FILE *file) {
         int i = 0;
         while ((c = fgetc(file)) != '"' && c != EOF) {
             if (c == '\n') current_line++; // ஸ்ட்ரிங்கிற்குள் புதிய வரி இருந்தாலும் கணக்கிடும்
-            token.value[i++] = c;
+            
+            // 🌟 பஃபர் பாதுகாப்பு அடுக்கு (Segmentation Fault வராமல் தடுக்கிறது)
+            if (i < 1023) {
+                token.value[i++] = c;
+            }
         }
         token.value[i] = '\0';
         token.type = T_STR; 
         return token;
     }
 
-    // தமிழ் மற்றும் ஆங்கில எழுத்துக்கள் (Identifiers / Keywords)
-    if (isalpha(c) || (unsigned char)c > 127) {
+    // 🌟 மாஸ்டர் யூனிகோட் ஃபிக்ஸ்: தமிழ் மற்றும் ஆங்கில எழுத்துக்கள் (Identifiers / Keywords)
+    if (isalpha(c) || (unsigned char)c >= 128 || c == '_') {
         int i = 0;
         do {
-            token.value[i++] = c;
+            // 🌟 பஃபர் பாதுகாப்பு அடுக்கு
+            if (i < 1023) {
+                token.value[i++] = c;
+            }
             c = fgetc(file);
-        } while (isalnum(c) || (unsigned char)c > 127 || c == '2' || c == '_'); 
+        } while (isalpha(c) || isdigit(c) || (unsigned char)c >= 128 || c == '_'); 
         ungetc(c, file);
         token.value[i] = '\0';
         token.type = get_keyword_type(token.value);
@@ -101,7 +108,10 @@ Token get_next_token(FILE *file) {
     if (isdigit(c)) {
         int i = 0;
         while (isdigit(c)) {
-            token.value[i++] = c;
+            // 🌟 பஃபர் பாதுகாப்பு அடுக்கு
+            if (i < 1023) {
+                token.value[i++] = c;
+            }
             c = fgetc(file);
         }
         ungetc(c, file);
