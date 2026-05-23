@@ -2,6 +2,9 @@
 #include <string.h>
 #include <ctype.h>
 
+// 🌟 உலகளாவிய வரி எண் மாறி (Global Line Counter)
+int current_line = 1;
+
 T_Type get_keyword_type(char* value) {
     // 1. அமைப்பு / Structure
     if (strcmp(value, "முதன்மை") == 0 || strcmp(value, "main") == 0) return T_MAIN;
@@ -35,7 +38,16 @@ Token get_next_token(FILE *file) {
     Token token;
     int c = fgetc(file);
 
-    while (isspace(c)) c = fgetc(file);
+    // 🌟 ஒயிட்ஸ்பேஸ்களை கடக்கும்போது புதிய வரிகளை துல்லியமாக கணக்கிடும் வளையம்
+    while (isspace(c)) {
+        if (c == '\n') {
+            current_line++;
+        }
+        c = fgetc(file);
+    }
+
+    // தற்போதைய டோக்கன் எந்த வரியில் இருக்கிறது என்பதை டோக்கன் ஸ்ட்ரக்சரில் லாக் செய்கிறோம்
+    token.line = current_line;
 
     if (c == EOF) {
         token.type = T_EOF;
@@ -43,10 +55,11 @@ Token get_next_token(FILE *file) {
         return token;
     }
 
-    // 🧵 சரங்களைக் கையாளுதல்
+    // 🧵 சரங்களைக் கையாளுதல் (String Literals)
     if (c == '"') {
         int i = 0;
         while ((c = fgetc(file)) != '"' && c != EOF) {
+            if (c == '\n') current_line++; // ஸ்ட்ரிங்கிற்குள் புதிய வரி இருந்தாலும் கணக்கிடும்
             token.value[i++] = c;
         }
         token.value[i] = '\0';
@@ -54,7 +67,7 @@ Token get_next_token(FILE *file) {
         return token;
     }
 
-    // தமிழ் மற்றும் ஆங்கில எழுத்துக்கள்
+    // தமிழ் மற்றும் ஆங்கில எழுத்துக்கள் (Identifiers / Keywords)
     if (isalpha(c) || (unsigned char)c > 127) {
         int i = 0;
         do {
@@ -67,7 +80,7 @@ Token get_next_token(FILE *file) {
         return token;
     }
 
-    // எண்களைக் கையாளுதல்
+    // எண்களைக் கையாளுதல் (Numbers)
     if (isdigit(c)) {
         int i = 0;
         while (isdigit(c)) {
@@ -86,10 +99,8 @@ Token get_next_token(FILE *file) {
 
     if (c == '(') token.type = 15;
     else if (c == ')') token.type = 16;
-    // ⭐ இங்கே 21-ஐ செமிகோலனுக்குக் கொடுத்துள்ளேன், பார்ஸர் இதைத்தான் தேடும்
     else if (c == ';') token.type = 21; 
     else if (c == '<') token.type = 18;
-    // ⭐ கிரட்டர்தேன் குறியீட்டுக்கு வேறொரு எண் (எ.கா: 24) கொடுத்துள்ளேன்
     else if (c == '>') token.type = 24; 
     else if (c == '+') token.type = 19;
     else if (c == '-') token.type = 56; 
