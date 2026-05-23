@@ -9,10 +9,13 @@
 #include <string.h>
 #include <ctype.h>
 
-/* 🌟 புதிய LLVM 19/21 ஆர்கிடெக்சரில் லெகசி Transforms/Scalar.h மற்றும் Utils.h ஹெடர்கள் 
+/* 🌟 நவீன LLVM 19/21 ஆர்கிடெக்சரில் லெகசி Transforms/Scalar.h மற்றும் Utils.h ஹெடர்கள் 
    முழுமையாக நீக்கப்பட்டுவிட்டதால், பில்ட் எரரைத் தவிர்க்க அவை இங்கிருந்து கம்ப்ளீட்டாக அகற்றப்பட்டுள்ளன. */
 
 extern void encode_logic(const char* input_path, const char* output_path);
+
+// 🌟 லெக்சரிலிருந்து உலகளாவிய தற்போதைய வரி எண் மாறியை வாங்குகிறோம்
+extern int current_line; 
 
 LLVMModuleRef module;
 LLVMBuilderRef builder;
@@ -286,8 +289,9 @@ void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2) {
             math_res = LLVMBuildMul(builder, v1_val, v2_val, "mul_tmp");
             calculated_val = s_val1 * s_val2;
         } else if (strcmp(op, "/") == 0) {
+            // 🌟 பக் ஃபிக்ஸ்: ரன்டைம் எரரில் துல்லியமான வரி எண்ணை அச்சிடுதல்
             if(f2 && s_val2 == 0) {
-                fprintf(stderr, "[Runtime Error] Division by zero!\n");
+                fprintf(stderr, "[Runtime Error] வரி %d: பூஜ்ஜியத்தால் வகுக்க முடியாது (Division by zero)!\n", current_line);
                 return;
             }
             math_res = LLVMBuildSDiv(builder, v1_val, v2_val, "div_tmp");
@@ -526,13 +530,9 @@ void tamizhi_codegen_destroy() {
     if(module) LLVMDisposeModule(module);
 }
 
-// 🌟 நவீன எல்எல்விஎம் 21-ற்கான ஆப்டிமைசேஷன் லேயர்
 static void tamizhi_optimize_module() {
     fprintf(stderr, " [Optimizer] Constructing Base Pass Management Pipelines...\n");
     LLVMPassManagerRef pass_manager = LLVMCreatePassManager();
-    
-    /* LLVM 21+ நியூ பாஸ் மேனேஜர் கட்டமைப்பிற்கு இணங்க, மாடியூலில் இருக்கும் 
-       பேசிக் கண்ட்ரோல் பிளாக்குகளை எரர் இல்லாமல் லோடு செய்ய நேரடி பாஸ் மேனேஜர் ரன் செய்யப்படுகிறது */
     LLVMRunPassManager(pass_manager, module);
     LLVMDisposePassManager(pass_manager);
     fprintf(stderr, " [Optimizer] Optimizations layer deployment complete.\n");
@@ -543,7 +543,6 @@ void tamizhi_codegen_finish() {
         LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0, 0));
     }
 
-    // 🌟 வெரிஃபிகேஷன் லேயர் (IR Validation)
     char *verify_err = NULL;
     if (LLVMVerifyModule(module, LLVMReturnStatusAction, &verify_err)) {
         fprintf(stderr, "[Fatal LLVM IR Error]\n%s\n", verify_err);
@@ -553,7 +552,6 @@ void tamizhi_codegen_finish() {
     }
     fprintf(stderr, " [Verifier] IR Graph Validated. Structural anomalies zero.\n");
 
-    // ஆப்டிமைசேஷன் பாஸை இயக்குதல்
     tamizhi_optimize_module();
 
     tamizhi_generate_universal_bitcode("output.bc");
@@ -565,10 +563,10 @@ void tamizhi_codegen_finish() {
             LLVMDisposeMessage(error);
         }
     }
-    
+
     tamizhi_binary_to_dna_storage(out_file);
     remove(out_file);
-    
+
     fprintf(stderr, "\n[Execution] Running compiled logic via Native AOT VM...\n");
     #ifdef __ANDROID__
     system("llc output.bc -filetype=obj -o output.o");
