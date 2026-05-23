@@ -545,4 +545,49 @@ static void tamizhi_optimize_module() {
 
     LLVMRunPassManager(pass_manager, module);
     LLVMDisposePassManager(pass_manager);
-    fprintf(stderr
+    fprintf(stderr, " [Optimizer] Optimizations layer deployment complete.\n");
+}
+
+void tamizhi_codegen_finish() {
+    if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder)) == NULL) {
+        LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0, 0));
+    }
+
+    // 🌟 வெரிஃபிகேஷன் லேயர் (IR Validation)
+    char *verify_err = NULL;
+    if (LLVMVerifyModule(module, LLVMReturnStatusAction, &verify_err)) {
+        fprintf(stderr, "[Fatal LLVM IR Error]\n%s\n", verify_err);
+        LLVMDisposeMessage(verify_err);
+        tamizhi_codegen_destroy();
+        exit(1);
+    }
+    fprintf(stderr, " [Verifier] IR Graph Validated. Structural anomalies zero.\n");
+
+    // ஆப்டிமைசேஷன் பாஸ்களை இயக்குதல்
+    tamizhi_optimize_module();
+
+    tamizhi_generate_universal_bitcode("output.bc");
+    char *error = NULL;
+    const char *out_file = "output.o";
+    if (target_machine) {
+        if (LLVMTargetMachineEmitToFile(target_machine, module, (char*)out_file, LLVMObjectFile, &error)) {
+            fprintf(stderr, " [Codegen Error] Failed to emit machine code: %s\n", error);
+            LLVMDisposeMessage(error);
+        }
+    }
+    
+    tamizhi_binary_to_dna_storage(out_file);
+    remove(out_file);
+    
+    fprintf(stderr, "\n[Execution] Running compiled logic via Native AOT VM...\n");
+    #ifdef __ANDROID__
+    system("llc output.bc -filetype=obj -o output.o");
+    system("clang output.o -o output");
+    system("./output");
+    #else
+    system("lli output.bc"); 
+    #endif
+
+    fprintf(stderr, "\n[Codegen] --- Tamizhi Universal Engine: SUCCESS ---\n");
+    tamizhi_codegen_destroy();
+}
