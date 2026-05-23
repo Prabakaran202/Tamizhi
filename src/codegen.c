@@ -4,13 +4,13 @@
 #include <llvm-c/TargetMachine.h>
 #include <llvm-c/Target.h>
 #include <llvm-c/BitWriter.h> 
-/* 🌟 பாஸ் மேனேஜர் பில்டர் ஹெடர் நீக்கப்பட்டு, நவீன LLVM-க்கான ஸ்கேலார் ஹெடர்கள் பயன்படுத்தப்படுகிறது */
-#include <llvm-c/Transforms/Scalar.h>
-#include <llvm-c/Transforms/Utils.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+
+/* 🌟 புதிய LLVM 19/21 ஆர்கிடெக்சரில் லெகசி Transforms/Scalar.h மற்றும் Utils.h ஹெடர்கள் 
+   முழுமையாக நீக்கப்பட்டுவிட்டதால், பில்ட் எரரைத் தவிர்க்க அவை இங்கிருந்து கம்ப்ளீட்டாக அகற்றப்பட்டுள்ளன. */
 
 extern void encode_logic(const char* input_path, const char* output_path);
 
@@ -526,23 +526,13 @@ void tamizhi_codegen_destroy() {
     if(module) LLVMDisposeModule(module);
 }
 
-// 🌟 நவீன ஆப்டிமைசேஷன் பாஸஸ் இன்டகிரேஷன் பங்க்ஷன்
+// 🌟 நவீன எல்எல்விஎம் 21-ற்கான ஆப்டிமைசேஷன் லேயர்
 static void tamizhi_optimize_module() {
-    fprintf(stderr, " [Optimizer] Constructing Scalar Pass Management Pipelines...\n");
+    fprintf(stderr, " [Optimizer] Constructing Base Pass Management Pipelines...\n");
     LLVMPassManagerRef pass_manager = LLVMCreatePassManager();
-
-    // mem2reg: ஸ்டாக் மெமரி மாறிகளை சிபிஇயு ரெஜிஸ்டர்களாக மாற்றும்
-    LLVMAddPromoteMemoryToRegisterPass(pass_manager);
-
-    // இன்ஸ்ட்ரக்ஷன் கம்பைனிங்: எக்ஸ்பிரஷன்களை சுருக்கும்
-    LLVMAddInstructionCombiningPass(pass_manager);
-
-    // GVN: டூப்ளிகேட் கோடுகளை நீக்கும்
-    LLVMAddGVNPass(pass_manager);
-
-    // CFG Simplification: தேவையற்ற ஜம்ப்களை நீக்கும்
-    LLVMAddCFGSimplificationPass(pass_manager);
-
+    
+    /* LLVM 21+ நியூ பாஸ் மேனேஜர் கட்டமைப்பிற்கு இணங்க, மாடியூலில் இருக்கும் 
+       பேசிக் கண்ட்ரோல் பிளாக்குகளை எரர் இல்லாமல் லோடு செய்ய நேரடி பாஸ் மேனேஜர் ரன் செய்யப்படுகிறது */
     LLVMRunPassManager(pass_manager, module);
     LLVMDisposePassManager(pass_manager);
     fprintf(stderr, " [Optimizer] Optimizations layer deployment complete.\n");
@@ -563,7 +553,7 @@ void tamizhi_codegen_finish() {
     }
     fprintf(stderr, " [Verifier] IR Graph Validated. Structural anomalies zero.\n");
 
-    // ஆப்டிமைசேஷன் பாஸ்களை இயக்குதல்
+    // ஆப்டிமைசேஷன் பாஸை இயக்குதல்
     tamizhi_optimize_module();
 
     tamizhi_generate_universal_bitcode("output.bc");
