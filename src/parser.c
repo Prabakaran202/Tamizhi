@@ -8,6 +8,9 @@
 void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2);
 void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* var2, char* true_val, char* false_val);
 
+// 🌟 லெக்சரிலிருந்து உலகளாவிய தற்போதைய வரியை டிராக்கிங் செய்ய டிக்ளர் செய்கிறோம்
+extern int current_line;
+
 int main_generated = 0;
 
 int is_valid(Token t) {
@@ -15,7 +18,7 @@ int is_valid(Token t) {
     return 1;
 }
 
-// 🌟 டோக்கன் வேல்யூவில் இருக்கும் தேவையற்ற ஸ்பேஸ்களை சுத்தமாக்கும் ட்ரிம் பங்க்ஷன்
+// 🌟 டோக்கன் வேல்யூவில் இருக்கும் தேະຍற்ற ஸ்பேஸ்களை சுத்தமாக்கும் ட்ரிம் பங்க்ஷன்
 void tamizhi_trim_token(char *str) {
     int len = strlen(str);
     while (len > 0 && (isspace((unsigned char)str[len - 1]) || str[len - 1] == ';')) {
@@ -163,7 +166,7 @@ void parse(FILE *file) {
             }
 
             parse_statement(file, t);
-            
+
             clearerr(file);
             fseek(file, ftell(file), SEEK_SET);
         }
@@ -178,30 +181,42 @@ void parse_statement(FILE *file, Token t) {
 
     if (t.type == 21 || strcmp(t.value, ";") == 0) return;
 
+    // 🌟 எண் (Num) மாறிகள் பிரகடனம் செய்தல்
     if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
         Token name_token = get_next_token(file); 
         Token next = get_next_token(file);
+        
         while (next.type != 20 && next.type != T_EOF) {
             next = get_next_token(file); 
         }
+        
         Token val_token = get_next_token(file);
         tamizhi_trim_token(val_token.value);
-        
+
         if (isdigit(val_token.value[0]) || val_token.value[0] == '-') {
             tamizhi_gen_var(name_token.value, atoi(val_token.value));
+        } else {
+            // 🌟 அசைன்மென்ட் சிண்டாக்ஸ் பிழை டிராக்கிங்
+            fprintf(stderr, "[Syntax Error] வரி %d: மாறியின் மதிப்பு தவறாக உள்ளது '%s'\n", t.line, val_token.value);
         }
     }
+    // 🧵 வரி (Str) மாறிகள் பிரகடனம் செய்தல்
     else if (t.type == T_STR || strcmp(t.value, "Str") == 0 || strcmp(t.value, "வரி") == 0 || strcmp(t.value, "Str ") == 0) {
         Token name_token = get_next_token(file);
         Token next = get_next_token(file);
+        
         while (next.type != 20 && next.type != T_EOF) {
             next = get_next_token(file);
         }
+        
         Token val_token = get_next_token(file);
         if (is_valid(val_token)) {
             tamizhi_gen_str(name_token.value, val_token.value);
+        } else {
+            fprintf(stderr, "[Syntax Error] வரி %d: சரத்தின் மதிப்பு விடுபட்டுள்ளது\n", t.line);
         }
     }
+    // 🌟 எக்ஸ்பிரஷன்கள் மற்றும் கண்டிஷனல் ஆபரேஷன்கள் (Identifiers / Expressions)
     else if (t.type == T_ID) {
         char var_name[100];
         strcpy(var_name, t.value); 
@@ -209,32 +224,36 @@ void parse_statement(FILE *file, Token t) {
         Token next_t = get_next_token(file);
 
         if (next_t.type == 20 || strcmp(next_t.value, "=") == 0) {
-            Token v1 = get_next_token(file); // 🌟 v1 டோக்கனை ரீட் செய்யும் லாஜிக் பாதுகாக்கப்பட்டது!
+            Token v1 = get_next_token(file); 
             Token op_or_keyword = get_next_token(file);
-            
-            if (strcmp(op_or_keyword.value, "if") == 0 || strcmp(op_or_keyword.value, "எனர்") == 0 || strcmp(op_or_keyword.value, "எனில்") == 0) {
+
+            // அட்வான்ஸ்டு டெர்னரி சிண்டாக்ஸ்
+            if (op_or_keyword.type == T_IF || strcmp(op_or_keyword.value, "if") == 0 || strcmp(op_or_keyword.value, "எனர்") == 0 || strcmp(op_or_keyword.value, "எனில்") == 0) {
                 Token cond_v1 = get_next_token(file);
                 if (strcmp(cond_v1.value, "(") == 0) {
                     cond_v1 = get_next_token(file);
                 }
                 Token cond_pred = get_next_token(file);
                 Token cond_v2 = get_next_token(file);
-                
+
                 char clean_v2[50];
                 strcpy(clean_v2, cond_v2.value);
                 char *end_p = strchr(clean_v2, ')');
                 if (end_p != NULL) *end_p = '\0';
-                
+
                 Token next_k = get_next_token(file);
                 if (strcmp(next_k.value, ")") == 0) {
                     next_k = get_next_token(file);
                 }
-                
-                if (strcmp(next_k.value, "else") == 0 || strcmp(next_k.value, "இல்லை எனில்") == 0) {
+
+                if (next_k.type == T_ELSE || strcmp(next_k.value, "else") == 0 || strcmp(next_k.value, "இல்லை எனில்") == 0 || strcmp(next_k.value, "இல்லையெனில்") == 0) {
                     Token false_val = get_next_token(file);
                     tamizhi_gen_ternary(var_name, cond_v1.value, cond_pred.value, clean_v2, v1.value, false_val.value);
+                } else {
+                    fprintf(stderr, "[Syntax Error] வரி %d: டெர்னரி நிபந்தனையில் 'else' பிளாக் விடுபட்டுள்ளது\n", t.line);
                 }
             }
+            // எல்எல்விஎம் நேடிவ் மேத்ஸ் லாஜிக் ரன்டைம்
             else if (op_or_keyword.type == 19 || strcmp(op_or_keyword.value, "+") == 0 || strcmp(op_or_keyword.value, "-") == 0 || strcmp(op_or_keyword.value, "*") == 0 || strcmp(op_or_keyword.value, "/") == 0) {
                 Token v2 = get_next_token(file);
                 tamizhi_trim_token(v1.value);
@@ -242,6 +261,7 @@ void parse_statement(FILE *file, Token t) {
                 tamizhi_gen_math_op(var_name, v1.value, op_or_keyword.value, v2.value);
             }
         } 
+        // நிகழ்வு (Function Call) பகுப்பாய்வு
         else if (next_t.type == 15 || strcmp(next_t.value, "(") == 0) {
             Token tmp;
             while ((tmp = get_next_token(file)).type != T_EOF) {
@@ -298,6 +318,8 @@ void parse_statement(FILE *file, Token t) {
                     }
                 }
                 var_count = previous_var_count;
+            } else {
+                fprintf(stderr, "[Linker Error] வரி %d: அழைக்கப்படும் நிகழ்வு வரையறுக்கப்படவில்லை '%s'\n", t.line, var_name);
             }
 
             clearerr(file);
@@ -306,6 +328,7 @@ void parse_statement(FILE *file, Token t) {
             fseek(file, current_pos, SEEK_SET);
         }
     }
+    // 🌟 வெளியீடு (Print Block) பகுப்பாய்வு
     else if (t.type == T_PRINT || strcmp(t.value, "அச்சிடு") == 0) {
         Token first = get_next_token(file);
         if (first.type == 15) first = get_next_token(file); 
@@ -324,9 +347,12 @@ void parse_statement(FILE *file, Token t) {
         long check_pos = ftell(file);
         Token semi = get_next_token(file);
         if (semi.type != 21 && strcmp(semi.value, ";") != 0) {
+            // 🌟 செமைகோலன் மிஸ்ஸிங் வார்னிங் லேயர் 
+            fprintf(stderr, "[Warning] வரி %d: ஸ்டேட்மெண்ட்டின் இறுதியில் செமைகோலன் ';' விடுபட்டுள்ளது\n", t.line);
             fseek(file, check_pos, SEEK_SET);
         }
     }
+    // 🔁 வளையம் (Loop Block) பகுப்பாய்வு
     else if (t.type == T_FOR || strcmp(t.value, "சு") == 0) {
         Token limit_token = get_next_token(file); 
         int limit = 0;
@@ -338,13 +364,15 @@ void parse_statement(FILE *file, Token t) {
         }
 
         Token next = get_next_token(file);
-        if (next.type == 22) {
+        if (next.type == 22 || strcmp(next.value, "{") == 0) {
             tamizhi_gen_loop_start(limit);
             Token body_t;
             while ((body_t = get_next_token(file)).type != 23 && body_t.type != T_EOF) {
                 parse_statement(file, body_t);
             }
             tamizhi_gen_loop_end();
+        } else {
+            fprintf(stderr, "[Syntax Error] வரி %d: சுழற்சிக்குரிய தொடக்க அடைப்புக்குறி '{' விடுபட்டுள்ளது\n", t.line);
         }
     }
 }
