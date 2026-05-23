@@ -18,7 +18,7 @@ int is_valid(Token t) {
     return 1;
 }
 
-// 🌟 டோக்கன் வேல்யூவில் இருக்கும் தேະຍற்ற ஸ்பேஸ்களை சுத்தமாக்கும் ட்ரிம் பங்க்ஷன்
+// 🌟 டோக்கன் வேல்யூவில் இருக்கும் தேவையற்ற ஸ்பேஸ்களை சுத்தமாக்கும் ட்ரிம் பங்க்ஷன்
 void tamizhi_trim_token(char *str) {
     int len = strlen(str);
     while (len > 0 && (isspace((unsigned char)str[len - 1]) || str[len - 1] == ';')) {
@@ -185,18 +185,17 @@ void parse_statement(FILE *file, Token t) {
     if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
         Token name_token = get_next_token(file); 
         Token next = get_next_token(file);
-        
+
         while (next.type != 20 && next.type != T_EOF) {
             next = get_next_token(file); 
         }
-        
+
         Token val_token = get_next_token(file);
         tamizhi_trim_token(val_token.value);
 
         if (isdigit(val_token.value[0]) || val_token.value[0] == '-') {
             tamizhi_gen_var(name_token.value, atoi(val_token.value));
         } else {
-            // 🌟 அசைன்மென்ட் சிண்டாக்ஸ் பிழை டிராக்கிங்
             fprintf(stderr, "[Syntax Error] வரி %d: மாறியின் மதிப்பு தவறாக உள்ளது '%s'\n", t.line, val_token.value);
         }
     }
@@ -204,11 +203,11 @@ void parse_statement(FILE *file, Token t) {
     else if (t.type == T_STR || strcmp(t.value, "Str") == 0 || strcmp(t.value, "வரி") == 0 || strcmp(t.value, "Str ") == 0) {
         Token name_token = get_next_token(file);
         Token next = get_next_token(file);
-        
+
         while (next.type != 20 && next.type != T_EOF) {
             next = get_next_token(file);
         }
-        
+
         Token val_token = get_next_token(file);
         if (is_valid(val_token)) {
             tamizhi_gen_str(name_token.value, val_token.value);
@@ -225,10 +224,19 @@ void parse_statement(FILE *file, Token t) {
 
         if (next_t.type == 20 || strcmp(next_t.value, "=") == 0) {
             Token v1 = get_next_token(file); 
+
+            // 🌟 மாஸ்டர் பிக்ஸ்: தமிழ் யூனிகோட் டோக்கன் ஆப்செட்டை சீரமைக்க லோக்கல் ரீட் செய்யப்படுகிறது
+            long backup_op_pos = ftell(file);
             Token op_or_keyword = get_next_token(file);
 
-            // அட்வான்ஸ்டு டெர்னரி சிண்டாக்ஸ்
-            if (op_or_keyword.type == T_IF || strcmp(op_or_keyword.value, "if") == 0 || strcmp(op_or_keyword.value, "எனர்") == 0 || strcmp(op_or_keyword.value, "எனில்") == 0) {
+            // ஒருவேளை லெக்சர் பஃபர்ல ஸ்பேஸ்னால டோக்கன் மாறினால், 'if' கீவேர்டுக்காக ரீ-ஸ்கேன் செய்யப்படுகிறது
+            if (strcmp(v1.value, "if") == 0 || v1.type == T_IF) {
+                op_or_keyword = v1;
+                v1.value[0] = '0'; v1.value[1] = '\0'; // டிஃபால்ட் மதிப்பு அலைன்மென்ட்
+            }
+
+            // அட்வான்ஸ்டு டெர்னரி கண்டிஷனல் எக்ஸ்பிரஷன் பைப்லைன்
+            if (strcmp(op_or_keyword.value, "if") == 0 || op_or_keyword.type == T_IF || strcmp(v1.value, "if") == 0) {
                 Token cond_v1 = get_next_token(file);
                 if (strcmp(cond_v1.value, "(") == 0) {
                     cond_v1 = get_next_token(file);
@@ -246,7 +254,7 @@ void parse_statement(FILE *file, Token t) {
                     next_k = get_next_token(file);
                 }
 
-                if (next_k.type == T_ELSE || strcmp(next_k.value, "else") == 0 || strcmp(next_k.value, "இல்லை எனில்") == 0 || strcmp(next_k.value, "இல்லையெனில்") == 0) {
+                if (next_k.type == T_ELSE || strcmp(next_k.value, "else") == 0 || strcmp(next_k.value, "இல்லையெனில்") == 0 || strcmp(next_k.value, "இல்லை எனில்") == 0) {
                     Token false_val = get_next_token(file);
                     tamizhi_gen_ternary(var_name, cond_v1.value, cond_pred.value, clean_v2, v1.value, false_val.value);
                 } else {
@@ -347,7 +355,6 @@ void parse_statement(FILE *file, Token t) {
         long check_pos = ftell(file);
         Token semi = get_next_token(file);
         if (semi.type != 21 && strcmp(semi.value, ";") != 0) {
-            // 🌟 செமைகோலன் மிஸ்ஸிங் வார்னிங் லேயர் 
             fprintf(stderr, "[Warning] வரி %d: ஸ்டேட்மெண்ட்டின் இறுதியில் செமைகோலன் ';' விடுபட்டுள்ளது\n", t.line);
             fseek(file, check_pos, SEEK_SET);
         }
