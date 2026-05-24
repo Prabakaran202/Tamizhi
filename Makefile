@@ -10,8 +10,8 @@ CFLAGS = -Iinclude -Wall -Wno-unused-function
 # 'llvm-config' பெர்மிஷன் எரர் தருவதால், அதற்கு பதிலாக நேரடி எல்எல்விஎம் லிங்கிங் ஃபிளாக்ஸ்
 LLVM_FLAGS = -lLLVM
 
-# 3. சோர்ஸ் கோப்புகள் (Source Files Layout)
-SRCS = src/main.c src/lexer.c src/parser.c src/codegen.c core/encoder.c core/decoder.c
+# 3. சோர்ஸ் கோப்புகள் (Source Files Layout - AST Added)
+SRCS = src/main.c src/lexer.c src/parser.c src/codegen.c src/ast.c core/encoder.c core/decoder.c
 TARGET = tamizhi
 
 # டிஃபால்ட் கமெண்ட்: 'make' அடிச்சா இது ரன் ஆகும்
