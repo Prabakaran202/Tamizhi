@@ -1,4 +1,5 @@
 #include "codegen.h"
+#include "ast.h" // 🌟 AST மரத்தின் அமைப்பை உள்ளே கொண்டு வருகிறோம்
 #include <llvm-c/Core.h>
 #include <llvm-c/Analysis.h>
 #include <llvm-c/TargetMachine.h>
@@ -91,6 +92,89 @@ LLVMValueRef create_entry_alloca(LLVMValueRef function, LLVMTypeRef type, const 
 
     return alloca;
 }
+
+// =========================================================================
+// 🌳 AST TREE WALKER (AST மரத்தை LLVM-IR ஆக மாற்றும் இன்ஜின்) 🌳
+// =========================================================================
+
+LLVMValueRef tamizhi_evaluate_ast(ASTNode* node) {
+    if (node == NULL) return NULL;
+
+    // 1. இலக்கில் எண் இருந்தால் (Leaf - Number)
+    if (node->type == AST_NUMBER) {
+        return LLVMConstInt(LLVMInt32Type(), node->data.num_value, 0);
+    }
+    // 2. இலக்கில் மாறி இருந்தால் (Leaf - Identifier)
+    else if (node->type == AST_IDENTIFIER) {
+        char clean_name[256];
+        snprintf(clean_name, sizeof(clean_name), "%s", node->data.var_name);
+        tamizhi_codegen_trim(clean_name);
+
+        for (int i = 0; i < var_count; i++) {
+            if (strcmp(symbol_table[i].name, clean_name) == 0) {
+                return LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "ast_load");
+            }
+        }
+        fprintf(stderr, "[Codegen Error] குறிப்பிலடங்கிய மாறி கிடைக்கவில்லை: '%s'\n", clean_name);
+        return LLVMConstInt(LLVMInt32Type(), 0, 0); // Fallback
+    }
+    // 3. கணித செயல்பாடு கிளைகள் (Branch - Binary Operation)
+    else if (node->type == AST_BINARY_OP) {
+        // கீழ்நோக்கி சென்று இடது மற்றும் வலது கிளைகளின் மதிப்பை எடுக்கிறோம்
+        LLVMValueRef left_val = tamizhi_evaluate_ast(node->data.binop.left);
+        LLVMValueRef right_val = tamizhi_evaluate_ast(node->data.binop.right);
+
+        if (!left_val || !right_val) return NULL;
+
+        if (strcmp(node->data.binop.op, "+") == 0) {
+            return LLVMBuildAdd(builder, left_val, right_val, "ast_add");
+        } else if (strcmp(node->data.binop.op, "-") == 0) {
+            return LLVMBuildSub(builder, left_val, right_val, "ast_sub");
+        } else if (strcmp(node->data.binop.op, "*") == 0) {
+            return LLVMBuildMul(builder, left_val, right_val, "ast_mul");
+        } else if (strcmp(node->data.binop.op, "/") == 0) {
+            return LLVMBuildSDiv(builder, left_val, right_val, "ast_div");
+        }
+    }
+    return NULL;
+}
+
+// 🌟 மரத்தின் உச்சியை (Root) LLVM மெமரியில் சேமிக்கும் ஃபங்க்ஷன்
+void tamizhi_gen_math_ast(char* res_name, ASTNode* root) {
+    char clean_res[100];
+    snprintf(clean_res, sizeof(clean_res), "%s", res_name);
+    tamizhi_codegen_trim(clean_res);
+
+    LLVMValueRef math_res = tamizhi_evaluate_ast(root);
+    if (!math_res) return;
+
+    LLVMValueRef target_ptr = NULL;
+    int found_idx = -1;
+
+    for (int i = 0; i < var_count; i++) {
+        if (strcmp(symbol_table[i].name, clean_res) == 0) {
+            target_ptr = symbol_table[i].alloca_ptr;
+            found_idx = i;
+            break;
+        }
+    }
+
+    if (!target_ptr && var_count < 100) {
+        LLVMValueRef func = LLVMGetNamedFunction(module, "main");
+        target_ptr = create_entry_alloca(func, LLVMInt32Type(), clean_res);
+        snprintf(symbol_table[var_count].name, sizeof(symbol_table[var_count].name), "%s", clean_res);
+        symbol_table[var_count].alloca_ptr = target_ptr;
+        symbol_table[var_count].is_str_type = 0;
+        found_idx = var_count;
+        var_count++;
+    }
+
+    if (target_ptr && found_idx != -1) {
+        LLVMBuildStore(builder, math_res, target_ptr);
+        symbol_table[found_idx].has_static_val = 0; // AST-ல் டைனமிக் லாஜிக் நடப்பதால் ஸ்டேடிக் 0
+    }
+}
+// =========================================================================
 
 void tamizhi_generate_universal_bitcode(const char* filename) {
     if (LLVMWriteBitcodeToFile(module, filename) != 0) {
@@ -231,6 +315,7 @@ void tamizhi_gen_str(char* name, char* value) {
     var_count++;
 }
 
+// ⚠️ பழைய Direct Math Ops - பேக்கப்பிற்காக அப்படியே வைத்திருக்கிறோம்
 void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2) {
     char clean_res[100], clean_v1[100], clean_v2[100];
     snprintf(clean_res, sizeof(clean_res), "%s", res_name); tamizhi_codegen_trim(clean_res);
@@ -289,7 +374,6 @@ void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2) {
             math_res = LLVMBuildMul(builder, v1_val, v2_val, "mul_tmp");
             calculated_val = s_val1 * s_val2;
         } else if (strcmp(op, "/") == 0) {
-            // 🌟 பக் ஃபிக்ஸ்: ரன்டைம் எரரில் துல்லியமான வரி எண்ணை அச்சிடுதல்
             if(f2 && s_val2 == 0) {
                 fprintf(stderr, "[Runtime Error] வரி %d: பூஜ்ஜியத்தால் வகுக்க முடியாது (Division by zero)!\n", current_line);
                 return;
