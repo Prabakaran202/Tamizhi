@@ -1,4 +1,5 @@
-#include "parser.h"
+#include "lexer.h"
+#include "ast.h" // 🌟 AST மரத்தின் ஸ்ட்ரக்சரை பார்சருக்குள் கொண்டு வருகிறோம்
 #include "codegen.h"
 #include <stdlib.h>
 #include <stdio.h>
@@ -33,6 +34,55 @@ void skip_to_semicolon(FILE *file) {
 }
 
 void parse_statement(FILE *file, Token t);
+
+// =========================================================================
+// 🌟 AST PARSER BRAIN (Recursive Descent Parsing) 🌟
+// =========================================================================
+
+// 🌟 1. எண்கள் மற்றும் மாறிகளைப் படிக்கும் அடிப்படை ஃபங்க்ஷன் (Leaf Nodes)
+ASTNode* parse_primary(FILE* file, Token* current_tok) {
+    if (current_tok->type == T_NUM) {
+        ASTNode* node = create_number_node(atoi(current_tok->value));
+        *current_tok = get_next_token(file); // அடுத்த டோக்கனுக்கு நகர்கிறோம்
+        return node;
+    } 
+    else if (current_tok->type == T_ID) {
+        ASTNode* node = create_identifier_node(current_tok->value);
+        *current_tok = get_next_token(file); // அடுத்த டோக்கனுக்கு நகர்கிறோம்
+        return node;
+    }
+    
+    // தவறு நடந்தால் NULL அனுப்புகிறோம்
+    return NULL;
+}
+
+// 🌟 2. கணித செயல்பாடுகளைப் படிக்கும் ஃபங்க்ஷன் (Branch Nodes)
+ASTNode* parse_expression(FILE* file, Token* current_tok) {
+    // முதலில் இடது பக்கம் உள்ள எண்ணையோ அல்லது மாறியையோ படிக்கிறோம் (Left node)
+    ASTNode* left = parse_primary(file, current_tok);
+    if (left == NULL) return NULL;
+
+    // அடுத்து + அல்லது - அல்லது * அல்லது / வருகிறதா என்று பார்க்கிறோம்
+    while (current_tok->type == 19 || current_tok->type == 56 || 
+           strcmp(current_tok->value, "+") == 0 || strcmp(current_tok->value, "-") == 0 ||
+           strcmp(current_tok->value, "*") == 0 || strcmp(current_tok->value, "/") == 0) {
+        
+        char op[10];
+        strcpy(op, current_tok->value);
+        *current_tok = get_next_token(file); // ஆப்பரேட்டரைத் தாண்டிச் செல்கிறோம்
+        
+        // வலது பக்கம் உள்ள எண்ணைப் படிக்கிறோம் (Right node)
+        ASTNode* right = parse_primary(file, current_tok);
+        if (right == NULL) return NULL;
+
+        // இடது மற்றும் வலது கிளைகளை இணைத்து ஒரு புதிய மரக்கிளையை உருவாக்குகிறோம்
+        left = create_binop_node(op, left, right);
+    }
+    
+    // முழுமையாக உருவாக்கப்பட்ட மரத்தை திருப்பி அனுப்புகிறோம்
+    return left;
+}
+// =========================================================================
 
 void scan_headers(FILE *file) {
     Token t;
@@ -85,6 +135,9 @@ void parse(FILE *file) {
     fprintf(stderr, "\n[Parser] --- Tamizhi Engine: Universal Analysis Started ---\n");
 
     scan_headers(file);
+
+    // 🌟 வரி எண் கவுண்ட்டை ரீசெட் செய்கிறோம்
+    current_line = 1;
 
     rewind(file);
     while ((t = get_next_token(file)).type != T_EOF) {
@@ -224,12 +277,12 @@ void parse_statement(FILE *file, Token t) {
 
         if (next_t.type == 20 || strcmp(next_t.value, "=") == 0) {
             Token v1 = get_next_token(file); 
-            
+
             // 🌟 மாஸ்டர் லுக்அஹெட்: வரியின் அடுத்த 4 டோக்கன்களுக்குள் 'if' இருக்கிறதா என்று முன்கூட்டியே ஸ்கேன் செய்கிறோம்
             long lookahead_pos = ftell(file);
             int is_ternary_line = 0;
             Token check_t;
-            
+
             // ஒருவேளை v1 மதிப்பே 'if' ஆக இருந்தாலும் அது டெர்னரிதான்
             if (strcmp(v1.value, "if") == 0 || v1.type == T_IF) {
                 is_ternary_line = 1;
@@ -245,14 +298,14 @@ void parse_statement(FILE *file, Token t) {
                     }
                 }
             }
-            
+
             // லுக்அஹெட் ஸ்கேன் முடிந்ததும் ஃபைல் பாயிண்டரை பழைய இடத்திற்கே ரீசெட் செய்கிறோம்
             fseek(file, lookahead_pos, SEEK_SET);
 
             // 🌟 1. அட்வான்ஸ்டு டெர்னரி கண்டிஷனல் எக்ஸ்பிரஷன் பைப்லைன்
             if (is_ternary_line) {
                 Token op_or_keyword = get_next_token(file);
-                
+
                 // ஒருவேளை ஆப்செட் காரணமாக டோக்கன் மாறினால் 'if' கீவேர்டை சீரமைக்கிறோம்
                 if (strcmp(op_or_keyword.value, "if") != 0 && op_or_keyword.type != T_IF) {
                     while ((op_or_keyword = get_next_token(file)).type != T_EOF) {
@@ -295,7 +348,7 @@ void parse_statement(FILE *file, Token t) {
                 }
             }
         } 
-        // நிகழ்வு (Function Call) பகுப்பாய்வு
+        // 🌟 நிகழ்வு (Function Call) பகுப்பாய்வு
         else if (next_t.type == 15 || strcmp(next_t.value, "(") == 0) {
             Token tmp;
             while ((tmp = get_next_token(file)).type != T_EOF) {
@@ -335,6 +388,9 @@ void parse_statement(FILE *file, Token t) {
                 Token body_t;
 
                 int previous_var_count = var_count;
+                
+                // 🌟 மாஸ்டர் ஃபிக்ஸ்: ஃபங்க்ஷன் பாடிக்குள் நுழையும்போது மெயின் லைன் நம்பரை பேக்கப் எடுக்கிறோம்
+                int backup_main_line = current_line;
 
                 while (body_brace_count > 0 && (body_t = get_next_token(file)).type != T_EOF) {
                     if (body_t.type == 22 || strcmp(body_t.value, "{") == 0) {
@@ -346,12 +402,16 @@ void parse_statement(FILE *file, Token t) {
                     }
 
                     if (body_t.type != 21 && strcmp(body_t.value, ";") != 0 && body_t.type != 22 && body_t.type != 23) {
+                        body_t.line = current_line;
                         parse_statement(file, body_t);
                         func_body_pos = ftell(file);
                         fseek(file, func_body_pos, SEEK_SET);
                     }
                 }
                 var_count = previous_var_count;
+                
+                // ஃபங்க்ஷன் கால் முடிந்து திரும்பும்போது பழைய மெயின் லைன் கவுண்ட்டை ரீசெட் செய்கிறோம்
+                current_line = backup_main_line;
             } else {
                 fprintf(stderr, "[Linker Error] வரி %d: அழைக்கப்படும் நிகழ்வு வரையறுக்கப்படவில்லை '%s'\n", t.line, var_name);
             }
