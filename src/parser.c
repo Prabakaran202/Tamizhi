@@ -51,7 +51,7 @@ ASTNode* parse_primary(FILE* file, Token* current_tok) {
         *current_tok = get_next_token(file); // அடுத்த டோக்கனுக்கு நகர்கிறோம்
         return node;
     }
-    
+
     // தவறு நடந்தால் NULL அனுப்புகிறோம்
     return NULL;
 }
@@ -66,11 +66,11 @@ ASTNode* parse_expression(FILE* file, Token* current_tok) {
     while (current_tok->type == 19 || current_tok->type == 56 || 
            strcmp(current_tok->value, "+") == 0 || strcmp(current_tok->value, "-") == 0 ||
            strcmp(current_tok->value, "*") == 0 || strcmp(current_tok->value, "/") == 0) {
-        
+
         char op[10];
         strcpy(op, current_tok->value);
         *current_tok = get_next_token(file); // ஆப்பரேட்டரைத் தாண்டிச் செல்கிறோம்
-        
+
         // வலது பக்கம் உள்ள எண்ணைப் படிக்கிறோம் (Right node)
         ASTNode* right = parse_primary(file, current_tok);
         if (right == NULL) return NULL;
@@ -78,7 +78,7 @@ ASTNode* parse_expression(FILE* file, Token* current_tok) {
         // இடது மற்றும் வலது கிளைகளை இணைத்து ஒரு புதிய மரக்கிளையை உருவாக்குகிறோம்
         left = create_binop_node(op, left, right);
     }
-    
+
     // முழுமையாக உருவாக்கப்பட்ட மரத்தை திருப்பி அனுப்புகிறோம்
     return left;
 }
@@ -337,14 +337,33 @@ void parse_statement(FILE *file, Token t) {
                     fprintf(stderr, "[Syntax Error] வரி %d: டெர்னரி நிபந்தனையில் 'else' பிளாக் விடுபட்டுள்ளது\n", t.line);
                 }
             }
-            // 🌟 2. எல்எல்விஎம் நேடிவ் மேத்ஸ் லாஜிக் ரன்டைம்
+            // ==========================================================
+            // 🌟 2. AST மேத்ஸ் லாஜிக் ரன்டைம் (BODMAS சப்போர்ட்) 🌟
+            // ==========================================================
             else {
                 Token op_or_keyword = get_next_token(file);
-                if (op_or_keyword.type == 19 || strcmp(op_or_keyword.value, "+") == 0 || strcmp(op_or_keyword.value, "-") == 0 || strcmp(op_or_keyword.value, "*") == 0 || strcmp(op_or_keyword.value, "/") == 0) {
-                    Token v2 = get_next_token(file);
-                    tamizhi_trim_token(v1.value);
-                    tamizhi_trim_token(v2.value);
-                    tamizhi_gen_math_op(var_name, v1.value, op_or_keyword.value, v2.value);
+                
+                // கணித குறியீடுகள் ஏதேனும் உள்ளதா என செக் செய்கிறோம்
+                if (op_or_keyword.type == 19 || strcmp(op_or_keyword.value, "+") == 0 || 
+                    strcmp(op_or_keyword.value, "-") == 0 || strcmp(op_or_keyword.value, "*") == 0 || 
+                    strcmp(op_or_keyword.value, "/") == 0) {
+                    
+                    // ஃபைல் பாயிண்டரை 'v1' டோக்கனுக்கு முன்பாக கொஞ்சம் பின்னோக்கி நகர்த்துகிறோம்
+                    long current_expr_pos = ftell(file);
+                    fseek(file, current_expr_pos - strlen(op_or_keyword.value) - strlen(v1.value) - 2, SEEK_SET);
+                    
+                    Token start_tok = get_next_token(file);
+                    
+                    // 🌳 முழு கணித வரியையும் படித்து AST மரத்தை உருவாக்குகிறோம் 🌳
+                    ASTNode* ast_root = parse_expression(file, &start_tok);
+                    
+                    if (ast_root != NULL) {
+                        // 🚀 உருவாக்கப்பட்ட மரத்தை Codegen-க்கு அனுப்புகிறோம்
+                        extern void tamizhi_gen_math_ast(char* res_name, ASTNode* root);
+                        tamizhi_gen_math_ast(var_name, ast_root);
+                    } else {
+                        fprintf(stderr, "[Syntax Error] வரி %d: கணித தொடரியல் பிழை\n", t.line);
+                    }
                 }
             }
         } 
@@ -388,7 +407,7 @@ void parse_statement(FILE *file, Token t) {
                 Token body_t;
 
                 int previous_var_count = var_count;
-                
+
                 // 🌟 மாஸ்டர் ஃபிக்ஸ்: ஃபங்க்ஷன் பாடிக்குள் நுழையும்போது மெயின் லைன் நம்பரை பேக்கப் எடுக்கிறோம்
                 int backup_main_line = current_line;
 
@@ -409,7 +428,7 @@ void parse_statement(FILE *file, Token t) {
                     }
                 }
                 var_count = previous_var_count;
-                
+
                 // ஃபங்க்ஷன் கால் முடிந்து திரும்பும்போது பழைய மெயின் லைன் கவுண்ட்டை ரீசெட் செய்கிறோம்
                 current_line = backup_main_line;
             } else {
