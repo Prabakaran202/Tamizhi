@@ -71,7 +71,7 @@ void tamizhi_codegen_trim(char *str) {
 }
 
 // ======================================================================
-// 🌟 ஆண்ட்ராய்டு ARM64 பாயிண்டர் சிதைவு இல்லாத தற்காலிக ரோல்பேக் அலோகேஷன்
+// 🌟 Android ARM64 பாயிண்டர் சிதைவு இல்லாத தற்காலிக ரோல்பேக் அலோகேஷன்
 // ======================================================================
 LLVMValueRef create_entry_alloca(LLVMValueRef function, LLVMTypeRef type, const char* name) {
     LLVMBasicBlockRef current_bb = LLVMGetInsertBlock(builder);
@@ -116,11 +116,10 @@ LLVMValueRef tamizhi_evaluate_ast(ASTNode* node) {
             }
         }
         fprintf(stderr, "[Codegen Error] குறிப்பிலடங்கிய மாறி கிடைக்கவில்லை: '%s'\n", clean_name);
-        return LLVMConstInt(LLVMInt32Type(), 0, 0); // Fallback
+        return LLVMConstInt(LLVMInt32Type(), 0, 0); 
     }
     // 3. கணித செயல்பாடு கிளைகள் (Branch - Binary Operation)
     else if (node->type == AST_BINARY_OP) {
-        // கீழ்நோக்கி சென்று இடது மற்றும் வலது கிளைகளின் மதிப்பை எடுக்கிறோம்
         LLVMValueRef left_val = tamizhi_evaluate_ast(node->data.binop.left);
         LLVMValueRef right_val = tamizhi_evaluate_ast(node->data.binop.right);
 
@@ -171,7 +170,7 @@ void tamizhi_gen_math_ast(char* res_name, ASTNode* root) {
 
     if (target_ptr && found_idx != -1) {
         LLVMBuildStore(builder, math_res, target_ptr);
-        symbol_table[found_idx].has_static_val = 0; // AST-ல் டைனமிக் லாஜிக் நடப்பதால் ஸ்டேடிக் 0
+        symbol_table[found_idx].has_static_val = 0; 
     }
 }
 // =========================================================================
@@ -257,7 +256,7 @@ void tamizhi_generate_entry() {
     if (LLVMGetNamedFunction(module, "main")) return; 
     LLVMTypeRef main_func_type = LLVMFunctionType(LLVMInt32Type(), NULL, 0, 0);
     LLVMValueRef main_func = LLVMAddFunction(module, "main", main_func_type);
-    LLVMBasicBlockRef entry = LLVMAppendBasicBlock(main_func, "entry");
+    LLVBasicBlockRef entry = LLVMAppendBasicBlock(main_func, "entry");
     LLVMPositionBuilderAtEnd(builder, entry);
 }
 
@@ -415,7 +414,7 @@ void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2) {
     }
 }
 
-// 🌟 Updated tamizhi_gen_print - AST மரம் மூலம் வந்த வேல்யூவையும் சரியாக handle செய்கிறது
+// 🌟 BRAND NEW UPDATED PRINT LOGIC FOR NATIVE AST EVALUATION
 void tamizhi_gen_print(char* var_name) {
     LLVMValueRef val = NULL;
     int is_string = 0;
@@ -424,6 +423,8 @@ void tamizhi_gen_print(char* var_name) {
     tamizhi_codegen_trim(clean_name);
 
     int is_literal = 0;
+
+    // 1. Literal Strings Handling
     if ((clean_name[0] == '"' || clean_name[0] == '\'') && strlen(clean_name) > 2) {
         char temp[1024];
         strncpy(temp, clean_name + 1, strlen(clean_name) - 2);
@@ -433,39 +434,42 @@ void tamizhi_gen_print(char* var_name) {
     }
 
     if (!is_literal) {
+        // 2. Variable/AST Result Search
         for(int i = 0; i < var_count; i++) {
             if(strcmp(symbol_table[i].name, clean_name) == 0) {
-                // 🌟 AST மரத்திலிருந்து வந்த வேல்யூவா அல்லது மாறிலியா என்று செக் செய்கிறோம்
                 val = symbol_table[i].alloca_ptr;
-
                 if (symbol_table[i].is_str_type) {
-                    is_string = 1; 
+                    is_string = 1;
                 } else {
-                    // AST மரம் மூலமாக வந்த வேல்யூவை இங்கே லோட் செய்கிறோம்
-                    val = LLVMBuildLoad2(builder, LLVMInt32Type(), val, "load_ast_val");
+                    // AST மூலமாக வந்த மதிப்பை சரியாக LOAD செய்கிறோம்
+                    val = LLVMBuildLoad2(builder, LLVMInt32Type(), val, "load_val");
                 }
                 break;
             }
         }
     }
 
+    // 3. Loop Index i
     if(!val && loop_top >= 0 && strcmp(clean_name, "i") == 0) {
         val = LLVMBuildLoad2(builder, LLVMInt32Type(), loop_stack[loop_top].i_ptr, "load_loop_i");
     }
 
+    // 4. Fallback: Raw integer constant
     if(!val && (isdigit((unsigned char)clean_name[0]) || clean_name[0] == '-') && !is_literal) {
         val = LLVMConstInt(LLVMInt32Type(), atoi(clean_name), 0);
     }
 
+    // 5. Raw String handling fallback
     if(!val) {
         val = LLVMBuildGlobalStringPtr(builder, clean_name, "str_lit");
         is_string = 1;
     }
 
+    // Print Logic Execution
     if(val) {
-        const char* fmt_str = is_string ? "%s\n" : "%d\n";
-        LLVMValueRef fmt = LLVMBuildGlobalStringPtr(builder, fmt_str, "fmt");
-        LLVMValueRef args[] = { fmt, val };
+        const char* fmt = is_string ? "%s\n" : "%d\n";
+        LLVMValueRef fmt_ref = LLVMBuildGlobalStringPtr(builder, fmt, "fmt");
+        LLVMValueRef args[] = { fmt_ref, val };
         LLVMBuildCall2(builder, printf_type, printf_func, args, 2, "print_call");
     }
 }
