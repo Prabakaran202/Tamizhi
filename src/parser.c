@@ -382,7 +382,7 @@ void parse_statement(FILE *file, Token t) {
     }
 
     // ======================================================
-    // 🌟 String Variable Declaration (Fixed Quotes Strip)
+    // String Variable Declaration (Fixed Quotes Strip)
     // ======================================================
 
     else if (t.type == T_STR || strcmp(t.value, "Str") == 0 || strcmp(t.value, "வரி") == 0) {
@@ -502,7 +502,7 @@ void parse_statement(FILE *file, Token t) {
     }
 
     // ======================================================
-    // Print Block
+    // Print Block (Fixed Trailing Semicolon Sync 🚀)
     // ======================================================
 
     else if (t.type == T_PRINT || strcmp(t.value, "அச்சிடு") == 0) {
@@ -512,6 +512,13 @@ void parse_statement(FILE *file, Token t) {
 
         tamizhi_trim_token(first.value);
         tamizhi_gen_print(first.value);
+
+        // 🌟 பிக்ஸ்: பிரிண்ட் முடிந்ததும் அந்த வரியின் செமைகோலன் ';' டோக்கனை 
+        // பைப்லைனில் இருந்து கிளியர் செய்து அடுத்த வரிக்கு பாயிண்டரை நகர்த்துகிறோம்!
+        Token semi = get_next_token(file);
+        if (strcmp(semi.value, ";") != 0 && semi.type != 21) {
+            skip_to_semicolon(file);
+        }
     }
 
     // ======================================================
