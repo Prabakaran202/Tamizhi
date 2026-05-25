@@ -53,14 +53,17 @@ void skip_to_semicolon(FILE *file) {
 void parse_statement(FILE *file, Token t);
 
 // ==========================================================
-// AST Memory Cleanup
+// AST Memory Cleanup (Fixed Structure Mapping 🌟)
 // ==========================================================
 
 void free_ast(ASTNode* node) {
     if (!node) return;
 
-    free_ast(node->left);
-    free_ast(node->right);
+    // 🌟 பிக்ஸ்: struct ASTNode அமைப்பிற்கு ஏற்ப மெமரியை ரிலீஸ் செய்கிறோம்
+    if (node->type == AST_BINARY_OP) {
+        free_ast(node->data.binop.left);
+        free_ast(node->data.binop.right);
+    }
 
     free(node);
 }
