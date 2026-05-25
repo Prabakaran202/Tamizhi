@@ -252,12 +252,15 @@ void tamizhi_codegen_init() {
     #endif
 }
 
+// 🌟 'M' ஸ்பெல்லிங் மிஸ்டேக் சரி செய்யப்பட்ட மாஸ்டர் ஃபங்க்ஷன்
 void tamizhi_generate_entry() {
     if (LLVMGetNamedFunction(module, "main")) return; 
+    
     LLVMTypeRef main_func_type = LLVMFunctionType(LLVMInt32Type(), NULL, 0, 0);
     LLVMValueRef main_func = LLVMAddFunction(module, "main", main_func_type);
-    LLVBasicBlockRef entry = LLVMAppendBasicBlock(main_func, "entry");
-    LLVMPositionBuilderAtEnd(builder, entry);
+    
+    LLVMBasicBlockRef entry = LLVMAppendBasicBlock(main_func, "entry");
+    LLVMPositionBuilderAtEnd(builder, entry); 
 }
 
 void tamizhi_gen_var(char* name, int value) {
@@ -414,7 +417,7 @@ void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2) {
     }
 }
 
-// 🌟 BRAND NEW UPDATED PRINT LOGIC FOR NATIVE AST EVALUATION
+// 🌟 லோட் ஃபிக்ஸுடன் கூடிய புதுப்பிக்கப்பட்ட பிரிண்ட் லாஜிக் 
 void tamizhi_gen_print(char* var_name) {
     LLVMValueRef val = NULL;
     int is_string = 0;
@@ -423,8 +426,6 @@ void tamizhi_gen_print(char* var_name) {
     tamizhi_codegen_trim(clean_name);
 
     int is_literal = 0;
-
-    // 1. Literal Strings Handling
     if ((clean_name[0] == '"' || clean_name[0] == '\'') && strlen(clean_name) > 2) {
         char temp[1024];
         strncpy(temp, clean_name + 1, strlen(clean_name) - 2);
@@ -434,7 +435,6 @@ void tamizhi_gen_print(char* var_name) {
     }
 
     if (!is_literal) {
-        // 2. Variable/AST Result Search
         for(int i = 0; i < var_count; i++) {
             if(strcmp(symbol_table[i].name, clean_name) == 0) {
                 val = symbol_table[i].alloca_ptr;
@@ -449,27 +449,22 @@ void tamizhi_gen_print(char* var_name) {
         }
     }
 
-    // 3. Loop Index i
     if(!val && loop_top >= 0 && strcmp(clean_name, "i") == 0) {
         val = LLVMBuildLoad2(builder, LLVMInt32Type(), loop_stack[loop_top].i_ptr, "load_loop_i");
     }
 
-    // 4. Fallback: Raw integer constant
     if(!val && (isdigit((unsigned char)clean_name[0]) || clean_name[0] == '-') && !is_literal) {
         val = LLVMConstInt(LLVMInt32Type(), atoi(clean_name), 0);
     }
 
-    // 5. Raw String handling fallback
     if(!val) {
         val = LLVMBuildGlobalStringPtr(builder, clean_name, "str_lit");
         is_string = 1;
     }
 
-    // Print Logic Execution
     if(val) {
         const char* fmt = is_string ? "%s\n" : "%d\n";
-        LLVMValueRef fmt_ref = LLVMBuildGlobalStringPtr(builder, fmt, "fmt");
-        LLVMValueRef args[] = { fmt_ref, val };
+        LLVMValueRef args[] = { LLVMBuildGlobalStringPtr(builder, fmt, "fmt"), val };
         LLVMBuildCall2(builder, printf_type, printf_func, args, 2, "print_call");
     }
 }
