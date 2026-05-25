@@ -1,6 +1,7 @@
 #include "lexer.h"
-#include "ast.h" // 🌟 AST மரத்தின் ஸ்ட்ரக்சரை பார்சருக்குள் கொண்டு வருகிறோம்
+#include "ast.h"
 #include "codegen.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -9,19 +10,32 @@
 void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2);
 void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* var2, char* true_val, char* false_val);
 
-// 🌟 லெக்சரிலிருந்து உலகளாவிய தற்போதைய வரியை டிராக்கிங் செய்ய டிக்ளர் செய்கிறோம்
 extern int current_line;
 
 int main_generated = 0;
 
+#define MAX_CALL_DEPTH 100
+
+int call_depth = 0;
+
+// ==========================================================
+// Helpers
+// ==========================================================
+
 int is_valid(Token t) {
-    if (strlen(t.value) == 0) return 0;
-    return 1;
+    return strlen(t.value) > 0;
 }
 
 void tamizhi_trim_token(char *str) {
     int len = strlen(str);
-    while (len > 0 && (isspace((unsigned char)str[len - 1]) || str[len - 1] == ';')) {
+
+    while (
+        len > 0 &&
+        (
+            isspace((unsigned char)str[len - 1]) ||
+            str[len - 1] == ';'
+        )
+    ) {
         str[len - 1] = '\0';
         len--;
     }
@@ -29,394 +43,471 @@ void tamizhi_trim_token(char *str) {
 
 void skip_to_semicolon(FILE *file) {
     Token t;
-    while ((t = get_next_token(file)).type != 21 && t.type != T_EOF);
+
+    while (
+        (t = get_next_token(file)).type != 21 &&
+        t.type != T_EOF
+    );
 }
 
 void parse_statement(FILE *file, Token t);
 
-// =========================================================================
-// 🌟 AST PARSER BRAIN (Fseek Corruption Removed - 100% Safe) 🌟
-// =========================================================================
+// ==========================================================
+// AST Memory Cleanup
+// ==========================================================
+
+void free_ast(ASTNode* node) {
+    if (!node) return;
+
+    free_ast(node->left);
+    free_ast(node->right);
+
+    free(node);
+}
+
+// ==========================================================
+// AST Parser (BODMAS Precedence + Parenthesis Map)
+// ==========================================================
+
+ASTNode* parse_expression(FILE* file, Token* current_tok);
 
 ASTNode* parse_primary(FILE* file, Token* current_tok) {
-    if (current_tok->type == T_NUM || isdigit((unsigned char)current_tok->value[0]) || current_tok->value[0] == '-') {
+
+    // Parenthesis Support - ( எக்ஸ்பிரஷன்களை பிரித்து முன்னுரிமை அளிக்கிறது )
+    if (strcmp(current_tok->value, "(") == 0) {
+
+        *current_tok = get_next_token(file);
+
+        ASTNode* expr = parse_expression(file, current_tok);
+
+        if (strcmp(current_tok->value, ")") != 0) {
+            fprintf(stderr, "[Syntax Error] Missing ')'\n");
+            return NULL;
+        }
+
+        *current_tok = get_next_token(file);
+
+        return expr;
+    }
+
+    // Number
+    if (
+        current_tok->type == T_NUM ||
+        isdigit((unsigned char)current_tok->value[0]) ||
+        (
+            current_tok->value[0] == '-' &&
+            isdigit((unsigned char)current_tok->value[1])
+        )
+    ) {
+
         ASTNode* node = create_number_node(atoi(current_tok->value));
-        *current_tok = get_next_token(file); // அடுத்த டோக்கனுக்கு நகர்கிறோம்
-        return node;
-    } 
-    else if (current_tok->type == T_ID) {
-        ASTNode* node = create_identifier_node(current_tok->value);
-        *current_tok = get_next_token(file); // அடுத்த டோக்கனுக்கு நகர்கிறோம்
+        *current_tok = get_next_token(file);
         return node;
     }
+
+    // Identifier
+    if (current_tok->type == T_ID) {
+
+        ASTNode* node = create_identifier_node(current_tok->value);
+        *current_tok = get_next_token(file);
+        return node;
+    }
+
     return NULL;
 }
 
-// ஏற்கெனவே படிக்கப்பட்ட 'left' நோடை உள்ளீடாகப் பெறுகிறோம்
-ASTNode* parse_expression(FILE* file, ASTNode* left, Token* current_tok) {
-    if (left == NULL) return NULL;
+// Higher Precedence: * மற்றும் /
+ASTNode* parse_term(FILE* file, Token* current_tok) {
 
-    while (current_tok->type == 19 || current_tok->type == 56 || 
-           strcmp(current_tok->value, "+") == 0 || strcmp(current_tok->value, "-") == 0 ||
-           strcmp(current_tok->value, "*") == 0 || strcmp(current_tok->value, "/") == 0) {
+    ASTNode* left = parse_primary(file, current_tok);
+
+    while (
+        strcmp(current_tok->value, "*") == 0 ||
+        strcmp(current_tok->value, "/") == 0
+    ) {
 
         char op[10];
         strcpy(op, current_tok->value);
-        *current_tok = get_next_token(file); // ஆப்பரேட்டரைத் தாண்டிச் செல்கிறோம்
+
+        *current_tok = get_next_token(file);
 
         ASTNode* right = parse_primary(file, current_tok);
-        if (right == NULL) return NULL;
+
+        if (!right) return NULL;
 
         left = create_binop_node(op, left, right);
     }
+
     return left;
 }
-// =========================================================================
+
+// Lower Precedence: + மற்றும் -
+ASTNode* parse_expression(FILE* file, Token* current_tok) {
+
+    ASTNode* left = parse_term(file, current_tok);
+
+    while (
+        strcmp(current_tok->value, "+") == 0 ||
+        strcmp(current_tok->value, "-") == 0
+    ) {
+
+        char op[10];
+        strcpy(op, current_tok->value);
+
+        *current_tok = get_next_token(file);
+
+        ASTNode* right = parse_term(file, current_tok);
+
+        if (!right) return NULL;
+
+        left = create_binop_node(op, left, right);
+    }
+
+    return left;
+}
+
+// ==========================================================
+// Function Table
+// ==========================================================
+
+typedef struct {
+    char name[100];
+    long pos;
+} FunctionEntry;
+
+FunctionEntry functions[256];
+int function_count = 0;
+
+long find_function(const char* name) {
+
+    for (int i = 0; i < function_count; i++) {
+
+        if (strcmp(functions[i].name, name) == 0) {
+            return functions[i].pos;
+        }
+    }
+
+    return -1L;
+}
+
+// ==========================================================
+// Header Scan
+// ==========================================================
 
 void scan_headers(FILE *file) {
+
     Token t;
     rewind(file);
+
     fprintf(stderr, " -> Starting Header Pre-Scan...\n");
 
     while ((t = get_next_token(file)).type != T_EOF) {
-        if (strcmp(t.value, "fun") == 0 || t.type == T_FUNC || strcmp(t.value, "நிகழ்") == 0) {
+
+        if (
+            strcmp(t.value, "fun") == 0 ||
+            strcmp(t.value, "நிகழ்") == 0 ||
+            t.type == T_FUNC
+        ) {
+
             Token name = get_next_token(file);
 
-            if (is_valid(name)) {
-                char *bracket_ptr = strchr(name.value, '(');
-                if (bracket_ptr != NULL) *bracket_ptr = '\0';
+            if (!is_valid(name))
+                continue;
 
-                if (strcmp(name.value, "main") != 0 && strcmp(name.value, "முதன்மை") != 0) {
-                    fprintf(stderr, "    [Header] Registered: %s\n", name.value);
-                }
+            char clean_name[100];
+            strcpy(clean_name, name.value);
 
-                Token skip_t;
-                while ((skip_t = get_next_token(file)).type != T_EOF) {
-                    if (skip_t.type == 22 || strcmp(skip_t.value, "{") == 0) {
-                        int scan_brace_count = 1;
-                        while ((skip_t = get_next_token(file)).type != T_EOF) {
-                            if (skip_t.type == 22 || strcmp(skip_t.value, "{") == 0) scan_brace_count++;
-                            if (skip_t.type == 23 || strcmp(skip_t.value, "}") == 0) {
-                                scan_brace_count--;
-                                if (skip_t.type == 23 || scan_brace_count <= 0) break;
-                            }
-                        }
-                        break;
-                    }
-                    if (strcmp(skip_t.value, "fun") == 0 || strcmp(skip_t.value, "நிகழ்") == 0) {
-                        long back_pos = ftell(file);
-                        fseek(file, back_pos - (long)strlen(skip_t.value), SEEK_SET);
-                        break;
-                    }
+            char* bracket = strchr(clean_name, '(');
+            if (bracket)
+                *bracket = '\0';
+
+            Token tk;
+
+            while ((tk = get_next_token(file)).type != T_EOF) {
+
+                if (tk.type == 22 || strcmp(tk.value, "{") == 0) {
+
+                    strcpy(functions[function_count].name, clean_name);
+                    functions[function_count].pos = ftell(file);
+                    function_count++;
+
+                    fprintf(stderr, "    [Header] Registered: %s\n", clean_name);
+                    break;
                 }
             }
         }
     }
+
     rewind(file);
 }
 
+// ==========================================================
+// Main Parse
+// ==========================================================
+
 void parse(FILE *file) {
+
     Token t;
     long main_pos = -1L;
     long footer_pos = -1L;
-    fprintf(stderr, "\n[Parser] --- Tamizhi Engine: Universal Analysis Started ---\n");
+
+    fprintf(stderr, "\n[Parser] --- Tamizhi Engine Started ---\n");
 
     scan_headers(file);
-    current_line = 1;
     rewind(file);
 
     while ((t = get_next_token(file)).type != T_EOF) {
-        if (strcmp(t.value, "முதன்மை") == 0 || strcmp(t.value, "main") == 0 || strncmp(t.value, "main", 4) == 0) {
-            long check_pos = ftell(file);
-            Token brace_t = get_next_token(file);
-            if (brace_t.type == 22 || strcmp(brace_t.value, "{") == 0) {
-                main_pos = ftell(file);
-            } else {
-                while ((brace_t = get_next_token(file)).type != T_EOF) {
-                    if (brace_t.type == 22 || strcmp(brace_t.value, "{") == 0) {
-                        main_pos = ftell(file);
-                        break;
-                    }
-                    if (strcmp(brace_t.value, "footer") == 0 || strcmp(brace_t.value, "பூட்டர்") == 0) break;
+
+        if (strcmp(t.value, "main") == 0 || strcmp(t.value, "முதன்மை") == 0) {
+
+            Token brace;
+            while ((brace = get_next_token(file)).type != T_EOF) {
+                if (brace.type == 22 || strcmp(brace.value, "{") == 0) {
+                    main_pos = ftell(file);
+                    break;
                 }
             }
-            if (main_pos != -1L) fseek(file, check_pos, SEEK_SET);
         }
-        else if (strcmp(t.value, "பூட்டர்") == 0 || strcmp(t.value, "footer") == 0) {
-            Token brace_t = get_next_token(file);
-            if (brace_t.type != 22 && strcmp(brace_t.value, "{") != 0) {
-                while ((brace_t = get_next_token(file)).type != 22 && brace_t.type != T_EOF);
+
+        else if (strcmp(t.value, "footer") == 0 || strcmp(t.value, "பூட்டர்") == 0) {
+
+            Token brace;
+            while ((brace = get_next_token(file)).type != T_EOF) {
+                if (brace.type == 22 || strcmp(brace.value, "{") == 0) {
+                    footer_pos = ftell(file);
+                    break;
+                }
             }
-            footer_pos = ftell(file);
         }
     }
 
-    fprintf(stderr, " -> Phase 2 [Body]: Mapping logic to DNA-VM...\n");
-    if (!main_generated) {
-        tamizhi_generate_entry(); 
-        main_generated = 1;
-    }
+    tamizhi_generate_entry();
+
+    // ======================================================
+    // MAIN BLOCK RUN
+    // ======================================================
 
     if (main_pos != -1L) {
-        clearerr(file);
-        fseek(file, main_pos, SEEK_SET);
-        int main_brace_count = 1;
 
-        while (main_brace_count > 0) {
+        fseek(file, main_pos, SEEK_SET);
+        int brace_count = 1;
+
+        while (brace_count > 0) {
+
             t = get_next_token(file);
             if (t.type == T_EOF) break;
 
-            if (t.type == 22 || strcmp(t.value, "{") == 0) { main_brace_count++; continue; }
-            if (t.type == 23 || strcmp(t.value, "}") == 0) {
-                main_brace_count--;
-                if (main_brace_count <= 0) break; 
+            if (t.type == 22 || strcmp(t.value, "{") == 0) {
+                brace_count++;
                 continue;
             }
+
+            if (t.type == 23 || strcmp(t.value, "}") == 0) {
+                brace_count--;
+                if (brace_count <= 0) break;
+                continue;
+            }
+
             parse_statement(file, t);
         }
     }
+
+    // ======================================================
+    // FOOTER BLOCK RUN
+    // ======================================================
 
     if (footer_pos != -1L) {
-        fprintf(stderr, " -> Phase 3 [Footer]: Launching execution...\n");
-        clearerr(file);
-        fseek(file, footer_pos, SEEK_SET);
-        int footer_brace_count = 1;
 
-        while (footer_brace_count > 0) {
+        fseek(file, footer_pos, SEEK_SET);
+        int brace_count = 1;
+
+        while (brace_count > 0) {
+
             t = get_next_token(file);
             if (t.type == T_EOF) break;
 
-            if (t.type == 22 || strcmp(t.value, "{") == 0) { footer_brace_count++; continue; }
-            if (t.type == 23 || strcmp(t.value, "}") == 0) {
-                footer_brace_count--;
-                if (footer_brace_count <= 0) break;
+            if (t.type == 22 || strcmp(t.value, "{") == 0) {
+                brace_count++;
                 continue;
             }
+
+            if (t.type == 23 || strcmp(t.value, "}") == 0) {
+                brace_count--;
+                if (brace_count <= 0) break;
+                continue;
+            }
+
             parse_statement(file, t);
-            clearerr(file);
-            fseek(file, ftell(file), SEEK_SET);
         }
     }
 
-    fprintf(stderr, "[Parser] --- Analysis Completed Successfully ---\n\n");
+    fprintf(stderr, "[Parser] --- Completed Successfully ---\n");
 }
 
+// ==========================================================
+// Statement Parser
+// ==========================================================
+
 void parse_statement(FILE *file, Token t) {
+
     extern int var_count;
+
     if (!is_valid(t)) return;
     if (t.type == 21 || strcmp(t.value, ";") == 0) return;
 
-    if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
-        Token name_token = get_next_token(file); 
-        Token next = get_next_token(file);
-        while (next.type != 20 && next.type != T_EOF) { next = get_next_token(file); }
-        Token val_token = get_next_token(file);
-        tamizhi_trim_token(val_token.value);
+    // ======================================================
+    // Number Variable Declaration
+    // ======================================================
 
-        if (isdigit((unsigned char)val_token.value[0]) || val_token.value[0] == '-') {
-            tamizhi_gen_var(name_token.value, atoi(val_token.value));
-        } else {
-            fprintf(stderr, "[Syntax Error] வரி %d: மாறியின் மதிப்பு தவறாக உள்ளது '%s'\n", t.line, val_token.value);
+    if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
+
+        Token name = get_next_token(file);
+        Token next = get_next_token(file);
+
+        while (next.type != 20 && next.type != T_EOF) {
+            next = get_next_token(file);
+        }
+
+        Token value = get_next_token(file);
+        tamizhi_trim_token(value.value);
+
+        if (isdigit((unsigned char)value.value[0]) || value.value[0] == '-') {
+            tamizhi_gen_var(name.value, atoi(value.value));
+        }
+        else {
+            fprintf(stderr, "[Syntax Error] Invalid Number '%s'\n", value.value);
         }
     }
-    else if (t.type == T_STR || strcmp(t.value, "Str") == 0 || strcmp(t.value, "வரி") == 0 || strcmp(t.value, "Str ") == 0) {
-        Token name_token = get_next_token(file);
-        Token next = get_next_token(file);
-        while (next.type != 20 && next.type != T_EOF) { next = get_next_token(file); }
-        Token val_token = get_next_token(file);
-        if (is_valid(val_token)) { tamizhi_gen_str(name_token.value, val_token.value); } 
-        else { fprintf(stderr, "[Syntax Error] வரி %d: சரத்தின் மதிப்பு விடுபட்டுள்ளது\n", t.line); }
-    }
+
+    // ======================================================
+    // Assignment + AST Math (BODMAS Sync Fixed 🚀)
+    // ======================================================
+
     else if (t.type == T_ID) {
+
         char var_name[100];
-        strcpy(var_name, t.value); 
+        strcpy(var_name, t.value);
+
         long current_pos = ftell(file);
-        Token next_t = get_next_token(file);
+        Token next = get_next_token(file);
 
-        if (next_t.type == 20 || strcmp(next_t.value, "=") == 0) {
-            Token v1 = get_next_token(file); 
-            long lookahead_pos = ftell(file);
-            int is_ternary_line = 0;
-            Token check_t;
+        // ==============================================
+        // Assignment Block
+        // ==============================================
 
-            if (strcmp(v1.value, "if") == 0 || v1.type == T_IF) {
-                is_ternary_line = 1;
-            } else {
-                for (int scan_idx = 0; scan_idx < 4; scan_idx++) {
-                    check_t = get_next_token(file);
-                    if (strcmp(check_t.value, "if") == 0 || check_t.type == T_IF) {
-                        is_ternary_line = 1;
-                        break;
-                    }
-                    if (check_t.type == 21 || strcmp(check_t.value, ";") == 0 || check_t.type == T_EOF) break;
-                }
+        if (next.type == 20 || strcmp(next.value, "=") == 0) {
+
+            // 🌟 பிக்ஸ்: டோக்கன்களை முன்கூட்டியே உடைக்காமல், முதல் உறுப்பிலிருந்து 
+            // முழு எக்ஸ்பிரஷனையும் அப்படியே படிக்க `parse_expression`-க்கு அனுப்புகிறோம்!
+            Token current_tok = get_next_token(file);
+
+            ASTNode* root = parse_expression(file, &current_tok);
+
+            if (root) {
+                extern void tamizhi_gen_math_ast(char* res_name, ASTNode* root);
+                tamizhi_gen_math_ast(var_name, root);
+                free_ast(root);
             }
-
-            fseek(file, lookahead_pos, SEEK_SET);
-
-            if (is_ternary_line) {
-                Token op_or_keyword = get_next_token(file);
-                if (strcmp(op_or_keyword.value, "if") != 0 && op_or_keyword.type != T_IF) {
-                    while ((op_or_keyword = get_next_token(file)).type != T_EOF) {
-                        if (strcmp(op_or_keyword.value, "if") == 0 || op_or_keyword.type == T_IF) break;
-                    }
-                }
-                Token cond_v1 = get_next_token(file);
-                if (strcmp(cond_v1.value, "(") == 0) cond_v1 = get_next_token(file);
-                Token cond_pred = get_next_token(file);
-                Token cond_v2 = get_next_token(file);
-
-                char clean_v2[50];
-                strcpy(clean_v2, cond_v2.value);
-                char *end_p = strchr(clean_v2, ')');
-                if (end_p != NULL) *end_p = '\0';
-
-                Token next_k = get_next_token(file);
-                if (strcmp(next_k.value, ")") == 0) next_k = get_next_token(file);
-
-                if (next_k.type == T_ELSE || strcmp(next_k.value, "else") == 0 || strcmp(next_k.value, "இல்லையெனில்") == 0) {
-                    Token false_val = get_next_token(file);
-                    tamizhi_gen_ternary(var_name, cond_v1.value, cond_pred.value, clean_v2, v1.value, false_val.value);
-                } else {
-                    fprintf(stderr, "[Syntax Error] வரி %d: டெர்னரி நிபந்தனையில் 'else' பிளாக் விடுபட்டுள்ளது\n", t.line);
-                }
-            }
-            // ==========================================================
-            // 🌟 2. AST மேத்ஸ் லாஜிக் ரன்டைம் (BODMAS சப்போர்ட் & Sync Fix) 🌟
-            // ==========================================================
             else {
-                Token op_or_keyword = get_next_token(file);
+                fprintf(stderr, "[Syntax Error] Invalid Expression\n");
+            }
 
-                // கணித குறியீடுகள் (+, -, *, /) ஏதேனும் உள்ளதா என செக் செய்கிறோம்
-                if (op_or_keyword.type == 19 || strcmp(op_or_keyword.value, "+") == 0 || 
-                    strcmp(op_or_keyword.value, "-") == 0 || strcmp(op_or_keyword.value, "*") == 0 || 
-                    strcmp(op_or_keyword.value, "/") == 0) {
+            // எக்ஸ்பிரஷன் முடிவுற்றதும் செமைகோலன் வரிகளை சீரமைக்கிறோம்
+            if (strcmp(current_tok.value, ";") != 0 && current_tok.type != 21) {
+                skip_to_semicolon(file);
+            }
+        }
 
-                    // v1 டோக்கனை (முதலாவது மாறி/எண்) நேரடியாக லீஃப் நோடாக மாற்றுகிறோம்
-                    ASTNode* left = NULL;
-                    if (v1.type == T_NUM || isdigit((unsigned char)v1.value[0]) || v1.value[0] == '-') {
-                        left = create_number_node(atoi(v1.value));
-                    } else {
-                        left = create_identifier_node(v1.value);
-                    }
+        // ==============================================
+        // Function Call Block
+        // ==============================================
 
-                    // டோக்கன் பாயிண்டரை ஆப்பரேட்டருக்கு இணையாக சீரமைத்து மரத்தை பில்ட் செய்கிறோம்
-                    Token current_tok = op_or_keyword;
-                    ASTNode* ast_root = parse_expression(file, left, &current_tok);
+        else if (next.type == 15 || strcmp(next.value, "(") == 0) {
 
-                    if (ast_root != NULL) {
-                        // 🚀 உருவாக்கப்பட்ட முழுமையான மரத்தை Codegen-க்கு அனுப்புகிறோம்
-                        extern void tamizhi_gen_math_ast(char* res_name, ASTNode* root);
-                        tamizhi_gen_math_ast(var_name, ast_root);
-                    } else {
-                        fprintf(stderr, "[Syntax Error] வரி %d: கணித தொடரியல் பிழை\n", t.line);
-                    }
-                    
-                    // 🌟 மிக முக்கியம்: எக்ஸ்பிரஷன் முடிந்ததும் செமைகோலன் ';' வரை டோக்கனை சீரமைக்கிறோம்
-                    if (strcmp(current_tok.value, ";") != 0 && current_tok.type != 21) {
-                        skip_to_semicolon(file);
-                    }
+            if (call_depth >= MAX_CALL_DEPTH) {
+                fprintf(stderr, "[Runtime Error] Stack Overflow\n");
+                return;
+            }
+
+            long func_pos = find_function(var_name);
+
+            if (func_pos == -1L) {
+                fprintf(stderr, "[Linker Error] Undefined Function '%s'\n", var_name);
+                return;
+            }
+
+            while (get_next_token(file).type != 21);
+
+            long return_pos = ftell(file);
+            call_depth++;
+
+            fseek(file, func_pos, SEEK_SET);
+            int brace_count = 1;
+            Token body;
+
+            while (brace_count > 0 && (body = get_next_token(file)).type != T_EOF) {
+
+                if (body.type == 22 || strcmp(body.value, "{") == 0) {
+                    brace_count++;
+                    continue;
                 }
-            }
-        } 
-        else if (next_t.type == 15 || strcmp(next_t.value, "(") == 0) {
-            Token tmp;
-            while ((tmp = get_next_token(file)).type != T_EOF) {
-                if (tmp.type == 21 || strcmp(tmp.value, ";") == 0) break;
-            }
-            long post_call_pos = ftell(file);
 
-            clearerr(file);
-            rewind(file);
-            Token find_f;
-            long func_body_pos = -1L;
-
-            while ((find_f = get_next_token(file)).type != T_EOF) {
-                if (is_valid(find_f) && (strcmp(find_f.value, "fun") == 0 || find_f.type == T_FUNC || strcmp(find_f.value, "நிகழ்") == 0)) {
-                    Token name = get_next_token(file);
-                    if (is_valid(name)) {
-                        char clean_fn[100];
-                        strcpy(clean_fn, name.value);
-                        char *b_ptr = strchr(clean_fn, '(');
-                        if (b_ptr != NULL) *b_ptr = '\0';
-
-                        if (strcmp(clean_fn, var_name) == 0) {
-                            while ((find_f = get_next_token(file)).type != 22 && find_f.type != T_EOF);
-                            func_body_pos = ftell(file); 
-                            break;
-                        }
-                    }
+                if (body.type == 23 || strcmp(body.value, "}") == 0) {
+                    brace_count--;
+                    if (brace_count <= 0) break;
+                    continue;
                 }
+
+                parse_statement(file, body);
             }
 
-            if (func_body_pos != -1L) {
-                clearerr(file);
-                fseek(file, func_body_pos, SEEK_SET);
-                int body_brace_count = 1;
-                Token body_t;
-                int previous_var_count = var_count;
-                int backup_main_line = current_line;
+            call_depth--;
+            fseek(file, return_pos, SEEK_SET);
+        }
 
-                while (body_brace_count > 0 && (body_t = get_next_token(file)).type != T_EOF) {
-                    if (body_t.type == 22 || strcmp(body_t.value, "{") == 0) body_brace_count++;
-                    if (body_t.type == 23 || strcmp(body_t.value, "}") == 0) {
-                        body_brace_count--;
-                        if (body_brace_count <= 0) break;
-                    }
-
-                    if (body_t.type != 21 && strcmp(body_t.value, ";") != 0 && body_t.type != 22 && body_t.type != 23) {
-                        body_t.line = current_line;
-                        parse_statement(file, body_t);
-                        func_body_pos = ftell(file);
-                        fseek(file, func_body_pos, SEEK_SET);
-                    }
-                }
-                var_count = previous_var_count;
-                current_line = backup_main_line;
-            } else {
-                fprintf(stderr, "[Linker Error] வரி %d: அழைக்கப்படும் நிகழ்வு வரையறுக்கப்படவில்லை '%s'\n", t.line, var_name);
-            }
-
-            clearerr(file);
-            fseek(file, post_call_pos, SEEK_SET); 
-        } else {
+        else {
             fseek(file, current_pos, SEEK_SET);
         }
     }
+
+    // ======================================================
+    // Print Block
+    // ======================================================
+
     else if (t.type == T_PRINT || strcmp(t.value, "அச்சிடு") == 0) {
+
         Token first = get_next_token(file);
-        if (first.type == 15) first = get_next_token(file); 
-        if (strcmp(first.value, "Num") == 0 || strcmp(first.value, "எண்") == 0 || strcmp(first.value, "Str") == 0 || strcmp(first.value, "வரி") == 0) {
-            first = get_next_token(file);
-        }
+        if (first.type == 15) first = get_next_token(file);
 
-        char clean_target[256];
-        memset(clean_target, 0, sizeof(clean_target));
-        strncpy(clean_target, first.value, sizeof(clean_target) - 1);
-        tamizhi_trim_token(clean_target);
-        tamizhi_gen_print(clean_target);
-
-        long check_pos = ftell(file);
-        Token semi = get_next_token(file);
-        if (semi.type != 21 && strcmp(semi.value, ";") != 0) {
-            fprintf(stderr, "[Warning] வரி %d: ஸ்டேட்மெண்ட்டின் இறுதியில் செமைகோலன் ';' விடுபட்டுள்ளது\n", t.line);
-            fseek(file, check_pos, SEEK_SET);
-        }
+        tamizhi_trim_token(first.value);
+        tamizhi_gen_print(first.value);
     }
+
+    // ======================================================
+    // Loop Block
+    // ======================================================
+
     else if (t.type == T_FOR || strcmp(t.value, "சு") == 0) {
-        Token limit_token = get_next_token(file); 
-        int limit = isdigit((unsigned char)limit_token.value[0]) ? atoi(limit_token.value) : 3;
+
+        Token limit_token = get_next_token(file);
+        int limit = atoi(limit_token.value);
 
         Token next = get_next_token(file);
+
         if (next.type == 22 || strcmp(next.value, "{") == 0) {
+
             tamizhi_gen_loop_start(limit);
-            Token body_t;
-            while ((body_t = get_next_token(file)).type != 23 && body_t.type != T_EOF) {
-                parse_statement(file, body_t);
+            Token body;
+
+            while ((body = get_next_token(file)).type != T_EOF) {
+
+                if (body.type == 23 || strcmp(body.value, "}") == 0)
+                    break;
+
+                parse_statement(file, body);
             }
+
             tamizhi_gen_loop_end();
-        } else {
-            fprintf(stderr, "[Syntax Error] வரி %d: சுழற்சிக்குரிய தொடக்க அடைப்புக்குறி '{' விடுபட்டுள்ளது\n", t.line);
         }
     }
 }
