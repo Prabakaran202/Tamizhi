@@ -382,6 +382,38 @@ void parse_statement(FILE *file, Token t) {
     }
 
     // ======================================================
+    // 🌟 String Variable Declaration (Fixed Quotes Strip)
+    // ======================================================
+
+    else if (t.type == T_STR || strcmp(t.value, "Str") == 0 || strcmp(t.value, "வரி") == 0) {
+
+        Token name = get_next_token(file);
+        Token next = get_next_token(file);
+
+        while (next.type != 20 && next.type != T_EOF) {
+            next = get_next_token(file);
+        }
+
+        Token value = get_next_token(file);
+
+        char clean_str_val[1024];
+        memset(clean_str_val, 0, sizeof(clean_str_val));
+
+        int len = strlen(value.value);
+
+        if (value.value[0] == '"' && value.value[len - 1] == '"' && len >= 2) {
+            strncpy(clean_str_val, value.value + 1, len - 2);
+            clean_str_val[len - 2] = '\0';
+        }
+        else {
+            strcpy(clean_str_val, value.value);
+        }
+
+        tamizhi_trim_token(clean_str_val);
+        tamizhi_gen_str(name.value, clean_str_val);
+    }
+
+    // ======================================================
     // Assignment + AST Math (BODMAS Sync Fixed 🚀)
     // ======================================================
 
@@ -399,8 +431,6 @@ void parse_statement(FILE *file, Token t) {
 
         if (next.type == 20 || strcmp(next.value, "=") == 0) {
 
-            // 🌟 பிக்ஸ்: டோக்கன்களை முன்கூட்டியே உடைக்காமல், முதல் உறுப்பிலிருந்து 
-            // முழு எக்ஸ்பிரஷனையும் அப்படியே படிக்க `parse_expression`-க்கு அனுப்புகிறோம்!
             Token current_tok = get_next_token(file);
 
             ASTNode* root = parse_expression(file, &current_tok);
@@ -414,7 +444,6 @@ void parse_statement(FILE *file, Token t) {
                 fprintf(stderr, "[Syntax Error] Invalid Expression\n");
             }
 
-            // எக்ஸ்பிரஷன் முடிவுற்றதும் செமைகோலன் வரிகளை சீரமைக்கிறோம்
             if (strcmp(current_tok.value, ";") != 0 && current_tok.type != 21) {
                 skip_to_semicolon(file);
             }
