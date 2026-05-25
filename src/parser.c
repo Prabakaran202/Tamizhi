@@ -282,30 +282,39 @@ void parse_statement(FILE *file, Token t) {
                 }
             }
             // ==========================================================
-            // 🌟 2. AST மேத்ஸ் லாஜிக் ரன்டைம் (Safe Wiring) 🌟
+            // 🌟 2. AST மேத்ஸ் லாஜிக் ரன்டைம் (BODMAS சப்போர்ட் & Sync Fix) 🌟
             // ==========================================================
             else {
                 Token op_or_keyword = get_next_token(file);
+
+                // கணித குறியீடுகள் (+, -, *, /) ஏதேனும் உள்ளதா என செக் செய்கிறோம்
                 if (op_or_keyword.type == 19 || strcmp(op_or_keyword.value, "+") == 0 || 
                     strcmp(op_or_keyword.value, "-") == 0 || strcmp(op_or_keyword.value, "*") == 0 || 
                     strcmp(op_or_keyword.value, "/") == 0) {
-                    
-                    // ஆப்செட் பிழையை தவிர்க்க, ஏற்கெனவே படித்த v1-ஐ நேரடியாக மரமாக மாற்றுகிறோம்
+
+                    // v1 டோக்கனை (முதலாவது மாறி/எண்) நேரடியாக லீஃப் நோடாக மாற்றுகிறோம்
                     ASTNode* left = NULL;
                     if (v1.type == T_NUM || isdigit((unsigned char)v1.value[0]) || v1.value[0] == '-') {
                         left = create_number_node(atoi(v1.value));
                     } else {
                         left = create_identifier_node(v1.value);
                     }
-                    
+
+                    // டோக்கன் பாயிண்டரை ஆப்பரேட்டருக்கு இணையாக சீரமைத்து மரத்தை பில்ட் செய்கிறோம்
                     Token current_tok = op_or_keyword;
                     ASTNode* ast_root = parse_expression(file, left, &current_tok);
-                    
+
                     if (ast_root != NULL) {
+                        // 🚀 உருவாக்கப்பட்ட முழுமையான மரத்தை Codegen-க்கு அனுப்புகிறோம்
                         extern void tamizhi_gen_math_ast(char* res_name, ASTNode* root);
                         tamizhi_gen_math_ast(var_name, ast_root);
                     } else {
                         fprintf(stderr, "[Syntax Error] வரி %d: கணித தொடரியல் பிழை\n", t.line);
+                    }
+                    
+                    // 🌟 மிக முக்கியம்: எக்ஸ்பிரஷன் முடிந்ததும் செமைகோலன் ';' வரை டோக்கனை சீரமைக்கிறோம்
+                    if (strcmp(current_tok.value, ";") != 0 && current_tok.type != 21) {
+                        skip_to_semicolon(file);
                     }
                 }
             }
