@@ -6,7 +6,7 @@ echo "--------------------------------------------------"
 
 # 1. தற்காலிக ஃபோல்டரில் ரெப்போவை க்ளோன் செய்தல்
 echo "[1/4] Downloading source codes from GitHub..."
-git clone --depth=1 https://github.com/Prabakaran2002/Tamizhi.git /tmp/tamizhi_build
+git clone --depth=1 https://github.com/Prabakaran202/Tamizhi.git /tmp/tamizhi_build
 
 cd /tmp/tamizhi_build
 
