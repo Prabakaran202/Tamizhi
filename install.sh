@@ -4,11 +4,15 @@ echo "--------------------------------------------------"
 echo "🍁 Tamizhi Compiler Global Installer Started 🍁"
 echo "--------------------------------------------------"
 
+# 🌟 Termux மற்றும் Linux இரண்டிற்கும் செட் ஆகும் பாதுகாப்பான டெம்ப் பாத்
+BUILD_DIR="${TMPDIR:-/tmp}/tamizhi_build"
+
 # 1. தற்காலிக ஃபோல்டரில் ரெப்போவை க்ளோன் செய்தல்
 echo "[1/4] Downloading source codes from GitHub..."
-git clone --depth=1 https://github.com/Prabakaran2002/Tamizhi.git /tmp/tamizhi_build
+rm -rf "$BUILD_DIR"
+git clone --depth=1 https://github.com/Prabakaran2002/Tamizhi.git "$BUILD_DIR"
 
-cd /tmp/tamizhi_build
+cd "$BUILD_DIR" || exit 1
 
 # 2. கம்பைலரை பில்ட் செய்தல்
 echo "[2/4] Building Tamizhi Engine using Clang Toolchain..."
@@ -27,7 +31,8 @@ else
 fi
 
 # 4. தற்காலிக ஃபைல்களை நீக்குதல்
-rm -rf /tmp/tamizhi_build
+cd ~ || exit
+rm -rf "$BUILD_DIR"
 
 echo "--------------------------------------------------"
 echo "🏆 Success! Tamizhi Compiler is installed globally."
