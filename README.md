@@ -38,6 +38,15 @@
 
 ## 🚀 Getting Started
 
+##bash
+
+# 1. முதல்ல உங்க लोकल ஃபோல்டர்ல இருக்குற ஸ்கிரிப்ட்டுக்கு எக்ஸிகியூட் பெர்மிஷன் கொடுங்க
+chmod +x install.sh
+
+# 2. இப்போ இந்த லோக்கல் இன்ஸ்டாலர் ஸ்கிரிப்ட்டை ரன் பண்ணுங்க
+./install.sh
+
+
 ### Prerequisites
 
 Ensure the following tools are installed on your system:
