@@ -27,55 +27,40 @@
 ## ✨ Features
 
 | Feature | Description |
-|---|---|
+| :--- | :--- |
 | 🔥 **LLVM Backend** | Optimized native code generation for modern CPUs |
 | ⚡ **C-Level Performance** | Significantly faster than Python and other interpreted languages |
 | 🛠️ **Native CLI** | Dedicated `tamizhi` command-line tool written in C |
-| 🌐 **Tamil Syntax** | Write logic using Tamil keywords (`அச்சிடு`, `முழுஎண்`, etc.) |
+| 🌐 **Tamil Syntax** | Write logic using Tamil keywords (`அச்சிடு`, `Num`, etc.) |
 | 🐧 **Linux Native** | Optimized for Linux (Arch/Manjaro) and Android (Termux) |
 
 ---
 
 ## 🚀 Getting Started
 
-##bash
-
-# 1. முதல்ல உங்க लोकल ஃபோல்டர்ல இருக்குற ஸ்கிரிப்ட்டுக்கு எக்ஸிகியூட் பெர்மிஷன் கொடுங்க
-chmod +x install.sh
-
-# 2. இப்போ இந்த லோக்கல் இன்ஸ்டாலர் ஸ்கிரிப்ட்டை ரன் பண்ணுங்க
-./install.sh
-
-
 ### Prerequisites
 
-Ensure the following tools are installed on your system:
+Ensure the following compiler tools are installed on your system:
+
+- **Arch Linux / Manjaro:** `sudo pacman -S clang llvm make`
+- **Ubuntu / Debian:** `sudo apt install clang llvm make -y`
+- **Android Termux:** `pkg install clang llvm make`
+
+### Installation (The Global Automated Way)
+
+You can install the Tamizhi Compiler globally on your system with a single command. It will automatically download, compile, and configure the global environment.
 
 ```bash
-gcc --version
-clang --version
-llvm-config --version
+curl -fsSL https://raw.githubusercontent.com/Prabakaran202/Tamizhi/main/install.sh | bash
 ```
 
-### Installation
-
-**1. Clone the repository:**
+Alternatively, for local development:
 
 ```bash
 git clone https://github.com/Prabakaran202/Tamizhi.git
 cd Tamizhi
-```
-
-**2. Build the compiler:**
-
-```bash
-make
-```
-
-**3. Install globally:**
-
-```bash
-sudo cp tamizhi tamizhi_core /usr/local/bin/
+chmod +x install.sh
+./install.sh
 ```
 
 ---
@@ -85,16 +70,17 @@ sudo cp tamizhi tamizhi_core /usr/local/bin/
 Create a new file with `.tz` extension (e.g., `vanakkam.tz`):
 
 ```tamizhi
-// Tamizhi V0.1 — Basic Arithmetic
+fun main {
+    Num அ = 100 ;
+    Num ஆ = 200 ;
+    Num இ = அ + ஆ ;
 
-Num அ = 100;
-Num ஆ = 200;
-Num இ = அ + ஆ;
-
-அச்சிடு இ;
+    print "கூட்டல் விடை:" ;
+    print இ ;
+}
 ```
 
-**Run it:**
+Run it anywhere on your system:
 
 ```bash
 tamizhi run vanakkam.tz
@@ -103,6 +89,7 @@ tamizhi run vanakkam.tz
 **Output:**
 
 ```
+கூட்டல் விடை:
 300
 ```
 
@@ -112,12 +99,12 @@ tamizhi run vanakkam.tz
 
 ```
 Tamizhi/
-├── src/                  # Lexer, Parser, and Code Generator (C source files)
-├── include/              # Header files
-├── examples/             # Sample Tamizhi programs
-├── tamizhi               # User-facing CLI tool
-├── tamizhi_core          # Compiler engine (LLVM-based)
-└── Makefile
+├── src/                  # Lexer, Parser, and LLVM Code Generator (C source files)
+├── include/              # Compiler Core Header files
+├── examples/             # Sample Tamizhi advanced programs (.tz)
+├── .vscode/              # Pre-configured global tasks for VS Code execution
+├── install.sh            # Global one-click automated installer script
+└── Makefile              # Automated Clang compilation pipelines
 ```
 
 ---
@@ -126,31 +113,39 @@ Tamizhi/
 
 - [x] LLVM Integration (Core Compiler Engine)
 - [x] Native C CLI (`tamizhi run`)
-- [x] Basic arithmetic and variable declaration
-- [ ] Conditionals — `எனில்` / `இல்லையெனில்` (if / else)
-- [ ] Loops — `மீண்டும்` (while / for)
-- [ ] Functions — `செயல்` (functions)
-- [ ] Python Library Bridge
+- [x] Global Universal Installer Script (`install.sh`)
+- [x] Precedence Engine Matrix (AST Tree Walker)
+- [x] Conditions — `if` / `else` Block Parsing
+- [x] Loops — `for` Iteration Engines
+- [ ] Conditionals — `எனின்தான்` / `இல்லையெனில்` (Tamil Syntax Mapping)
+- [ ] Return Infrastructure (return values from functions)
+- [ ] Floating Point Support (Float / Decimal operations)
 - [ ] Tamizhi Package Manager (TPM)
 
 ---
 
 ## 🤝 Contributing
 
-Tamizhi is an open-source project under the **Backend Developer Hub (BDH)** community. Contributions are welcome!
+Tamizhi is an open-source project under the **Backend Developer Hub (BDH)** community. Contributions are highly welcome!
 
-- 🐛 Found a bug? [Open an Issue](https://github.com/Prabakaran202/Tamizhi/issues)
-- 💡 Have a feature idea? Submit a Pull Request
-- ⭐ Like the project? Give it a star!
+- 🐛 Found a bug or syntax error? [Open an Issue](https://github.com/Prabakaran202/Tamizhi/issues)
+- 💡 Have a cool core feature idea? Submit a Pull Request
+- ⭐ Like the concept? Give this repository a star!
 
 ---
+
 ## 📊 Benchmarks
 
+| Metric | Result |
+| :--- | :--- |
 | 🔁 Loop Iterations | 1,000,000 |
-| ⏱️ Execution Time | 0.24s (output suppressed) |
+| ⏱️ Execution Time | 0.24s (AOT Native Compilation) |
 | ⚙️ CPU Usage | 64% |
-| 📱 Device | Android (Termux) — aarch64 |
-| 🔧 Backend | LLVM Native |
+| 📱 Device | Android (Termux) — aarch64 / Linux x86_64 |
+| 🔧 Backend | LLVM Native Toolchain |
+
+---
+
 ## 📜 License
 
 This project is licensed under the [MIT License](LICENSE).
