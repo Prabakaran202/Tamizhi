@@ -520,6 +520,28 @@ void parse_statement(FILE *file, Token t) {
             skip_to_semicolon(file);
         }
     }
+    
+    // ======================================================
+    // Return Block (புதிதாக சேர்க்கப்பட்டது)
+    // ======================================================
+
+    else if (t.type == T_RET || strcmp(t.value, "return") == 0 || strcmp(t.value, "திரும்பு") == 0) {
+        
+        Token expr_token = get_next_token(file); // எ.கா: 'result' அல்லது '100'
+        
+        // Return மதிப்பை Codegen-க்கு அனுப்புகிறோம் (இதற்கான லாஜிக்கை அடுத்ததாக codegen.c-ல் எழுதுவோம்)
+        extern void tamizhi_gen_return(char* return_val);
+        tamizhi_gen_return(expr_token.value);
+        
+        // வரியின் முடிவில் உள்ள செமிகோலனைத் தாண்டிச் செல்கிறோம்
+        Token semi = get_next_token(file);
+        if (strcmp(semi.value, ";") != 0 && semi.type != 21) {
+            skip_to_semicolon(file);
+        }
+        
+        // ரிட்டர்ன் வந்தவுடனே ஃபங்ஷனை விட்டு வெளியேற வேண்டும்
+        return; 
+    }
 
     // ======================================================
     // Loop Block
