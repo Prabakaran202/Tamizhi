@@ -620,21 +620,20 @@ void tamizhi_gen_loop_end() {
 }
 
 // ==========================================================
-// Return Statement (புதிதாக சேர்க்கப்பட்டது)
+// Return Statement (மாற்றப்பட்டது - Secret Register Logic)
 // ==========================================================
 void tamizhi_gen_return(char* return_val) {
-    // Return மதிப்பின் பெயரைத் தூய்மைப்படுத்துகிறோம்
     char clean_name[1024];
     snprintf(clean_name, sizeof(clean_name), "%s", return_val);
     tamizhi_codegen_trim(clean_name);
 
     LLVMValueRef ret_llvm_val = NULL;
 
-    // 1. இது ஒரு எண்ணாக இருந்தால் (எ.கா: return 100;)
+    // 1. எண்ணாக இருந்தால்
     if (isdigit((unsigned char)clean_name[0]) || clean_name[0] == '-') {
         ret_llvm_val = LLVMConstInt(LLVMInt32Type(), atoi(clean_name), 0);
     } 
-    // 2. இது ஒரு மாறியாக இருந்தால், மெமரியிலிருந்து லோட் செய்கிறோம் (எ.கா: return result;)
+    // 2. மாறியாக இருந்தால்
     else {
         for(int i = 0; i < var_count; i++) {
             if(strcmp(symbol_table[i].name, clean_name) == 0) {
@@ -644,14 +643,31 @@ void tamizhi_gen_return(char* return_val) {
         }
     }
 
-    // 3. மதிப்பு கிடைத்தால், LLVM 'ret' மெஷின் கோடை உருவாக்குகிறோம்
-    if (ret_llvm_val) {
-        LLVMBuildRet(builder, ret_llvm_val);
-    } else {
-        // மதிப்பு கிடைக்கவில்லை எனில் 0-ஐ திருப்பி அனுப்புகிறோம்
-        fprintf(stderr, "[Codegen Warning] Return மதிப்பு '%s' கிடைக்கவில்லை. 0 என எடுத்துக்கொள்ளப்படுகிறது.\n", clean_name);
-        LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0, 0));
+    if (!ret_llvm_val) {
+        ret_llvm_val = LLVMConstInt(LLVMInt32Type(), 0, 0);
     }
+
+    // 🌟 மாஸ்டர் ஃபிக்ஸ்: LLVMBuildRet-க்கு பதிலாக "__tamizhi_ret" என்ற சீக்ரெட் வேரியபிளில் சேமிக்கிறோம்!
+    LLVMValueRef target_ptr = NULL;
+    for (int i = 0; i < var_count; i++) {
+        if (strcmp(symbol_table[i].name, "__tamizhi_ret") == 0) {
+            target_ptr = symbol_table[i].alloca_ptr;
+            break;
+        }
+    }
+    
+    // சீக்ரெட் வேரியபிள் இல்லை என்றால் புதிதாக உருவாக்குகிறோம்
+    if (!target_ptr) {
+        LLVMValueRef func = LLVMGetNamedFunction(module, "main");
+        target_ptr = create_entry_alloca(func, LLVMInt32Type(), "__tamizhi_ret");
+        snprintf(symbol_table[var_count].name, sizeof(symbol_table[var_count].name), "__tamizhi_ret");
+        symbol_table[var_count].alloca_ptr = target_ptr;
+        symbol_table[var_count].is_str_type = 0;
+        var_count++;
+    }
+    
+    // விடையை பத்திரமாக சேமிக்கிறோம் (No program termination here!)
+    LLVMBuildStore(builder, ret_llvm_val, target_ptr);
 }
 
 void tamizhi_codegen_destroy() {
