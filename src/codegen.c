@@ -619,6 +619,41 @@ void tamizhi_gen_loop_end() {
     loop_top--;
 }
 
+// ==========================================================
+// Return Statement (புதிதாக சேர்க்கப்பட்டது)
+// ==========================================================
+void tamizhi_gen_return(char* return_val) {
+    // Return மதிப்பின் பெயரைத் தூய்மைப்படுத்துகிறோம்
+    char clean_name[1024];
+    snprintf(clean_name, sizeof(clean_name), "%s", return_val);
+    tamizhi_codegen_trim(clean_name);
+
+    LLVMValueRef ret_llvm_val = NULL;
+
+    // 1. இது ஒரு எண்ணாக இருந்தால் (எ.கா: return 100;)
+    if (isdigit((unsigned char)clean_name[0]) || clean_name[0] == '-') {
+        ret_llvm_val = LLVMConstInt(LLVMInt32Type(), atoi(clean_name), 0);
+    } 
+    // 2. இது ஒரு மாறியாக இருந்தால், மெமரியிலிருந்து லோட் செய்கிறோம் (எ.கா: return result;)
+    else {
+        for(int i = 0; i < var_count; i++) {
+            if(strcmp(symbol_table[i].name, clean_name) == 0) {
+                ret_llvm_val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "ret_load");
+                break;
+            }
+        }
+    }
+
+    // 3. மதிப்பு கிடைத்தால், LLVM 'ret' மெஷின் கோடை உருவாக்குகிறோம்
+    if (ret_llvm_val) {
+        LLVMBuildRet(builder, ret_llvm_val);
+    } else {
+        // மதிப்பு கிடைக்கவில்லை எனில் 0-ஐ திருப்பி அனுப்புகிறோம்
+        fprintf(stderr, "[Codegen Warning] Return மதிப்பு '%s' கிடைக்கவில்லை. 0 என எடுத்துக்கொள்ளப்படுகிறது.\n", clean_name);
+        LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0, 0));
+    }
+}
+
 void tamizhi_codegen_destroy() {
     if(target_machine) LLVMDisposeTargetMachine(target_machine);
     if(builder) LLVMDisposeBuilder(builder);
@@ -634,6 +669,7 @@ static void tamizhi_optimize_module() {
 }
 
 void tamizhi_codegen_finish() {
+    // பிளாக் முடிவில் 'ret' இல்லையென்றால் (எ.கா: main முடியும் போது), டீஃபால்ட் ஆக 0-ஐ இணைக்கிறோம்
     if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder)) == NULL) {
         LLVMBuildRet(builder, LLVMConstInt(LLVMInt32Type(), 0, 0));
     }
