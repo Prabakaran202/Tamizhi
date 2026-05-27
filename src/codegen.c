@@ -655,7 +655,7 @@ void tamizhi_gen_return(char* return_val) {
             break;
         }
     }
-    
+
     // சீக்ரெட் வேரியபிள் இல்லை என்றால் புதிதாக உருவாக்குகிறோம்
     if (!target_ptr) {
         LLVMValueRef func = LLVMGetNamedFunction(module, "main");
@@ -665,9 +665,56 @@ void tamizhi_gen_return(char* return_val) {
         symbol_table[var_count].is_str_type = 0;
         var_count++;
     }
-    
+
     // விடையை பத்திரமாக சேமிக்கிறோம் (No program termination here!)
     LLVMBuildStore(builder, ret_llvm_val, target_ptr);
+}
+
+// ==========================================================
+// 🌟 NEW: ஃபங்ஷனிலிருந்து வந்த விடையை (Return Capture) வேரியபிளுக்கு மாற்றும் லாஜிக்
+// ==========================================================
+void tamizhi_gen_assign_from_return(char* var_name) {
+    char clean_name[100];
+    snprintf(clean_name, sizeof(clean_name), "%s", var_name);
+    tamizhi_codegen_trim(clean_name);
+
+    LLVMValueRef ret_llvm_val = NULL;
+
+    // 1. சீக்ரெட் வேரியபிளான "__tamizhi_ret"-ல் இருந்து விடையை லோட் செய்கிறோம்
+    for (int i = 0; i < var_count; i++) {
+        if (strcmp(symbol_table[i].name, "__tamizhi_ret") == 0) {
+            ret_llvm_val = LLVMBuildLoad2(builder, LLVMInt32Type(), symbol_table[i].alloca_ptr, "ret_val_load");
+            break;
+        }
+    }
+
+    // ஒருவேளை ஃபங்ஷன் எதுவுமே ரிட்டர்ன் செய்யவில்லை என்றால் டீஃபால்ட் 0 ஆக எடுத்துக்கொள்கிறோம்
+    if (!ret_llvm_val) {
+        ret_llvm_val = LLVMConstInt(LLVMInt32Type(), 0, 0);
+    }
+
+    // 2. அந்த விடையை இலக்கான வேரியபிளுக்கு (var_name) சேமிக்கிறோம்
+    LLVMValueRef target_ptr = NULL;
+    for (int i = 0; i < var_count; i++) {
+        if (strcmp(symbol_table[i].name, clean_name) == 0) {
+            target_ptr = symbol_table[i].alloca_ptr;
+            break;
+        }
+    }
+
+    // வேரியபிள் இதுவரை உருவாக்கப்படவில்லை என்றால் புதிதாக உருவாக்குகிறோம்
+    if (!target_ptr && var_count < 100) {
+        LLVMValueRef func = LLVMGetNamedFunction(module, "main");
+        target_ptr = create_entry_alloca(func, LLVMInt32Type(), clean_name);
+        snprintf(symbol_table[var_count].name, sizeof(symbol_table[var_count].name), "%s", clean_name);
+        symbol_table[var_count].alloca_ptr = target_ptr;
+        symbol_table[var_count].is_str_type = 0;
+        var_count++;
+    }
+
+    if (target_ptr) {
+        LLVMBuildStore(builder, ret_llvm_val, target_ptr);
+    }
 }
 
 void tamizhi_codegen_destroy() {
