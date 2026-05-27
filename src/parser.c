@@ -358,7 +358,7 @@ void parse_statement(FILE *file, Token t) {
     if (t.type == 21 || strcmp(t.value, ";") == 0) return;
 
     // ======================================================
-    // Number Variable Declaration
+    // Number Variable Declaration (Updated for Function Return Capture)
     // ======================================================
 
     if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
@@ -370,14 +370,58 @@ void parse_statement(FILE *file, Token t) {
             next = get_next_token(file);
         }
 
+        long value_pos = ftell(file); // மதிப்பை படிக்க ஆரம்பிக்கும் இடம்
         Token value = get_next_token(file);
         tamizhi_trim_token(value.value);
 
-        if (isdigit((unsigned char)value.value[0]) || value.value[0] == '-') {
-            tamizhi_gen_var(name.value, atoi(value.value));
-        }
+        Token next_after_val = get_next_token(file);
+
+        // 🌟 1. இது ஒரு Function Call ஆக இருந்தால் (எ.கா: Num a = math_core() ;)
+        if (next_after_val.type == 15 || strcmp(next_after_val.value, "(") == 0) {
+            
+            // அந்த பங்க்ஷனை முதலில் இயக்குகிறோம்
+            long func_pos = find_function(value.value);
+            if (func_pos != -1L) {
+                while (get_next_token(file).type != 21); // ';' வரும் வரை செல்கிறோம்
+                long return_pos = ftell(file);
+                
+                call_depth++;
+                fseek(file, func_pos, SEEK_SET);
+                int brace_count = 1;
+                Token body;
+
+                while (brace_count > 0 && (body = get_next_token(file)).type != T_EOF) {
+                    if (body.type == 22 || strcmp(body.value, "{") == 0) brace_count++;
+                    else if (body.type == 23 || strcmp(body.value, "}") == 0) {
+                        brace_count--;
+                        if (brace_count <= 0) break;
+                    }
+                    else parse_statement(file, body);
+                }
+                
+                call_depth--;
+                fseek(file, return_pos, SEEK_SET);
+                
+                // 🌟 ஃபங்ஷன் முடிந்துவிட்டது. இப்போது __tamizhi_ret-ல் உள்ள மதிப்பை 
+                // இந்த வேரியபிளுக்கு அசைன் செய்ய Codegen-ஐ அழைக்கிறோம்!
+                extern void tamizhi_gen_assign_from_return(char* var_name);
+                tamizhi_gen_assign_from_return(name.value);
+                
+            } else {
+                fprintf(stderr, "[Linker Error] Undefined Function '%s'\n", value.value);
+            }
+        } 
+        // 🌟 2. இது சாதாரண எண்ணாக இருந்தால் (எ.கா: Num a = 100 ;)
         else {
-            fprintf(stderr, "[Syntax Error] Invalid Number '%s'\n", value.value);
+            fseek(file, value_pos, SEEK_SET); // பழைய இடத்திற்கு திரும்புகிறோம்
+            value = get_next_token(file);
+            tamizhi_trim_token(value.value);
+            
+            if (isdigit((unsigned char)value.value[0]) || value.value[0] == '-') {
+                tamizhi_gen_var(name.value, atoi(value.value));
+            } else {
+                fprintf(stderr, "[Syntax Error] Invalid Number '%s'\n", value.value);
+            }
         }
     }
 
@@ -520,25 +564,25 @@ void parse_statement(FILE *file, Token t) {
             skip_to_semicolon(file);
         }
     }
-    
+
     // ======================================================
     // Return Block (புதிதாக சேர்க்கப்பட்டது)
     // ======================================================
 
     else if (t.type == T_RET || strcmp(t.value, "return") == 0 || strcmp(t.value, "திரும்பு") == 0) {
-        
+
         Token expr_token = get_next_token(file); // எ.கா: 'result' அல்லது '100'
-        
+
         // Return மதிப்பை Codegen-க்கு அனுப்புகிறோம் (இதற்கான லாஜிக்கை அடுத்ததாக codegen.c-ல் எழுதுவோம்)
         extern void tamizhi_gen_return(char* return_val);
         tamizhi_gen_return(expr_token.value);
-        
+
         // வரியின் முடிவில் உள்ள செமிகோலனைத் தாண்டிச் செல்கிறோம்
         Token semi = get_next_token(file);
         if (strcmp(semi.value, ";") != 0 && semi.type != 21) {
             skip_to_semicolon(file);
         }
-        
+
         // ரிட்டர்ன் வந்தவுடனே ஃபங்ஷனை விட்டு வெளியேற வேண்டும்
         return; 
     }
