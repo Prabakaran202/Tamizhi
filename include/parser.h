@@ -4,17 +4,18 @@
 #include <stdio.h>
 #include "lexer.h"
 
-// AST Node வகைகள் (NodeType)
+// 🌟 AST Node வகைகள் (NodeType)
 typedef enum {
     NODE_VAR_DECL,   
     NODE_PRINT,      
     NODE_BINARY_OP,  
     NODE_LOOP,
     NODE_FUNC_DEF,   
-    NODE_FUNC_CALL   
+    NODE_FUNC_CALL,
+    NODE_RETURN      // 🌟 ரிட்டர்ன் கீவேர்டுக்கான புதிய நோட்!
 } NodeType;
 
-// AST Structure
+// 🌟 AST Structure
 typedef struct ASTNode {
     NodeType type;          
     Token token;            
@@ -22,11 +23,11 @@ typedef struct ASTNode {
     struct ASTNode *right;  
 } ASTNode;
 
-// Function declarations
+// 🌟 Function declarations
 void parse(FILE *file);                      
 ASTNode* create_node(NodeType type, Token t); 
 
 // பழைய expect மற்றும் parse_expression வரிகளை இங்கே நீக்கிவிட்டோம் 
-// ஏென்றால் அவை parser.c-ல் இப்போது இல்லை.
+// ஏனென்றால் அவை parser.c-ல் இப்போது இல்லை.
 
 #endif
