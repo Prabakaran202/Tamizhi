@@ -9,8 +9,7 @@ BUILD_DIR="${TMPDIR:-/tmp}/tamizhi_build"
 
 # 1. தற்காலிக ஃபோல்டரில் ரெப்போவை க்ளோன் செய்தல்
 echo "[1/4] Downloading source codes from GitHub..."
-rm -rf "$BUILD_DIR"
-git clone --depth=1 https://github.com/Prabakaran202/Tamizhi.git "$BUILD_DIR"
+git clone --depth=1 https://github.com/Prabakaran202/Tamizhi.git /tmp/tamizhi_build
 
 cd "$BUILD_DIR" || exit 1
 
