@@ -1,0 +1,81 @@
+Name: Tamizhi Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+# 🌟 முக்கிய பிக்ஸ்: GitHub Release உருவாக்க தேவையான பெர்மிஷன்கள்
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # ======================================================
+      # 🐍 1. Python PyPI Publish Section
+      # ======================================================
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build Python Package
+        run: |
+          pip install build
+          python -m build
+
+      - name: Publish PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          pip install twine
+          twine upload dist/*
+
+      # ======================================================
+      # 📦 2. GitHub Release Section
+      # ======================================================
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/* # பில்ட் ஆன பைதான் பேக்கேஜையும் இதனுடன் அட்டாச் செய்கிறோம்!
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ======================================================
+      # 🟢 3. Node.js npm Publish Section (Fixed 🚀)
+      # ======================================================
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Publish npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          npm install
+          npm publish --access public
+
+      # ======================================================
+      # 🐋 4. Docker Build & Push Section (Fixed 🚀)
+      # ======================================================
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and Push Docker Image
+        run: |
+          # டேக் பெயரிலிருந்து வெர்ஷனை மட்டும் பிரித்தெடுக்கிறோம் (v0.1.4 -> 0.1.4)
+          VERSION=${GITHUB_REF#refs/tags/v}
+          docker build -t tamizhi/compiler:$VERSION -t tamizhi/compiler:latest .
+          docker push tamizhi/compiler:$VERSION
+          docker push tamizhi/compiler:latest
