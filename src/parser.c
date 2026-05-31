@@ -292,6 +292,12 @@ void parse(FILE *file) {
     tamizhi_generate_entry();
 
     // ======================================================
+    // 🌟 [MASTER ARCHITECTURE FIX] - EOF ஃபிளாக் ரீசெட் மெக்கானிசம் 
+    // ======================================================
+    clearerr(file); 
+    rewind(file); 
+
+    // ======================================================
     // MAIN BLOCK RUN
     // ======================================================
 
@@ -430,7 +436,7 @@ void parse_statement(FILE *file, Token t) {
             fseek(file, value_pos, SEEK_SET);
             Token current_tok = get_next_token(file);
 
-            // 🌟 கணித கோவை ஆதரவு (BODMAS Expression Variable Initializer Support)
+            // 🌟 கணிதா கோவை ஆதரவு (BODMAS Expression Variable Initializer Support)
             ASTNode* root = parse_expression(file, &current_tok);
             if (root) {
                 extern void tamizhi_gen_math_ast(char* res_name, ASTNode* root);
