@@ -357,8 +357,23 @@ void parse_statement(FILE *file, Token t) {
     if (!is_valid(t)) return;
     if (t.type == 21 || strcmp(t.value, ";") == 0) return;
 
+    // 🌟 🌟 [GLOBAL FIX] - கமெண்ட் லைன் ஸ்கிப்பர் பிளாக் (`//`)
+    if (strcmp(t.value, "//") == 0) {
+        Token comment_skip;
+        int current_running_line = current_line;
+        // அதே வரியில இருக்கிற டோக்கன்களை மட்டும் தாண்டிச் செல்கிறோம்!
+        while ((comment_skip = get_next_token(file)).type != T_EOF) {
+            if (current_line != current_running_line) {
+                // அடுத்த வரியின் முதல் டோக்கன் கைக்கு வந்ததும், அதை பார்சருக்கு அனுப்பிவிட்டு வெளியேறுகிறோம்!
+                parse_statement(file, comment_skip);
+                break;
+            }
+        }
+        return;
+    }
+
     // ======================================================
-    // Number Variable Declaration (Updated for Function Return Capture)
+    // Number Variable Declaration
     // ======================================================
 
     if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
@@ -370,19 +385,17 @@ void parse_statement(FILE *file, Token t) {
             next = get_next_token(file);
         }
 
-        long value_pos = ftell(file); // மதிப்பை படிக்க ஆரம்பிக்கும் இடம்
+        long value_pos = ftell(file); 
         Token value = get_next_token(file);
         tamizhi_trim_token(value.value);
 
         Token next_after_val = get_next_token(file);
 
-        // 🌟 1. இது ஒரு Function Call ஆக இருந்தால் (எ.கா: Num a = math_core() ;)
         if (next_after_val.type == 15 || strcmp(next_after_val.value, "(") == 0) {
 
-            // அந்த பங்க்ஷனை முதலில் இயக்குகிறோம்
             long func_pos = find_function(value.value);
             if (func_pos != -1L) {
-                while (get_next_token(file).type != 21); // ';' வரும் வரை செல்கிறோம்
+                while (get_next_token(file).type != 21); 
                 long return_pos = ftell(file);
 
                 call_depth++;
@@ -402,8 +415,6 @@ void parse_statement(FILE *file, Token t) {
                 call_depth--;
                 fseek(file, return_pos, SEEK_SET);
 
-                // 🌟 ஃபங்ஷன் முடிந்துவிட்டது. இப்போது __tamizhi_ret-ல் உள்ள மதிப்பை 
-                // இந்த வேரியபிளுக்கு அசைன் செய்ய Codegen-ஐ அழைக்கிறோம்!
                 extern void tamizhi_gen_assign_from_return(char* var_name);
                 tamizhi_gen_assign_from_return(name.value);
 
@@ -411,9 +422,8 @@ void parse_statement(FILE *file, Token t) {
                 fprintf(stderr, "[Linker Error] Undefined Function '%s'\n", value.value);
             }
         } 
-        // 🌟 2. இது சாதாரண எண்ணாக இருந்தால் (எ.கா: Num a = 100 ;)
         else {
-            fseek(file, value_pos, SEEK_SET); // பழைய இடத்திற்கு திரும்புகிறோம்
+            fseek(file, value_pos, SEEK_SET); 
             value = get_next_token(file);
             tamizhi_trim_token(value.value);
 
@@ -458,7 +468,7 @@ void parse_statement(FILE *file, Token t) {
     }
 
     // ======================================================
-    // Assignment Block (UPDATED FOR FUNCTION CALLS)
+    // Assignment Block
     // ======================================================
 
     else if (t.type == T_ID) {
@@ -469,23 +479,19 @@ void parse_statement(FILE *file, Token t) {
         long current_pos = ftell(file);
         Token next = get_next_token(file);
 
-        // ==============================================
-        // Assignment Logic
-        // ==============================================
         if (next.type == 20 || strcmp(next.value, "=") == 0) {
 
             long value_pos = ftell(file);
             Token current_tok = get_next_token(file);
             Token next_after_val = get_next_token(file);
 
-            // 🌟 1. வலதுபுறம் Function Call ஆக இருந்தால் (எ.கா: a = math_core() ;)
             if (next_after_val.type == 15 || strcmp(next_after_val.value, "(") == 0) {
-                
+
                 long func_pos = find_function(current_tok.value);
                 if (func_pos != -1L) {
-                    while (get_next_token(file).type != 21); // ';' வரும் வரை செல்கிறோம்
+                    while (get_next_token(file).type != 21); 
                     long return_pos = ftell(file);
-                    
+
                     call_depth++;
                     fseek(file, func_pos, SEEK_SET);
                     int brace_count = 1;
@@ -499,19 +505,17 @@ void parse_statement(FILE *file, Token t) {
                         }
                         else parse_statement(file, body);
                     }
-                    
+
                     call_depth--;
                     fseek(file, return_pos, SEEK_SET);
-                    
-                    // __tamizhi_ret-ல் உள்ள மதிப்பை வேரியபிளுக்கு அசைன் செய்கிறோம்!
+
                     extern void tamizhi_gen_assign_from_return(char* var_name);
                     tamizhi_gen_assign_from_return(var_name);
-                    
+
                 } else {
                     fprintf(stderr, "[Linker Error] Undefined Function '%s'\n", current_tok.value);
                 }
             } 
-            // 🌟 2. சாதாரண Math Expression ஆக இருந்தால் (எ.கா: a = 100 + 20 ;)
             else {
                 fseek(file, value_pos, SEEK_SET);
                 current_tok = get_next_token(file);
@@ -585,20 +589,50 @@ void parse_statement(FILE *file, Token t) {
     }
 
     // ======================================================
-    // Print Block
+    // Print Block (Updated for BODMAS AST Expression Support 🚀)
     // ======================================================
 
     else if (t.type == T_PRINT || strcmp(t.value, "அச்சிடு") == 0) {
 
-        Token first = get_next_token(file);
-        if (first.type == 15) first = get_next_token(file);
+        long current_pos = ftell(file);
+        Token current_tok = get_next_token(file);
+        
+        if (current_tok.type == 15 || strcmp(current_tok.value, "(") == 0) {
+            current_tok = get_next_token(file);
+        }
 
-        tamizhi_trim_token(first.value);
-        tamizhi_gen_print(first.value);
+        // 🌟 ட்ரிக்: இது வெறும் சாதாரண ஸ்ட்ரிங் வரியாக (Str) இருந்தால் நேரடியாக பிரிண்ட் செய்கிறோம்!
+        if (current_tok.value[0] == '"') {
+            tamizhi_trim_token(current_tok.value);
+            tamizhi_gen_print(current_tok.value);
+            
+            Token semi = get_next_token(file);
+            if (strcmp(semi.value, ";") != 0 && semi.type != 21) {
+                skip_to_semicolon(file);
+            }
+        } 
+        // 🌟 அக்யூரசி பிக்ஸ்: கணித கோவை அல்லது வேரியபிளாக இருந்தால், AST மூலமாக கணக்கிடுகிறோம்!
+        else {
+            fseek(file, current_pos, SEEK_SET);
+            current_tok = get_next_token(file);
+            if (current_tok.type == 15 || strcmp(current_tok.value, "(") == 0) {
+                current_tok = get_next_token(file);
+            }
+            
+            ASTNode* root = parse_expression(file, &current_tok);
+            if (root) {
+                // தற்காலிக சீக்ரெட் வேரியபிளுக்குள் விடையை லோட் செய்து பிரிண்ட் செய்கிறோம்!
+                extern void tamizhi_gen_math_ast(char* res_name, ASTNode* root);
+                tamizhi_gen_math_ast("__tamizhi_print_tmp", root);
+                tamizhi_gen_print("__tamizhi_print_tmp");
+                free_ast(root);
+            } else {
+                fprintf(stderr, "[Syntax Error] Invalid Print Expression\n");
+            }
 
-        Token semi = get_next_token(file);
-        if (strcmp(semi.value, ";") != 0 && semi.type != 21) {
-            skip_to_semicolon(file);
+            if (strcmp(current_tok.value, ";") != 0 && current_tok.type != 21) {
+                skip_to_semicolon(file);
+            }
         }
     }
 
