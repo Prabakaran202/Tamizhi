@@ -41,13 +41,20 @@ void tamizhi_trim_token(char *str) {
     }
 }
 
+// FIX: வரியின் இறுதி செமிகோலன் வரை டோக்கன்களைக் கடந்து செல்ல
 void skip_to_semicolon(FILE *file) {
     Token t;
-
     while (
         (t = get_next_token(file)).type != 21 &&
         t.type != T_EOF
     );
+}
+
+// FIX: டோக்கன் ஏற்கனவே ';' ஐ உட்கொண்டிருந்தால் டபுள்-ஸ்கிப் ஆவதைத் தடுக்கிறது
+void skip_remaining_if_needed(FILE *file, Token current_tok) {
+    if (current_tok.type != 21 && strcmp(current_tok.value, ";") != 0 && current_tok.type != T_EOF) {
+        skip_to_semicolon(file);
+    }
 }
 
 void parse_statement(FILE *file, Token t);
@@ -75,7 +82,7 @@ ASTNode* parse_expression(FILE* file, Token* current_tok);
 
 ASTNode* parse_primary(FILE* file, Token* current_tok) {
 
-    // Parenthesis Support - ( எக்ஸ்பிரஷன்களை பிரித்து முன்னுரிமை அளிக்கிறது )
+    // Parenthesis Support - ( அடைப்புக்குறிகளுக்கு முன்னுரிமை அளிக்கிறது )
     if (strcmp(current_tok->value, "(") == 0) {
 
         *current_tok = get_next_token(file);
@@ -256,7 +263,6 @@ void parse(FILE *file) {
     fprintf(stderr, "\n[Parser] --- Tamizhi Engine Started ---\n");
 
     scan_headers(file);
-    rewind(file);
 
     while ((t = get_next_token(file)).type != T_EOF) {
 
@@ -357,14 +363,12 @@ void parse_statement(FILE *file, Token t) {
     if (!is_valid(t)) return;
     if (t.type == 21 || strcmp(t.value, ";") == 0) return;
 
-    // 🌟 🌟 [GLOBAL FIX] - கமெண்ட் லைன் ஸ்கிப்பர் பிளாக் (`//`)
+    // 🌟 [GLOBAL FIX] - கமெண்ட் லைன் ஸ்கிப்பர் பிளாக் (`//`)
     if (strcmp(t.value, "//") == 0) {
         Token comment_skip;
         int current_running_line = current_line;
-        // அதே வரியில இருக்கிற டோக்கன்களை மட்டும் தாண்டிச் செல்கிறோம்!
         while ((comment_skip = get_next_token(file)).type != T_EOF) {
             if (current_line != current_running_line) {
-                // அடுத்த வரியின் முதல் டோக்கன் கைக்கு வந்ததும், அதை பார்சருக்கு அனுப்பிவிட்டு வெளியேறுகிறோம்!
                 parse_statement(file, comment_skip);
                 break;
             }
@@ -385,7 +389,7 @@ void parse_statement(FILE *file, Token t) {
             next = get_next_token(file);
         }
 
-        long value_pos = ftell(file); 
+        long value_pos = ftell(file);
         Token value = get_next_token(file);
         tamizhi_trim_token(value.value);
 
@@ -395,7 +399,7 @@ void parse_statement(FILE *file, Token t) {
 
             long func_pos = find_function(value.value);
             if (func_pos != -1L) {
-                while (get_next_token(file).type != 21); 
+                while (get_next_token(file).type != 21);
                 long return_pos = ftell(file);
 
                 call_depth++;
@@ -421,17 +425,22 @@ void parse_statement(FILE *file, Token t) {
             } else {
                 fprintf(stderr, "[Linker Error] Undefined Function '%s'\n", value.value);
             }
-        } 
+        }
         else {
-            fseek(file, value_pos, SEEK_SET); 
-            value = get_next_token(file);
-            tamizhi_trim_token(value.value);
+            fseek(file, value_pos, SEEK_SET);
+            Token current_tok = get_next_token(file);
 
-            if (isdigit((unsigned char)value.value[0]) || value.value[0] == '-') {
-                tamizhi_gen_var(name.value, atoi(value.value));
+            // 🌟 கணித கோவை ஆதரவு (BODMAS Expression Variable Initializer Support)
+            ASTNode* root = parse_expression(file, &current_tok);
+            if (root) {
+                extern void tamizhi_gen_math_ast(char* res_name, ASTNode* root);
+                tamizhi_gen_math_ast(name.value, root);
+                free_ast(root);
             } else {
-                fprintf(stderr, "[Syntax Error] Invalid Number '%s'\n", value.value);
+                fprintf(stderr, "[Syntax Error] Invalid Number Expression for '%s'\n", name.value);
             }
+
+            skip_remaining_if_needed(file, current_tok);
         }
     }
 
@@ -454,6 +463,11 @@ void parse_statement(FILE *file, Token t) {
         memset(clean_str_val, 0, sizeof(clean_str_val));
 
         int len = strlen(value.value);
+
+        if (len == 0) {
+            fprintf(stderr, "[Syntax Error] Empty string value for '%s'\n", name.value);
+            return;
+        }
 
         if (value.value[0] == '"' && value.value[len - 1] == '"' && len >= 2) {
             strncpy(clean_str_val, value.value + 1, len - 2);
@@ -489,7 +503,7 @@ void parse_statement(FILE *file, Token t) {
 
                 long func_pos = find_function(current_tok.value);
                 if (func_pos != -1L) {
-                    while (get_next_token(file).type != 21); 
+                    while (get_next_token(file).type != 21);
                     long return_pos = ftell(file);
 
                     call_depth++;
@@ -515,7 +529,7 @@ void parse_statement(FILE *file, Token t) {
                 } else {
                     fprintf(stderr, "[Linker Error] Undefined Function '%s'\n", current_tok.value);
                 }
-            } 
+            }
             else {
                 fseek(file, value_pos, SEEK_SET);
                 current_tok = get_next_token(file);
@@ -527,12 +541,10 @@ void parse_statement(FILE *file, Token t) {
                     free_ast(root);
                 }
                 else {
-                    fprintf(stderr, "[Syntax Error] Invalid Expression\n");
+                    fprintf(stderr, "[Syntax Error] Invalid Expression for '%s'\n", var_name);
                 }
 
-                if (strcmp(current_tok.value, ";") != 0 && current_tok.type != 21) {
-                    skip_to_semicolon(file);
-                }
+                skip_remaining_if_needed(file, current_tok);
             }
         }
 
@@ -543,7 +555,7 @@ void parse_statement(FILE *file, Token t) {
         else if (next.type == 15 || strcmp(next.value, "(") == 0) {
 
             if (call_depth >= MAX_CALL_DEPTH) {
-                fprintf(stderr, "[Runtime Error] Stack Overflow\n");
+                fprintf(stderr, "[Runtime Error] Stack Overflow — Max call depth %d reached\n", MAX_CALL_DEPTH);
                 return;
             }
 
@@ -596,32 +608,29 @@ void parse_statement(FILE *file, Token t) {
 
         long current_pos = ftell(file);
         Token current_tok = get_next_token(file);
-        
+
         if (current_tok.type == 15 || strcmp(current_tok.value, "(") == 0) {
             current_tok = get_next_token(file);
         }
 
-        // 🌟 ட்ரிக்: இது வெறும் சாதாரண ஸ்ட்ரிங் வரியாக (Str) இருந்தால் நேரடியாக பிரிண்ட் செய்கிறோம்!
+        // 🌟 ஸ்ட்ரிங் வாக்கியங்களை நேரடியாக அச்சிடுகிறது
         if (current_tok.value[0] == '"') {
             tamizhi_trim_token(current_tok.value);
             tamizhi_gen_print(current_tok.value);
-            
+
             Token semi = get_next_token(file);
-            if (strcmp(semi.value, ";") != 0 && semi.type != 21) {
-                skip_to_semicolon(file);
-            }
-        } 
-        // 🌟 அக்யூரசி பிக்ஸ்: கணித கோவை அல்லது வேரியபிளாக இருந்தால், AST மூலமாக கணக்கிடுகிறோம்!
+            skip_remaining_if_needed(file, semi);
+        }
+        // 🌟 கணிதக் கோவை அல்லது வேரியபிள்களை AST மூலமாகக் கணக்கிட்டு அச்சிடுகிறது!
         else {
             fseek(file, current_pos, SEEK_SET);
             current_tok = get_next_token(file);
             if (current_tok.type == 15 || strcmp(current_tok.value, "(") == 0) {
                 current_tok = get_next_token(file);
             }
-            
+
             ASTNode* root = parse_expression(file, &current_tok);
             if (root) {
-                // தற்காலிக சீக்ரெட் வேரியபிளுக்குள் விடையை லோட் செய்து பிரிண்ட் செய்கிறோம்!
                 extern void tamizhi_gen_math_ast(char* res_name, ASTNode* root);
                 tamizhi_gen_math_ast("__tamizhi_print_tmp", root);
                 tamizhi_gen_print("__tamizhi_print_tmp");
@@ -630,9 +639,7 @@ void parse_statement(FILE *file, Token t) {
                 fprintf(stderr, "[Syntax Error] Invalid Print Expression\n");
             }
 
-            if (strcmp(current_tok.value, ";") != 0 && current_tok.type != 21) {
-                skip_to_semicolon(file);
-            }
+            skip_remaining_if_needed(file, current_tok);
         }
     }
 
@@ -642,34 +649,57 @@ void parse_statement(FILE *file, Token t) {
 
     else if (t.type == T_RET || strcmp(t.value, "return") == 0 || strcmp(t.value, "திரும்பு") == 0) {
 
-        Token expr_token = get_next_token(file); 
+        Token expr_token = get_next_token(file);
 
         extern void tamizhi_gen_return(char* return_val);
         tamizhi_gen_return(expr_token.value);
 
         Token semi = get_next_token(file);
-        if (strcmp(semi.value, ";") != 0 && semi.type != 21) {
-            skip_to_semicolon(file);
-        }
-        return; 
+        skip_remaining_if_needed(file, semi);
+        return;
     }
 
     // ======================================================
-    // Loop Block
+    // Loop Block — (Variable limit checking filters added)
     // ======================================================
 
     else if (t.type == T_FOR || strcmp(t.value, "சு") == 0) {
 
         Token limit_token = get_next_token(file);
-        int limit = atoi(limit_token.value);
+
+        int limit = 0;
+        if (isdigit((unsigned char)limit_token.value[0]) ||
+            (limit_token.value[0] == '-' && isdigit((unsigned char)limit_token.value[1]))) {
+            limit = atoi(limit_token.value);
+        } else if (limit_token.type == T_ID) {
+            fprintf(stderr, "[Warning] Loop limit '%s' is a variable — only literal numbers supported currently\n", limit_token.value);
+            limit = 0;
+        } else {
+            fprintf(stderr, "[Syntax Error] Invalid loop limit '%s'\n", limit_token.value);
+            return;
+        }
+
+        if (limit <= 0) {
+            fprintf(stderr, "[Warning] Loop limit is 0 or negative (%d) — skipping loop body\n", limit);
+            Token skip;
+            int depth = 0;
+            while ((skip = get_next_token(file)).type != T_EOF) {
+                if (skip.type == 22 || strcmp(skip.value, "{") == 0) depth++;
+                else if (skip.type == 23 || strcmp(skip.value, "}") == 0) {
+                    if (depth <= 1) break;
+                    depth--;
+                }
+            }
+            return;
+        }
 
         Token next = get_next_token(file);
 
         if (next.type == 22 || strcmp(next.value, "{") == 0) {
 
             tamizhi_gen_loop_start(limit);
-            Token body;
 
+            Token body;
             while ((body = get_next_token(file)).type != T_EOF) {
 
                 if (body.type == 23 || strcmp(body.value, "}") == 0)
