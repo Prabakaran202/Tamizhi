@@ -1,11 +1,13 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
-name = "Tamizhi"
-version = "v0.0.1"
+name = "tamizhi"
+version = "0.0.1"
 description = "Tamizhi - Tamil syntax compiler"
+readme = "README.md"
+requires-python = ">=3.8"
 
 [project.scripts]
 tamizhi = "tamizhi.cli:main"
-
-[build-system]
-requires = ["setuptools"]
-build-backend = "setuptools.backends.legacy:build"
