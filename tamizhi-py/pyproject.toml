@@ -1,1 +1,11 @@
-.
+[project]
+name = "Tamizhi"
+version = "v0.0.1"
+description = "Tamizhi - Tamil syntax compiler"
+
+[project.scripts]
+tamizhi = "tamizhi.cli:main"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.backends.legacy:build"
