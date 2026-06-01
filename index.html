@@ -6,10 +6,9 @@
     <title>தமிழி டாக்குமெண்டேஷன் | w3schools ஸ்டைல்</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        
+
         body { display: flex; background-color: #f1f1f1; min-height: 100vh; }
 
-        /* ===== HAMBURGER BUTTON (Mobile only) ===== */
         .hamburger {
             display: none;
             position: fixed;
@@ -33,7 +32,6 @@
             transition: 0.3s;
         }
 
-        /* ===== OVERLAY (Mobile sidebar backdrop) ===== */
         .overlay {
             display: none;
             position: fixed;
@@ -43,7 +41,6 @@
         }
         .overlay.active { display: block; }
 
-        /* ===== SIDEBAR ===== */
         .sidebar {
             width: 260px;
             min-width: 260px;
@@ -74,7 +71,6 @@
         .sidebar a:hover { background-color: #f1f1f1; color: #000; padding-left: 25px; }
         .sidebar a.active { background-color: #28a745; color: white; font-weight: bold; }
 
-        /* ===== MAIN CONTENT ===== */
         .content-area {
             flex: 1;
             padding: 40px;
@@ -86,7 +82,6 @@
         h2 { font-size: 22px; color: #222; margin-bottom: 10px; }
         p { font-size: 15px; color: #555; line-height: 1.7; margin-bottom: 25px; }
 
-        /* ===== CODE BOX ===== */
         .w3-example {
             background-color: #e7e9eb;
             padding: 20px;
@@ -107,12 +102,37 @@
             line-height: 1.6;
         }
 
-        /* ===== SYNTAX HIGHLIGHTING ===== */
-        .keyword { color: #f47067; font-weight: bold; }
-        .type    { color: #6cb6ff; }
-        .string  { color: #96d0ff; }
-        .comment { color: #768390; font-style: italic; }
+        .keyword  { color: #f47067; font-weight: bold; }
+        .type     { color: #6cb6ff; }
+        .string   { color: #96d0ff; }
+        .comment  { color: #768390; font-style: italic; }
         .function { color: #dcbdfb; }
+        .op       { color: #f69d50; }
+
+        /* NEW: version badge */
+        .version-badge {
+            display: inline-block;
+            background: #28a745;
+            color: #fff;
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 20px;
+            margin-left: 8px;
+            vertical-align: middle;
+            font-weight: bold;
+            letter-spacing: 0.5px;
+        }
+
+        /* NEW: note box */
+        .note-box {
+            background: #fff8e1;
+            border-left: 4px solid #ffc107;
+            padding: 12px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #5a4a00;
+            margin-bottom: 20px;
+        }
 
         hr { border: 0; height: 1px; background: #dfe3e6; margin: 30px 0; }
 
@@ -126,7 +146,6 @@
             border-top: 1px solid #dfe3e6;
         }
 
-        /* ===== TOP NAV BAR (Mobile only - spacing fix) ===== */
         .mobile-topbar {
             display: none;
             height: 52px;
@@ -142,23 +161,16 @@
             z-index: 100;
         }
 
-        /* ===== RESPONSIVE BREAKPOINTS ===== */
-
-        /* Tablet */
         @media (max-width: 900px) {
             .sidebar { width: 220px; min-width: 220px; }
             .content-area { padding: 30px 24px; }
             h1 { font-size: 24px; }
         }
 
-        /* Mobile */
         @media (max-width: 640px) {
             body { flex-direction: column; }
-
             .hamburger { display: flex; }
             .mobile-topbar { display: flex; }
-
-            /* Sidebar becomes a slide-in drawer */
             .sidebar {
                 position: fixed;
                 top: 0;
@@ -171,56 +183,53 @@
                 box-shadow: 4px 0 16px rgba(0,0,0,0.12);
             }
             .sidebar.open { left: 0; }
-
-            .content-area {
-                padding: 20px 16px 32px;
-                width: 100%;
-            }
-
+            .content-area { padding: 20px 16px 32px; width: 100%; }
             h1 { font-size: 20px; }
             h2 { font-size: 18px; }
             p  { font-size: 14px; }
-
             .code-container { font-size: 12px; }
-
             .w3-example { padding: 14px; }
         }
     </style>
 </head>
 <body>
 
-    <!-- Hamburger Button (visible only on mobile) -->
     <button class="hamburger" id="hamburger" aria-label="Menu">
         <span></span><span></span><span></span>
     </button>
 
-    <!-- Overlay for mobile sidebar -->
     <div class="overlay" id="overlay"></div>
 
-    <!-- Sidebar -->
     <div class="sidebar" id="sidebar">
         <h2>தமிழி கையேடு</h2>
-        <a href="#intro"        class="active" onclick="closeSidebar()">1. அறிமுகம்</a>
-        <a href="#variables"                   onclick="closeSidebar()">2. மாறிகள் (Variables)</a>
-        <a href="#math"                        onclick="closeSidebar()">3. கணித இன்ஜின் (Math)</a>
-        <a href="#ternary"                     onclick="closeSidebar()">4. டெர்னரி ஆபரேட்டர்</a>
-        <a href="#loops"                       onclick="closeSidebar()">5. சுழற்சிகள் (Loops)</a>
-        <a href="#footer-block"                onclick="closeSidebar()">6. பூட்டர் ஆர்கிடெக்சர்</a>
+        <a href="#intro"         class="active" onclick="closeSidebar()">1. அறிமுகம்</a>
+        <a href="#variables"                    onclick="closeSidebar()">2. மாறிகள் (Variables)</a>
+        <a href="#math"                         onclick="closeSidebar()">3. கணித இன்ஜின் (Math)</a>
+        <a href="#ternary"                      onclick="closeSidebar()">4. டெர்னரி ஆபரேட்டர்</a>
+        <a href="#loops"                        onclick="closeSidebar()">5. சுழற்சிகள் (Loops)</a>
+        <a href="#functions"                    onclick="closeSidebar()">6. ஃபங்க்ஷன்கள் (Functions)</a>
+        <a href="#comments"                     onclick="closeSidebar()">7. கமெண்ட்ஸ் (Comments)</a>
+        <a href="#print"                        onclick="closeSidebar()">8. அச்சிடுதல் (Print)</a>
+        <a href="#main-block"                   onclick="closeSidebar()">9. மெயின் பிளாக் (main)</a>
+        <a href="#footer-block"                 onclick="closeSidebar()">10. பூட்டர் ஆர்கிடெக்சர்</a>
     </div>
 
-    <!-- Main Content -->
     <div class="content-area">
 
-        <!-- Mobile top bar title -->
         <div class="mobile-topbar">தமிழி கையேடு</div>
 
+        <!-- ===== 1. INTRO ===== -->
         <div id="intro">
-            <h1>தமிழி மொழி கையேடு (Tamizhi Language Documentation)</h1>
+            <h1>தமிழி மொழி கையேடு <span class="version-badge">v0.1.4</span></h1>
             <p>தமிழி என்பது எல்எல்விஎம் (LLVM AOT) இன்ஜின் மற்றும் ஏஓடி கம்பைலேஷன் மெக்கானிசம் கொண்டு உருவாக்கப்பட்ட ஒரு நவீன, அதிவேக எக்ஸ்பிரஷன்-டிரைவன் புரோகிராமிங் மொழியாகும். இது பழைய மல்டி-லைன் பிளாக்குகளை நீக்கிவிட்டு, மிகக் கச்சிதமான சிங்கிள்-லைன் லீனியர் சிண்டாக்ஸ் அமைப்பைக் கொண்டுள்ளது.</p>
+            <div class="note-box">
+                ⚠️ <strong>ஸ்பேஸிங் விதி:</strong> எல்லா குறிகளுக்கும் (<code>=</code>, <code>+</code>, <code>?</code>, <code>:</code>, <code>;</code>, <code>{</code>, <code>}</code>) முன்னாடியும் பின்னாடியும் ஒரு ஸ்பேஸ் கட்டாயம் இருக்கணும்.
+            </div>
         </div>
 
         <hr>
 
+        <!-- ===== 2. VARIABLES ===== -->
         <div id="variables">
             <h2>2. மாறிகள் டிக்ளரேஷன் (Variables Setup)</h2>
             <p>தமிழி மொழியில் முழு எண்களைக் குறிக்க <span class="keyword">Num</span> அல்லது <span class="keyword">எண்</span> கீவேர்டும், உரைகளைக் குறிக்க <span class="keyword">Str</span> அல்லது <span class="keyword">வரி</span> கீவேர்டும் பயன்படுத்தப்படுகிறது.</p>
@@ -230,57 +239,161 @@
 <span class="type">Str</span> மொழி = <span class="string">"தமிழி மொழி"</span> ;
 <span class="function">print</span> மொழி ;</div>
             </div>
+            <div class="w3-example">
+                <h3>தமிழ் கீவேர்ட் உதாரணம்:</h3>
+                <div class="code-container"><span class="type">எண்</span> மதிப்பு = <span class="string">42</span> ;
+<span class="type">வரி</span> செய்தி = <span class="string">"வணக்கம்!"</span> ;</div>
+            </div>
         </div>
 
         <hr>
 
+        <!-- ===== 3. MATH ===== -->
         <div id="math">
             <h2>3. கணித செயல்பாடுகள் (Math Engine)</h2>
-            <p>எல்எல்விஎம் நேடிவ் ஆர்கிடெக்சர் கொண்டு கூட்டல், கழித்தல், பெருக்கல் மற்றும் வகுத்தல் செயல்பாடுகள் சிம்பல் டேபிளின் லோக்கல் ஸ்கோப் மாறாமல் துல்லியமாகச் செய்யப்படுகின்றன.</p>
+            <p>எல்எல்விஎம் நேடிவ் ஆர்கிடெக்சர் கொண்டு கூட்டல் (<span class="op">+</span>), கழித்தல் (<span class="op">-</span>), பெருக்கல் (<span class="op">*</span>) மற்றும் வகுத்தல் (<span class="op">/</span>) செயல்பாடுகள் சிம்பல் டேபிளின் லோக்கல் ஸ்கோப் மாறாமல் துல்லியமாகச் செய்யப்படுகின்றன.</p>
             <div class="w3-example">
                 <h3>உதாரணம்:</h3>
                 <div class="code-container"><span class="type">Num</span> முதல்_எண் = <span class="string">150</span> ;
 <span class="type">Num</span> இரண்டாம்_எண் = <span class="string">50</span> ;
-<span class="type">Num</span> விடை = முதல்_எண் - இரண்டாம்_எண் ;</div>
+<span class="type">Num</span> விடை = முதல்_எண் - இரண்டாம்_எண் ;
+<span class="type">Num</span> கூட்டல் = முதல்_எண் <span class="op">+</span> இரண்டாம்_எண் ;
+<span class="type">Num</span> பெருக்கல் = முதல்_எண் <span class="op">*</span> இரண்டாம்_எண் ;</div>
             </div>
         </div>
 
         <hr>
 
+        <!-- ===== 4. TERNARY ===== -->
         <div id="ternary">
-            <h2>4. சிங்கிள்-லைன் டெர்னரி கண்டிஷன் (Advanced Ternary Expression)</h2>
-            <p>தமிழி மொழியில் தேவையற்ற மல்டி-லைன் இஃப்-எல்ஸ் கிளைப்பிரிவுகள் கிடையாது. மாறாக, <span class="keyword">LLVMBuildSelect</span> ஏபி மூலம் சிபிஇயு லெவலில் நேரடியாக வேலை செய்யும் சிங்கிள்-லைன் டெர்னரி ஆபரேட்டர் மட்டுமே பயன்படுத்தப்படுகிறது.</p>
+            <h2>4. டெர்னரி ஆபரேட்டர் (Ternary Operator)</h2>
+            <p>தமிழி மொழியில் இரண்டு வகையான டெர்னரி சிண்டாக்ஸ் சப்போர்ட் ஆகுது. <span class="keyword">LLVMBuildSelect</span> API மூலம் CPU லெவலில் நேரடியாக இயங்குகிறது — தேவையற்ற மல்டி-லைன் if-else கிடையாது.</p>
             <div class="w3-example">
-                <h3>உதாரணம்:</h3>
+                <h3>Style 1 — <code>if/else</code> சிண்டாக்ஸ்:</h3>
                 <div class="code-container"><span class="type">Num</span> வேகம் = <span class="string">95</span> ;
 <span class="type">Num</span> எல்லை = <span class="string">80</span> ;
-<span class="comment">// கண்டிஷன் உண்மையானால் 1, இல்லையெனில் 0 அசைன் ஆகும்!</span>
-<span class="type">Num</span> எச்சரிக்கை = <span class="string">1</span> <span class="keyword">if</span> (வேகம் > எல்லை) <span class="keyword">else</span> <span class="string">0</span> ;</div>
+<span class="comment">// கண்டிஷன் உண்மையானால் 1, இல்லையெனில் 0</span>
+<span class="type">Num</span> எச்சரிக்கை = <span class="string">1</span> <span class="keyword">if</span> ( வேகம் <span class="op">&gt;</span> எல்லை ) <span class="keyword">else</span> <span class="string">0</span> ;</div>
+            </div>
+            <div class="w3-example">
+                <h3>Style 2 — <code>? :</code> சிண்டாக்ஸ்:</h3>
+                <div class="code-container"><span class="type">Num</span> a = <span class="string">10</span> ;
+<span class="type">Num</span> b = <span class="string">20</span> ;
+<span class="comment">// a > b உண்மையானால் 100, இல்லையெனில் 999</span>
+<span class="type">Num</span> variable = ( a <span class="op">&gt;</span> b ) <span class="op">?</span> <span class="string">100</span> <span class="op">:</span> <span class="string">999</span> ;</div>
             </div>
         </div>
 
         <hr>
 
+        <!-- ===== 5. LOOPS ===== -->
         <div id="loops">
-            <h2>5. அதிவேக சுழற்சிகள் (Fast Looping Driver)</h2>
-            <p><span class="keyword">for</span> அல்லது தமிழ் கீவேர்ட் <span class="keyword">சு</span> கொண்டு லூப்களை இயக்கலாம். லூப்பின் உள்ளே இருக்கும் கவுண்ட்டர் மதிப்பை <span class="type">i</span> மூலம் நேரடியாக அச்சிட முடியும்.</p>
+            <h2>5. சுழற்சிகள் (Loop Block)</h2>
+            <p><span class="keyword">for</span> அல்லது தமிழ் கீவேர்ட் <span class="keyword">சு</span> கொண்டு லூப்களை இயக்கலாம். தற்போது நேரடி எண்கள் மட்டுமே limit-ஆக சப்போர்ட் ஆகுது.</p>
             <div class="w3-example">
-                <h3>உதாரணம்:</h3>
+                <h3>ஆட்டோ கவுண்டர் உதாரணம் (<code>for</code>):</h3>
                 <div class="code-container"><span class="keyword">for</span> <span class="string">5</span> {
     <span class="function">print</span> i ; <span class="comment">// 0 முதல் 4 வரை அச்சிடும்</span>
+}</div>
+            </div>
+            <div class="w3-example">
+                <h3>மேனுவல் கவுண்டர் உதாரணம் (<code>சு</code> keyword):</h3>
+                <div class="code-container"><span class="type">Num</span> i = <span class="string">1</span> ;
+<span class="keyword">சு</span> <span class="string">5</span> {
+    <span class="function">print</span> i ;
+    i = i <span class="op">+</span> <span class="string">1</span> ;
 }</div>
             </div>
         </div>
 
         <hr>
 
-        <div id="footer-block">
-            <h2>6. பூட்டர் ஆர்கிடெக்சர் (Universal Footer Layout)</h2>
-            <p>தமிழி மொழியின் பிரத்யேக அம்சம் இதுவாகும். முதன்மை (main) பிளாக் ரன் ஆகி முடிந்த பிறகு, சிஸ்டத்தின் இறுதி செயலாக்க புள்ளியாக <span class="keyword">footer</span> பிளாக் இயங்கி, அனைத்து பங்க்ஷன் வரிகளையும் கச்சிதமாக இன்லைன் செய்யும்.</p>
+        <!-- ===== 6. FUNCTIONS ===== -->
+        <div id="functions">
+            <h2>6. ஃபங்க்ஷன்கள் (Global Functions)</h2>
+            <p><span class="keyword">main</span> பிளாக்கிற்கு வெளியே <span class="keyword">fun</span> கீவேர்ட் கொண்டு தனியான லாஜிக் பிளாக்குகளை உருவாக்கலாம். <span class="keyword">return</span> மூலம் மதிப்பை திரும்ப அனுப்பலாம்.</p>
             <div class="w3-example">
-                <h3>முழுமையான கட்டமைப்பு உதாரணம்:</h3>
-                <div class="code-container"><span class="keyword">fun</span> <span class="function">முதன்மை</span> {
-    <span class="function">print</span> <span class="string">"மெயின் இன்ஜின்"</span> ;
+                <h3>Return உள்ள Function:</h3>
+                <div class="code-container"><span class="keyword">fun</span> <span class="function">கூட்டு_மையம்</span> {
+    <span class="type">Num</span> x = <span class="string">10</span> ;
+    <span class="type">Num</span> y = <span class="string">20</span> ;
+    <span class="keyword">return</span> x <span class="op">+</span> y ;
+}</div>
+            </div>
+            <div class="w3-example">
+                <h3>Function Call — மாறிக்கு அசைன்:</h3>
+                <div class="code-container"><span class="keyword">main</span> {
+    <span class="type">Num</span> ans = <span class="function">கூட்டு_மையம்</span>() ;
+    <span class="function">print</span> ans ;
+}</div>
+            </div>
+        </div>
+
+        <hr>
+
+        <!-- ===== 7. COMMENTS ===== -->
+        <div id="comments">
+            <h2>7. கமெண்ட் லைன் (Comments)</h2>
+            <p>கோடுல ஏதாவது குறிப்புகள் எழுதணும்னா டபுள் ஸ்லாஷ் (<span class="keyword">//</span>) பயன்படுத்தலாம். <code>parse_statement</code> லெவல்லயே skip ஆகும் — கம்பைலரோட பெர்ஃபார்மன்ஸ் எந்த மாத்தமும் இல்லை.</p>
+            <div class="w3-example">
+                <h3>உதாரணம்:</h3>
+                <div class="code-container"><span class="comment">// இது ஒரு தமிழ் கமெண்ட் லைன்</span>
+<span class="type">Num</span> active = <span class="string">1</span> ;</div>
+            </div>
+        </div>
+
+        <hr>
+
+        <!-- ===== 8. PRINT ===== -->
+        <div id="print">
+            <h2>8. அச்சிடுதல் (Print Execution)</h2>
+            <p>மாறிகள், எண்கள், கணித கோவைகள் அல்லது நேரடி ஸ்ட்ரிங் வாக்கியங்களை டெர்மினலில் அச்சிட <span class="keyword">print</span> அல்லது <span class="keyword">அச்சிடு</span> கீவேர்ட் பயன்படுத்தலாம்.</p>
+            <div class="w3-example">
+                <h3>உதாரணம்:</h3>
+                <div class="code-container"><span class="function">print</span> <span class="string">"வணக்கம் பிரபா!"</span> ;
+<span class="function">print</span> ( a <span class="op">+</span> b ) ;
+<span class="function">print</span> variable_name ;
+<span class="comment">// தமிழ் alias:</span>
+<span class="function">அச்சிடு</span> <span class="string">"மாஸ் தமிழ்!"</span> ;</div>
+            </div>
+        </div>
+
+        <hr>
+
+        <!-- ===== 9. MAIN BLOCK ===== -->
+        <div id="main-block">
+            <h2>9. நிரலின் ஒட்டுமொத்த வரைபடம் (Execution Architecture)</h2>
+            <p>ஒரு தமிழி நிரல் எழுதும்போது இந்த 3 செக்போஸ்ட்டுகளும் வரிசையாக அமைய வேண்டும். <span class="keyword">fun</span> பிளாக்குகள் முதலில், <span class="keyword">main</span> நடுவில், <span class="keyword">footer</span> இறுதியில்.</p>
+            <div class="w3-example">
+                <h3>முழு நிரல் கட்டமைப்பு:</h3>
+                <div class="code-container"><span class="comment">// செக்போஸ்ட் 1: எல்லா ஃபங்க்ஷன்களும்</span>
+<span class="keyword">fun</span> <span class="function">எனது_லாஜிக்</span> { <span class="comment">... </span>}
+
+<span class="comment">// செக்போஸ்ட் 2: முதன்மை பிளாக்</span>
+<span class="keyword">main</span> { <span class="comment">... </span>}
+
+<span class="comment">// செக்போஸ்ட் 3: இறுதி பூட்டர் பிளாக்</span>
+<span class="keyword">footer</span> { <span class="comment">... </span>}</div>
+            </div>
+        </div>
+
+        <hr>
+
+        <!-- ===== 10. FOOTER BLOCK ===== -->
+        <div id="footer-block">
+            <h2>10. பூட்டர் ஆர்கிடெக்சர் (Universal Footer Layout)</h2>
+            <p>தமிழி மொழியின் பிரத்யேக அம்சம். <span class="keyword">main</span> பிளாக் ரன் ஆகி முடிந்த பிறகு, சிஸ்டத்தின் இறுதி செயலாக்க புள்ளியாக <span class="keyword">footer</span> பிளாக் இயங்கி, அனைத்து ஃபங்க்ஷன் வரிகளையும் கச்சிதமாக இன்லைன் செய்யும்.</p>
+            <div class="w3-example">
+                <h3>முழுமையான உதாரணம்:</h3>
+                <div class="code-container"><span class="keyword">fun</span> <span class="function">கூட்டு_மையம்</span> {
+    <span class="type">Num</span> x = <span class="string">10</span> ;
+    <span class="type">Num</span> y = <span class="string">20</span> ;
+    <span class="keyword">return</span> x <span class="op">+</span> y ;
+}
+
+<span class="keyword">main</span> {
+    <span class="type">Num</span> ans = <span class="function">கூட்டு_மையம்</span>() ;
+    <span class="function">print</span> ans ;
 }
 
 <span class="keyword">footer</span> {
@@ -311,7 +424,6 @@
             overlay.classList.remove('active');
         }
 
-        // Active link highlight on scroll
         const sections = document.querySelectorAll('[id]');
         const links    = document.querySelectorAll('.sidebar a');
 
