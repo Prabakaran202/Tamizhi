@@ -434,7 +434,7 @@ void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2) {
     }
 }
 
-// 🌟 அச்சிடும் லேயர் 
+// 🌟 அச்சிடும் லேயர் (Master String Quotes & Spaces Fix Installed)
 void tamizhi_gen_print(char* var_name) {
     LLVMValueRef val = NULL;
     int is_string = 0;
@@ -444,17 +444,30 @@ void tamizhi_gen_print(char* var_name) {
 
     int is_literal = 0;
 
-    // 1. Literal Strings Handling
-    if ((clean_name[0] == '"' || clean_name[0] == '\'') && strlen(clean_name) > 2) {
+    // 🌟 [MASTER STRING FIX]: டோக்கனின் எந்த இடத்தில் டபுள் கோட்ஸ் இருந்தாலும் அதை கச்சிதமாக ட்ரிம் செய்கிறோம்!
+    char *first_quote = strchr(clean_name, '"');
+    char *last_quote = strrchr(clean_name, '"');
+
+    if (first_quote && last_quote && first_quote != last_quote) {
+        char temp[1024];
+        memset(temp, 0, sizeof(temp));
+        strncpy(temp, first_quote + 1, last_quote - first_quote - 1);
+        strcpy(clean_name, temp);
+        is_literal = 1;
+        is_string = 1;
+    }
+    // சிங்கிள் கோட்ஸ் செக்
+    else if (clean_name[0] == '\'' && clean_name[strlen(clean_name)-1] == '\'') {
         char temp[1024];
         strncpy(temp, clean_name + 1, strlen(clean_name) - 2);
         temp[strlen(clean_name) - 2] = '\0';
         strcpy(clean_name, temp);
         is_literal = 1;
+        is_string = 1;
     }
 
     if (!is_literal) {
-        // 2. Variable/AST Result Search
+        // Variable/AST Result Search
         for(int i = 0; i < var_count; i++) {
             if(strcmp(symbol_table[i].name, clean_name) == 0) {
                 val = symbol_table[i].alloca_ptr;
@@ -468,17 +481,17 @@ void tamizhi_gen_print(char* var_name) {
         }
     }
 
-    // 3. Loop Index i
+    // Loop Index i
     if(!val && loop_top >= 0 && strcmp(clean_name, "i") == 0) {
         val = LLVMBuildLoad2(builder, LLVMInt32TypeInContext(context), loop_stack[loop_top].i_ptr, "load_loop_i");
     }
 
-    // 4. Fallback: Raw integer constant
+    // Fallback: Raw integer constant
     if(!val && (isdigit((unsigned char)clean_name[0]) || clean_name[0] == '-') && !is_literal) {
         val = LLVMConstInt(LLVMInt32TypeInContext(context), atoi(clean_name), 0);
     }
 
-    // 5. Raw String literal fallback
+    // Raw String literal fallback
     if(!val) {
         val = LLVMBuildGlobalStringPtr(builder, clean_name, "str_lit");
         is_string = 1;
