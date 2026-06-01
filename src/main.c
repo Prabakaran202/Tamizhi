@@ -5,7 +5,7 @@
 #include "codegen.h"
 
 // 🌟 வெர்ஷனை குளோபல் மேக்ரோவாக அறிவிக்கிறோம் (இனி இங்க மட்டும் மாத்தினால் போதும் பிரபா!)
-#define TAMIZHI_VERSION "v0.1.1"
+#define TAMIZHI_VERSION "v0.0.1"
 
 // 🌟 தமிழி மொழிக்கான பிரத்தியேக கலைநயமிக்க பேனர் மற்றும் சூழல் தகவல்
 void print_tamizhi_environment() {
