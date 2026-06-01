@@ -21,26 +21,42 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang llvm
+          sudo apt-get install -y \
+          clang \
+          llvm \
+          llvm-dev \
+          libclang-dev
 
       - name: Build Binaries
         run: |
-          gcc -o tamizhi main.c
+          gcc -o tamizhi \
+          src/main.c \
+          src/parser.c \
+          src/lexer.c \
+          src/ast.c \
+          src/codegen.c \
+          $(llvm-config --cflags --ldflags --libs core executionengine native) \
+          -lstdc++
 
       - name: Package Release
         run: |
           VERSION=${GITHUB_REF#refs/tags/}
+
           mkdir -p tamizhi-$VERSION-linux
+
           cp tamizhi tamizhi-$VERSION-linux/
 
           cat > tamizhi-$VERSION-linux/install.sh << 'EOF'
           #!/bin/bash
+
           sudo cp tamizhi /usr/local/bin/
+
           echo "✅ Tamizhi installed successfully!"
           echo "Usage: tamizhi run <file.tz>"
           EOF
 
           chmod +x tamizhi-$VERSION-linux/install.sh
+
           tar -czf tamizhi-$VERSION-linux.tar.gz tamizhi-$VERSION-linux/
 
       # ======================================================
@@ -64,6 +80,7 @@ jobs:
       - name: Build Python Package
         run: |
           pip install build
+          cd tamizhi-py
           python -m build
 
       - name: Publish PyPI
@@ -72,4 +89,5 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
           pip install twine
+          cd tamizhi-py
           twine upload dist/*
