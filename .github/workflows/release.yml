@@ -21,15 +21,17 @@ jobs:
       - name: Install Dependencies
         run: |
           sudo apt-get update
+
           sudo apt-get install -y \
           clang \
           llvm \
           llvm-dev \
-          libclang-dev
+          libclang-dev \
+          build-essential
 
       - name: Build Binaries
         run: |
-          gcc -o tamizhi \
+          gcc -Iinclude -o tamizhi \
           src/main.c \
           src/parser.c \
           src/lexer.c \
@@ -37,6 +39,11 @@ jobs:
           src/codegen.c \
           $(llvm-config --cflags --ldflags --libs core executionengine native) \
           -lstdc++
+
+      - name: Verify Binary
+        run: |
+          chmod +x tamizhi
+          ./tamizhi --version || true
 
       - name: Package Release
         run: |
@@ -49,15 +56,23 @@ jobs:
           cat > tamizhi-$VERSION-linux/install.sh << 'EOF'
           #!/bin/bash
 
+          set -e
+
           sudo cp tamizhi /usr/local/bin/
 
+          sudo chmod +x /usr/local/bin/tamizhi
+
           echo "✅ Tamizhi installed successfully!"
-          echo "Usage: tamizhi run <file.tz>"
+          echo ""
+          echo "Usage:"
+          echo "  tamizhi run hello.tz"
+          echo "  tamizhi --version"
           EOF
 
           chmod +x tamizhi-$VERSION-linux/install.sh
 
-          tar -czf tamizhi-$VERSION-linux.tar.gz tamizhi-$VERSION-linux/
+          tar -czf tamizhi-$VERSION-linux.tar.gz \
+          tamizhi-$VERSION-linux/
 
       # ======================================================
       # 📦 2. GitHub Release Section
@@ -77,9 +92,13 @@ jobs:
         with:
           python-version: "3.12"
 
+      - name: Install Python Build Tools
+        run: |
+          python -m pip install --upgrade pip
+          pip install build twine setuptools wheel
+
       - name: Build Python Package
         run: |
-          pip install build
           cd tamizhi-py
           python -m build
 
@@ -88,6 +107,5 @@ jobs:
           TWINE_USERNAME: __token__
           TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
         run: |
-          pip install twine
           cd tamizhi-py
           twine upload dist/*
