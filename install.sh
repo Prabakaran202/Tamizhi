@@ -11,21 +11,11 @@ if [ -f "Makefile" ]; then
     rm -f tamizhi output.bc output.ll
 fi
 
-# 🌟 புது பிக்ஸ்: Termux-ல் எரர் வராத பாதுகாப்பான ஹோம் டெம்ப் பாத் 🚀
-BUILD_DIR="$HOME/tamizhi_build"
-
-# பழைய பில்ட் ஃபோல்டர் இருந்தால் அதை முதலில் சுத்தம் செய்கிறோம்
-rm -rf "$BUILD_DIR"
-
-# 1. தற்காலிக ஃபோல்டரில் ரெப்போவை க்ளோன் செய்தல்
-echo "[1/4] Downloading source codes from GitHub..."
-git clone --depth=1 https://github.com/Prabakaran202/Tamizhi.git "$BUILD_DIR"
-
-# 🌟 முக்கிய பிக்ஸ்: க்ளோன் செய்யப்பட்ட தமிழி ஃபோல்டருக்குள் நுழைகிறோம்!
-if [ -d "$BUILD_DIR" ]; then
-    cd "$BUILD_DIR" || exit
-else
-    echo "பிழை: சோர்ஸ் கோடு டவுன்லோட் செய்வதில் சிக்கல்!"
+# 🌟 [MASTER FIX]: GitHub-ல் இருந்து டவுன்லோட் செய்யாமல், 
+# நாம் லோக்கல்ல திருத்திய புது கோப்பையே (Local Workspace) நேரடியாக பில்ட் செய்கிறோம்!
+echo "[1/4] Validating local source code environment..."
+if [ ! -f "src/main.c" ] || [ ! -f "src/parser.c" ]; then
+    echo "பிழை: சோர்ஸ் கோடுகள் (src/) தற்போதைய ஃபோல்டரில் இல்லை!"
     exit 1
 fi
 
@@ -51,9 +41,9 @@ else
     sudo chmod +x /usr/local/bin/tamizhi
 fi
 
-# 4. தற்காலிகமாக உருவாக்கப்பட்ட பில்ட் டைரக்டரியை நீக்குதல்
-cd ~ || exit
-rm -rf "$BUILD_DIR"
+# 4. தற்காலிக குப்பைகளைச் சுத்தம் செய்தல்
+echo "[4/4] Cleaning up temporary build artifacts..."
+rm -f output.bc output.ll
 
 echo "--------------------------------------------------"
 echo "🏆 Success! Tamizhi Compiler is installed globally."
