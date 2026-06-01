@@ -434,7 +434,7 @@ void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2) {
     }
 }
 
-// 🌟 அச்சிடும் லேய 
+// 🌟 அச்சிடும் லேயர் 
 void tamizhi_gen_print(char* var_name) {
     LLVMValueRef val = NULL;
     int is_string = 0;
@@ -493,10 +493,11 @@ void tamizhi_gen_print(char* var_name) {
     }
 }
 
-void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* true_val, char* false_val) {
+// 🌟 [BUG FIX]: பேராமீட்டர் பெயர்கள் 'v1' மற்றும் 'var2' கச்சிதமாக மேட்ச் செய்யப்பட்டுள்ளது!
+void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* var2, char* true_val, char* false_val) {
     char clean_res[100], clean_v1[100], clean_v2[100], clean_t[100], clean_f[100];
     snprintf(clean_res, sizeof(clean_res), "%s", res_name); tamizhi_codegen_trim(clean_res);
-    snprintf(clean_v1, sizeof(clean_v1), "%s", var1); tamizhi_codegen_trim(clean_v1);
+    snprintf(clean_v1, sizeof(clean_v1), "%s", v1); tamizhi_codegen_trim(clean_v1);
     snprintf(clean_v2, sizeof(clean_v2), "%s", var2); tamizhi_codegen_trim(clean_v2);
     snprintf(clean_t, sizeof(clean_t), "%s", true_val); tamizhi_codegen_trim(clean_t);
     snprintf(clean_f, sizeof(clean_f), "%s", false_val); tamizhi_codegen_trim(clean_f);
@@ -749,7 +750,7 @@ static void tamizhi_optimize_module() {
     fprintf(stderr, " [Optimizer] Optimizations layer deployment complete.\n");
 }
 
-// 🌟 இங்க உங்க புதிய பக்கா பாத் பிக்ஸ் ரன்டைம் லாஜிக் இணைக்கப்பட்டுள்ளது!)
+// 🌟 இங்க உங்க புதிய பக்கா பாத் பிக்ஸ் ரன்டைம் லாஜிக் கச்சிதமாக இணைக்கப்பட்டுள்ளது!
 void tamizhi_codegen_finish() {
     if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder)) == NULL) {
         LLVMBuildRet(builder, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0));
@@ -781,7 +782,7 @@ void tamizhi_codegen_finish() {
 
     fprintf(stderr, "\n[Execution] Running compiled logic via Native AOT VM...\n");
     #ifdef __ANDROID__
-    // 🌟 பக்கா பாத் பிக்ஸ்: பைனரி எங்க இருந்தாலும் டெர்மக்ஸின் தற்காலிக பாதுகாப்பான பாத்தில் வச்சு ரன் செய்கிறோம்!
+    // 🌟 பக்கா பாத் பிக்ஸ்: பைனரி எங்கே இருந்தாலும் டெர்மக்ஸின் தற்காலிக பாதுகாப்பான பாத்தில் வச்சு ரன் செய்கிறோம்!
     system("llc output.bc -filetype=obj -o output.o");
     system("clang output.o -o /data/data/com.termux/files/usr/tmp/tamizhi_out");
     system("/data/data/com.termux/files/usr/tmp/tamizhi_out");
