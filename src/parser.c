@@ -12,6 +12,8 @@ void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* var2, char* t
 
 extern int current_line;
 extern LLVMValueRef current_function; // 🌟 codegen-ல் இருந்து தற்போதைய ஃபங்ஷன் பாயிண்டரை வாங்குகிறோம்
+extern LLVMModuleRef module;          // 🌟 குளோபல் மாட்யூல் ரெஃபரன்ஸ்
+extern LLVMContextRef context;         // 🌟 குளோபல் கான்டெக்ஸ்ட் ரெஃபரன்ஸ்
 
 int main_generated = 0;
 
@@ -251,39 +253,45 @@ void scan_headers(FILE *file) {
 }
 
 // ==========================================================
-// Main Parse
+// Main Parse (🌟 இங்க உங்க புதிய சிங்கிள்-பாஸ் லாஜிக் இணைக்கப்பட்டுள்ளது!)
 // ==========================================================
 
 void parse(FILE *file) {
-
     Token t;
     long main_pos = -1L;
     long footer_pos = -1L;
 
     fprintf(stderr, "\n[Parser] --- Tamizhi Engine Started ---\n");
 
+    // 1. முதலில் ஹெடர்களை ஸ்கேன் செய்கிறோம் (இது ஃபைலை ரீவைண்ட் செய்திடும்)
     scan_headers(file);
 
-    // 🌟 பக்கா லுகாஹெட் பிக்ஸ்: main மற்றும் footer பொசிஷன்களை கச்சிதமாகக் குறிக்கிறோம்
-    while ((t = get_next_token(file)).type != T_EOF) {
+    // 2. 🌟 [SINGLE PASS FIX]: ஹெடர் ஸ்கேனில் ரிஜிஸ்டர் ஆன 'main' மற்றும் 'footer' பொசிஷன்களை 
+    // ஃபங்ஷன் டேபிளில் இருந்தே நேரடியாகத் தேடி எடுக்கிறோம்!
+    long check_main = find_function("main");
+    if (check_main != -1L) {
+        main_pos = check_main;
+    } else {
+        // ஒருவேளை பயனர் தமிழ் கீவேர்ட் 'முதன்மை' பயன்படுத்தியிருந்தால்
+        main_pos = find_function("முதன்மை");
+    }
 
-        if (strcmp(t.value, "main") == 0 || strcmp(t.value, "முதன்மை") == 0) {
-            long current_p = ftell(file);
-            Token brace = get_next_token(file);
-            if (brace.type == 22 || strcmp(brace.value, "{") == 0) {
+    long check_footer = find_function("footer");
+    if (check_footer != -1L) {
+        footer_pos = check_footer;
+    } else {
+        footer_pos = find_function("பூட்டர்");
+    }
+
+    // ஒருவேளை ஃபங்ஷன் டேபிளில் ரிஜிஸ்டர் ஆகவில்லை என்றால் பழைய பேக்-அப் லூப்
+    if (main_pos == -1L || footer_pos == -1L) {
+        rewind(file);
+        while ((t = get_next_token(file)).type != T_EOF) {
+            if (strcmp(t.value, "main") == 0 || strcmp(t.value, "முதன்மை") == 0) {
                 main_pos = ftell(file);
-            } else {
-                main_pos = current_p;
             }
-        }
-
-        else if (strcmp(t.value, "footer") == 0 || strcmp(t.value, "பூட்டர்") == 0) {
-            long current_p = ftell(file);
-            Token brace = get_next_token(file);
-            if (brace.type == 22 || strcmp(brace.value, "{") == 0) {
+            else if (strcmp(t.value, "footer") == 0 || strcmp(t.value, "பூட்டர்") == 0) {
                 footer_pos = ftell(file);
-            } else {
-                footer_pos = current_p;
             }
         }
     }
@@ -291,7 +299,7 @@ void parse(FILE *file) {
     tamizhi_generate_entry();
 
     // ======================================================
-    // 🌟 [MASTER ARCHITECTURE FIX] - EOF ஃபிளாக் ரீசெட் மெக்கானிசம் 
+    // 🌟 EOF ஃபிளாக் ரீசெட் மெக்கானிசம் 
     // ======================================================
     clearerr(file); 
     rewind(file); 
@@ -299,9 +307,7 @@ void parse(FILE *file) {
     // ======================================================
     // MAIN BLOCK RUN
     // ======================================================
-
     if (main_pos != -1L) {
-
         fseek(file, main_pos, SEEK_SET);
         Token check_brace = get_next_token(file);
         if (strcmp(check_brace.value, "{") != 0) {
@@ -312,9 +318,7 @@ void parse(FILE *file) {
         current_function = LLVMGetNamedFunction(module, "main");
 
         int brace_count = 1;
-
         while (brace_count > 0) {
-
             t = get_next_token(file);
             if (t.type == T_EOF) break;
 
@@ -336,9 +340,7 @@ void parse(FILE *file) {
     // ======================================================
     // FOOTER BLOCK RUN
     // ======================================================
-
     if (footer_pos != -1L) {
-
         fseek(file, footer_pos, SEEK_SET);
         Token check_brace = get_next_token(file);
         if (strcmp(check_brace.value, "{") != 0) {
@@ -346,9 +348,7 @@ void parse(FILE *file) {
         }
 
         int brace_count = 1;
-
         while (brace_count > 0) {
-
             t = get_next_token(file);
             if (t.type == T_EOF) break;
 
@@ -439,7 +439,7 @@ void parse_statement(FILE *file, Token t) {
                 }
 
                 call_depth--;
-                
+
                 // 🌟 ஃபங்ஷன் எக்ஸிகியூஷன் முடிந்ததும் பழைய ஸ்கோப்பிற்குத் திரும்புகிறோம்
                 current_function = old_func;
                 fseek(file, return_pos, SEEK_SET);
@@ -599,11 +599,11 @@ void parse_statement(FILE *file, Token t) {
             while (get_next_token(file).type != 21);
 
             long return_pos = ftell(file);
-            
+
             // 🌟 [SCOPE SWITCH] - டைரக்ட் ஃபங்ஷன் காலிலும் ஸ்கோப்பை திருத்துகிறோம்
             LLVMValueRef old_func = current_function;
             current_function = LLVMGetNamedFunction(module, var_name);
-            
+
             call_depth++;
 
             fseek(file, func_pos, SEEK_SET);
