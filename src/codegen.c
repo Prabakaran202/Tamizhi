@@ -28,6 +28,9 @@ LLVMTargetMachineRef target_machine = NULL;
 LLVMTypeRef printf_type;
 LLVMValueRef printf_func;
 
+// 🌟 [MASTER LINKER FIX]: லிங்கர் எரரைத் தீர்க்கும் உலகளாவிய தற்போதைய ஃபங்ஷன் பாயிண்டர்!
+LLVMValueRef current_function = NULL; 
+
 int loop_counter = 0;
 
 // ==========================================
@@ -163,8 +166,11 @@ void tamizhi_gen_math_ast(char* res_name, ASTNode* root) {
     }
 
     if (!target_ptr && var_count < 100) {
-        LLVMValueRef func = LLVMGetNamedFunction(module, "main");
-        target_ptr = create_entry_alloca(func, LLVMInt32TypeInContext(context), clean_res);
+        // 🌟 [SCOPE FIX]: பிக்ஸட் 'main'-க்கு பதிலாக டைனமிக் ஸ்கோப் ரெஃபரன்ஸ் அப்ளை செய்யப்படுகிறது
+        if (current_function == NULL) {
+            current_function = LLVMGetNamedFunction(module, "main");
+        }
+        target_ptr = create_entry_alloca(current_function, LLVMInt32TypeInContext(context), clean_res);
         snprintf(symbol_table[var_count].name, sizeof(symbol_table[var_count].name), "%s", clean_res);
         symbol_table[var_count].alloca_ptr = target_ptr;
         symbol_table[var_count].is_str_type = 0;
@@ -217,7 +223,6 @@ void tamizhi_codegen_init() {
     LLVMInitializeAllAsmParsers();
     LLVMInitializeAllAsmPrinters();
 
-    // 🌟 முக்கிய அப்டேட்: முதலில் பிரத்தியேக கான்டெக்ஸ்ட்டை உருவாக்கி அதன்பின் ரன் செய்கிறோம்
     context = LLVMContextCreate();
     module = LLVMModuleCreateWithNameInContext("tamizhi_engine", context);
     builder = LLVMCreateBuilderInContext(context);
@@ -264,6 +269,9 @@ void tamizhi_generate_entry() {
     LLVMTypeRef main_func_type = LLVMFunctionType(LLVMInt32TypeInContext(context), NULL, 0, 0);
     LLVMValueRef main_func = LLVMAddFunction(module, "main", main_func_type);
 
+    // 🌟 மெயின் என்ட்ரி பாயிண்ட் உருவாகும்போது ஸ்கோப்பைக் குறிக்கிறோம்
+    current_function = main_func; 
+
     LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(context, main_func, "entry");
     LLVMPositionBuilderAtEnd(builder, entry); 
 }
@@ -272,8 +280,6 @@ void tamizhi_gen_var(char* name, int value) {
     char clean_res[100];
     snprintf(clean_res, sizeof(clean_res), "%s", name);
     tamizhi_codegen_trim(clean_res);
-
-    LLVMValueRef func = LLVMGetNamedFunction(module, "main");
 
     for(int i = 0; i < var_count; i++) {
         if(strcmp(symbol_table[i].name, clean_res) == 0) {
@@ -288,7 +294,11 @@ void tamizhi_gen_var(char* name, int value) {
     }
     if (var_count >= 100) return;
 
-    LLVMValueRef alloca = create_entry_alloca(func, LLVMInt32TypeInContext(context), clean_res);
+    // 🌟 [SCOPE FIX]: மாறிகள் அதற்குரிய தற்போதைய ஃபங்ஷன் ஸ்கோப்பிற்குள் அலோகேட் ஆகிறது
+    if (current_function == NULL) {
+        current_function = LLVMGetNamedFunction(module, "main");
+    }
+    LLVMValueRef alloca = create_entry_alloca(current_function, LLVMInt32TypeInContext(context), clean_res);
     LLVMBuildStore(builder, LLVMConstInt(LLVMInt32TypeInContext(context), value, 0), alloca);
 
     snprintf(symbol_table[var_count].name, sizeof(symbol_table[var_count].name), "%s", clean_res);
@@ -402,8 +412,10 @@ void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2) {
             }
 
             if(!target_ptr && var_count < 100) {
-                LLVMValueRef func = LLVMGetNamedFunction(module, "main");
-                target_ptr = create_entry_alloca(func, LLVMInt32TypeInContext(context), clean_res);
+                if (current_function == NULL) {
+                    current_function = LLVMGetNamedFunction(module, "main");
+                }
+                target_ptr = create_entry_alloca(current_function, LLVMInt32TypeInContext(context), clean_res);
                 snprintf(symbol_table[var_count].name, sizeof(symbol_table[var_count].name), "%s", clean_res);
                 symbol_table[var_count].alloca_ptr = target_ptr;
                 symbol_table[var_count].is_str_type = 0;
@@ -569,8 +581,10 @@ void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* tru
         }
     }
     if (!target_ptr && var_count < 100) {
-        LLVMValueRef func = LLVMGetNamedFunction(module, "main");
-        target_ptr = create_entry_alloca(func, LLVMInt32TypeInContext(context), clean_res);
+        if (current_function == NULL) {
+            current_function = LLVMGetNamedFunction(module, "main");
+        }
+        target_ptr = create_entry_alloca(current_function, LLVMInt32TypeInContext(context), clean_res);
         snprintf(symbol_table[var_count].name, sizeof(symbol_table[var_count].name), "%s", clean_res);
         symbol_table[var_count].alloca_ptr = target_ptr;
         symbol_table[var_count].is_str_type = 0;
@@ -584,7 +598,9 @@ void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* v2, char* tru
 }
 
 void tamizhi_gen_loop_start(int limit) {
-    LLVMValueRef func = LLVMGetNamedFunction(module, "main");
+    if (current_function == NULL) {
+        current_function = LLVMGetNamedFunction(module, "main");
+    }
     loop_top++;
     LoopContext* ctx = &loop_stack[loop_top];
 
@@ -594,11 +610,11 @@ void tamizhi_gen_loop_start(int limit) {
     snprintf(after_name, sizeof(after_name), "loop_after_%d", loop_counter);
     loop_counter++;
 
-    ctx->cond_block = LLVMAppendBasicBlockInContext(context, func, cond_name);
-    ctx->body_block = LLVMAppendBasicBlockInContext(context, func, body_name);
-    ctx->after_block = LLVMAppendBasicBlockInContext(context, func, after_name);
+    ctx->cond_block = LLVMAppendBasicBlockInContext(context, current_function, cond_name);
+    ctx->body_block = LLVMAppendBasicBlockInContext(context, current_function, body_name);
+    ctx->after_block = LLVMAppendBasicBlockInContext(context, current_function, after_name);
 
-    ctx->i_ptr = create_entry_alloca(func, LLVMInt32TypeInContext(context), "i");
+    ctx->i_ptr = create_entry_alloca(current_function, LLVMInt32TypeInContext(context), "i");
     LLVMBuildStore(builder, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0), ctx->i_ptr);
     LLVMBuildBr(builder, ctx->cond_block);
 
@@ -660,8 +676,10 @@ void tamizhi_gen_return(char* return_val) {
     }
 
     if (!target_ptr) {
-        LLVMValueRef func = LLVMGetNamedFunction(module, "main");
-        target_ptr = create_entry_alloca(func, LLVMInt32TypeInContext(context), "__tamizhi_ret");
+        if (current_function == NULL) {
+            current_function = LLVMGetNamedFunction(module, "main");
+        }
+        target_ptr = create_entry_alloca(current_function, LLVMInt32TypeInContext(context), "__tamizhi_ret");
         snprintf(symbol_table[var_count].name, sizeof(symbol_table[var_count].name), "__tamizhi_ret");
         symbol_table[var_count].alloca_ptr = target_ptr;
         symbol_table[var_count].is_str_type = 0;
@@ -701,8 +719,10 @@ void tamizhi_gen_assign_from_return(char* var_name) {
     }
 
     if (!target_ptr && var_count < 100) {
-        LLVMValueRef func = LLVMGetNamedFunction(module, "main");
-        target_ptr = create_entry_alloca(func, LLVMInt32TypeInContext(context), clean_name);
+        if (current_function == NULL) {
+            current_function = LLVMGetNamedFunction(module, "main");
+        }
+        target_ptr = create_entry_alloca(current_function, LLVMInt32TypeInContext(context), clean_name);
         snprintf(symbol_table[var_count].name, sizeof(symbol_table[var_count].name), "%s", clean_name);
         symbol_table[var_count].alloca_ptr = target_ptr;
         symbol_table[var_count].is_str_type = 0;
