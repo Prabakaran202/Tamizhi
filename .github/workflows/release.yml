@@ -26,17 +26,16 @@ jobs:
       - name: Build Binaries
         run: |
           gcc -o tamizhi main.c
-          gcc -o tamizhi_core tamizhi_core.c
 
       - name: Package Release
         run: |
           VERSION=${GITHUB_REF#refs/tags/}
           mkdir -p tamizhi-$VERSION-linux
-          cp tamizhi tamizhi_core tamizhi-$VERSION-linux/
+          cp tamizhi tamizhi-$VERSION-linux/
 
           cat > tamizhi-$VERSION-linux/install.sh << 'EOF'
           #!/bin/bash
-          sudo cp tamizhi tamizhi_core /usr/local/bin/
+          sudo cp tamizhi /usr/local/bin/
           echo "✅ Tamizhi installed successfully!"
           echo "Usage: tamizhi run <file.tz>"
           EOF
@@ -53,3 +52,24 @@ jobs:
           files: tamizhi-*.tar.gz
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ======================================================
+      # 🐍 3. PyPI Publish Section
+      # ======================================================
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build Python Package
+        run: |
+          pip install build
+          python -m build
+
+      - name: Publish PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          pip install twine
+          twine upload dist/*
