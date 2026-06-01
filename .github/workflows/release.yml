@@ -37,6 +37,7 @@ jobs:
           src/lexer.c \
           src/ast.c \
           src/codegen.c \
+          src/dna.c \
           $(llvm-config --cflags --ldflags --libs core executionengine native) \
           -lstdc++
 
