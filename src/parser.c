@@ -11,11 +11,11 @@ void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2);
 void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* var2, char* true_val, char* false_val);
 
 extern int current_line;
+extern LLVMValueRef current_function; // 🌟 codegen-ல் இருந்து தற்போதைய ஃபங்ஷன் பாயிண்டரை வாங்குகிறோம்
 
 int main_generated = 0;
 
 #define MAX_CALL_DEPTH 100
-
 int call_depth = 0;
 
 // ==========================================================
@@ -264,27 +264,26 @@ void parse(FILE *file) {
 
     scan_headers(file);
 
+    // 🌟 பக்கா லுகாஹெட் பிக்ஸ்: main மற்றும் footer பொசிஷன்களை கச்சிதமாகக் குறிக்கிறோம்
     while ((t = get_next_token(file)).type != T_EOF) {
 
         if (strcmp(t.value, "main") == 0 || strcmp(t.value, "முதன்மை") == 0) {
-
-            Token brace;
-            while ((brace = get_next_token(file)).type != T_EOF) {
-                if (brace.type == 22 || strcmp(brace.value, "{") == 0) {
-                    main_pos = ftell(file);
-                    break;
-                }
+            long current_p = ftell(file);
+            Token brace = get_next_token(file);
+            if (brace.type == 22 || strcmp(brace.value, "{") == 0) {
+                main_pos = ftell(file);
+            } else {
+                main_pos = current_p;
             }
         }
 
         else if (strcmp(t.value, "footer") == 0 || strcmp(t.value, "பூட்டர்") == 0) {
-
-            Token brace;
-            while ((brace = get_next_token(file)).type != T_EOF) {
-                if (brace.type == 22 || strcmp(brace.value, "{") == 0) {
-                    footer_pos = ftell(file);
-                    break;
-                }
+            long current_p = ftell(file);
+            Token brace = get_next_token(file);
+            if (brace.type == 22 || strcmp(brace.value, "{") == 0) {
+                footer_pos = ftell(file);
+            } else {
+                footer_pos = current_p;
             }
         }
     }
@@ -304,6 +303,14 @@ void parse(FILE *file) {
     if (main_pos != -1L) {
 
         fseek(file, main_pos, SEEK_SET);
+        Token check_brace = get_next_token(file);
+        if (strcmp(check_brace.value, "{") != 0) {
+            fseek(file, main_pos, SEEK_SET);
+        }
+
+        // 🌟 மெயின் பிளாக் ரன் ஆகும்போது ஸ்கோப்பை 'main' ஃபங்ஷனுக்கு மாற்றுகிறோம்
+        current_function = LLVMGetNamedFunction(module, "main");
+
         int brace_count = 1;
 
         while (brace_count > 0) {
@@ -333,6 +340,11 @@ void parse(FILE *file) {
     if (footer_pos != -1L) {
 
         fseek(file, footer_pos, SEEK_SET);
+        Token check_brace = get_next_token(file);
+        if (strcmp(check_brace.value, "{") != 0) {
+            fseek(file, footer_pos, SEEK_SET);
+        }
+
         int brace_count = 1;
 
         while (brace_count > 0) {
@@ -408,6 +420,10 @@ void parse_statement(FILE *file, Token t) {
                 while (get_next_token(file).type != 21);
                 long return_pos = ftell(file);
 
+                // 🌟 [SCOPE SWITCH] - ஃபங்ஷனுக்குள் நுழையும் போது டைனமிக் ஸ்கோப்பை அந்த ஃபங்ஷனுக்கு மாற்றுகிறோம்
+                LLVMValueRef old_func = current_function;
+                current_function = LLVMGetNamedFunction(module, value.value);
+
                 call_depth++;
                 fseek(file, func_pos, SEEK_SET);
                 int brace_count = 1;
@@ -423,6 +439,9 @@ void parse_statement(FILE *file, Token t) {
                 }
 
                 call_depth--;
+                
+                // 🌟 ஃபங்ஷன் எக்ஸிகியூஷன் முடிந்ததும் பழைய ஸ்கோப்பிற்குத் திரும்புகிறோம்
+                current_function = old_func;
                 fseek(file, return_pos, SEEK_SET);
 
                 extern void tamizhi_gen_assign_from_return(char* var_name);
@@ -512,6 +531,10 @@ void parse_statement(FILE *file, Token t) {
                     while (get_next_token(file).type != 21);
                     long return_pos = ftell(file);
 
+                    // 🌟 [SCOPE SWITCH] - அசைன்மென்ட் ஃபங்ஷன் காலிலும் ஸ்கோப்பை மாற்றுகிறோம்
+                    LLVMValueRef old_func = current_function;
+                    current_function = LLVMGetNamedFunction(module, current_tok.value);
+
                     call_depth++;
                     fseek(file, func_pos, SEEK_SET);
                     int brace_count = 1;
@@ -527,6 +550,7 @@ void parse_statement(FILE *file, Token t) {
                     }
 
                     call_depth--;
+                    current_function = old_func;
                     fseek(file, return_pos, SEEK_SET);
 
                     extern void tamizhi_gen_assign_from_return(char* var_name);
@@ -575,6 +599,11 @@ void parse_statement(FILE *file, Token t) {
             while (get_next_token(file).type != 21);
 
             long return_pos = ftell(file);
+            
+            // 🌟 [SCOPE SWITCH] - டைரக்ட் ஃபங்ஷன் காலிலும் ஸ்கோப்பை திருத்துகிறோம்
+            LLVMValueRef old_func = current_function;
+            current_function = LLVMGetNamedFunction(module, var_name);
+            
             call_depth++;
 
             fseek(file, func_pos, SEEK_SET);
@@ -598,6 +627,7 @@ void parse_statement(FILE *file, Token t) {
             }
 
             call_depth--;
+            current_function = old_func;
             fseek(file, return_pos, SEEK_SET);
         }
 
@@ -620,7 +650,7 @@ void parse_statement(FILE *file, Token t) {
         }
 
         // 🌟 ஸ்ட்ரிங் வாக்கியங்களை நேரடியாக அச்சிடுகிறது
-        if (current_tok.value[0] == '"') {
+        if (current_tok.value[0] == '"' || current_tok.type == T_STR || strchr(current_tok.value, '"') != NULL) {
             tamizhi_trim_token(current_tok.value);
             tamizhi_gen_print(current_tok.value);
 
