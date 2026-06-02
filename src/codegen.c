@@ -49,8 +49,9 @@ LoopContext loop_stack[100];
 int loop_top = -1;
 
 // ==========================================
-// 🌟 [v0.1.5 NEW]: நெஸ்டட் இஃப்-எல்ஸ் ஆதரவிற்கான ஸ்டேக் கட்டமைப்பு!
+// 🌟 [v0.1.5 FIX]: அட்வான்ஸ்டு பாயிண்டர் மேப்பிங் கொண்ட இஃப்-எல்ஸ் ஸ்டேக்!
 // ==========================================
+#define MAX_IF_DEPTH 256
 typedef struct {
     LLVMBasicBlockRef true_block;
     LLVMBasicBlockRef false_block;
@@ -58,7 +59,7 @@ typedef struct {
     int has_else;
 } IfContext;
 
-IfContext if_stack[100];
+IfContext if_stack[MAX_IF_DEPTH];
 int if_top = -1;
 
 // ==========================================
@@ -81,7 +82,7 @@ int var_count = 0;
 typedef struct {
     char name[100];
     LLVMValueRef func_ref;
-    LLVMBasicBlockRef resume_block; // 🌟 [FIX] ஒவ்வொரு ஃபங்ஷனோட ஓபன் பிளாக்கைக் கண்காணிக்க
+    LLVMBasicBlockRef resume_block; // 🌟 ஒவ்வொரு ஃபங்ஷனோட ஓபன் பிளாக்கைக் கண்காணிக்க
 } TamizhiFunction;
 
 TamizhiFunction function_table[MAX_FUNCS];
@@ -307,8 +308,7 @@ void tamizhi_gen_function_end() {
     if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder)) == NULL) {
         LLVMBuildRet(builder, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0));
     }
-    
-    // 🌟 [FIX] மெயின் ஃபங்ஷனோட ஓபன் (Non-terminated) பேசிக் பிளாக்கை தேடி எடுத்து ரிசூம் செய்கிறோம்
+
     LLVMValueRef main_fn = LLVMGetNamedFunction(module, "main");
     current_function = main_fn;
     if (main_fn) {
@@ -561,7 +561,6 @@ void tamizhi_gen_print(char* var_name) {
         }
     }
 
-    // 🌟 [FIX] நெஸ்ட்டட் இட்டரேஷன் லெவல்களிலும் சரியான loop-level i_ptr ஐக் கண்டறிகிறது
     if (!val && strcmp(clean_name, "i") == 0) {
         for (int lvl = loop_top; lvl >= 0; lvl--) {
             if (loop_stack[lvl].i_ptr) {
@@ -703,8 +702,7 @@ void tamizhi_gen_loop_start(int limit) {
     snprintf(cond_name, sizeof(cond_name), "loop_cond_%d", loop_counter);
     snprintf(body_name, sizeof(body_name), "loop_body_%d", loop_counter);
     snprintf(after_name, sizeof(after_name), "loop_after_%d", loop_counter);
-    
-    // 🌟 [FIX] நெஸ்டட் லூப் இடியம்களில் மாறி மோதலைத் தவிர்க்க தனித்துவமான லூப் இன்டெக்ஸ் பெயர்
+
     snprintf(i_name, sizeof(i_name), "__loop_i_%d", loop_counter);
     loop_counter++;
 
@@ -738,13 +736,19 @@ void tamizhi_gen_loop_end() {
 }
 
 // =========================================================================
-// 🌟 [v0.1.5 NEW FEATURE]: Native LLVM-IR if - else பிரான்சிங் இன்ஜின் லாஜிக்!
+// 🌟 [v0.1.5 REFACTORED]: Fall-Through Bug மற்றும் Terminator Overlap முழுமையாக பிக்ஸ் செய்யப்பட்ட இஃப்-எல்ஸ் இன்ஜின்!
 // =========================================================================
 void tamizhi_gen_if_start(char* lhs, char* rel_op, char* rhs) {
     char clean_lhs[100], clean_rhs[100], clean_op[10];
     snprintf(clean_lhs, sizeof(clean_lhs), "%s", lhs); tamizhi_codegen_trim(clean_lhs);
     snprintf(clean_rhs, sizeof(clean_rhs), "%s", rhs); tamizhi_codegen_trim(clean_rhs);
     snprintf(clean_op, sizeof(clean_op), "%s", rel_op); tamizhi_codegen_trim(clean_op);
+
+    if_top++;
+    if (if_top >= MAX_IF_DEPTH - 1) {
+        fprintf(stderr, "[If Error] Maximum nested if depth exceeded\n");
+        return;
+    }
 
     if (current_function == NULL) {
         current_function = LLVMGetNamedFunction(module, "main");
@@ -793,7 +797,6 @@ void tamizhi_gen_if_start(char* lhs, char* rel_op, char* rhs) {
     snprintf(end_name, sizeof(end_name), "if_end_%d", if_counter);
     if_counter++;
 
-    if_top++;
     if_stack[if_top].true_block = LLVMAppendBasicBlockInContext(context, current_function, true_name);
     if_stack[if_top].false_block = LLVMAppendBasicBlockInContext(context, current_function, false_name);
     if_stack[if_top].end_block = LLVMAppendBasicBlockInContext(context, current_function, end_name);
@@ -805,28 +808,43 @@ void tamizhi_gen_if_start(char* lhs, char* rel_op, char* rhs) {
 
 void tamizhi_gen_else_start() {
     if (if_top < 0) return;
-    if_stack[if_top].has_else = 1;
+    
+    IfContext* ctx = &if_stack[if_top];
+    ctx->has_else = 1;
 
-    if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder)) == NULL) {
-        LLVMBuildBr(builder, if_stack[if_top].end_block);
+    // 🌟 [FIX #2] Terminator Safety: ஏற்கனவே ட்ரூ பிளாக் டெர்மினேட் ஆகவில்லை என்றால் மட்டுமே ஜம்ப் லிங்க் தரணும்
+    LLVMValueRef current_bb = LLVMGetInsertBlock(builder);
+    if (current_bb && LLVMGetBasicBlockTerminator(current_bb) == NULL) {
+        LLVMBuildBr(builder, ctx->end_block);
     }
 
-    LLVMPositionBuilderAtEnd(builder, if_stack[if_top].false_block);
+    LLVMPositionBuilderAtEnd(builder, ctx->false_block);
 }
 
 void tamizhi_gen_if_end() {
-    if (if_top < 0) return;
-
-    if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder)) == NULL) {
-        LLVMBuildBr(builder, if_stack[if_top].end_block);
+    if (if_top < 0) {
+        fprintf(stderr, "[If Error] if stack underflow\n");
+        return;
     }
 
-    if (!if_stack[if_top].has_else) {
-        LLVMPositionBuilderAtEnd(builder, if_stack[if_top].false_block);
-        LLVMBuildBr(builder, if_stack[if_top].end_block);
+    IfContext* ctx = &if_stack[if_top];
+    LLVMValueRef current_bb = LLVMGetInsertBlock(builder);
+
+    // 🌟 ஆக்டிவ் பிளாக் டெர்மினேட் ஆகவில்லை என்றால் எண்ட் பிளாக்கிற்கு பிரான்ச் செய்கிறோம்
+    if (current_bb && LLVMGetBasicBlockTerminator(current_bb) == NULL) {
+        LLVMBuildBr(builder, ctx->end_block);
     }
 
-    LLVMPositionBuilderAtEnd(builder, if_stack[if_top].end_block);
+    // 🌟 [FIX #3] Orphan False Block Fix: எல்ஸ் இல்லையென்றால் ஃபால்ஸ் பிளாக்கை அநாதையாக விடாமல் எண்ட் பிளாக்கிற்கு பிரான்ச் செய்ய லிங்க் செய்கிறோம் பிரபா!
+    if (!ctx->has_else) {
+        LLVMPositionBuilderAtEnd(builder, ctx->false_block);
+        if (LLVMGetBasicBlockTerminator(ctx->false_block) == NULL) {
+            LLVMBuildBr(builder, ctx->end_block);
+        }
+    }
+
+    // பில்டரை அடுத்த ஸ்டேட்மென்ட்கள் ரன் ஆக இறுதி கண்டினியூவேஷன் எண்ட் பிளாக்கிற்கு கொண்டு வருகிறோம்
+    LLVMPositionBuilderAtEnd(builder, ctx->end_block);
     if_top--;
 }
 
@@ -928,9 +946,6 @@ void tamizhi_codegen_destroy() {
     if(context) LLVMContextDispose(context); 
 }
 
-// =========================================================================
-// 🌟 [Modern Pass Optimization]: நவீன LLVM 19+ Pass Builder லேயர் (O2)
-// =========================================================================
 static void tamizhi_optimize_module() {
     fprintf(stderr, " [Optimizer] Running modern LLVM Pass Builder (O2)...\n");
     LLVMPassBuilderOptionsRef opts = LLVMCreatePassBuilderOptions();
