@@ -19,7 +19,7 @@ extern void encode_logic(const char* input_path, const char* output_path);
 extern int current_line; 
 
 // ==========================================
-// 🌟 மாடர்ன் LLVM குளோபல் கான்டெக்ஸ்ட் செட்டப் 
+// 🌟 மாடர்ன் LLVM குளோபல் கான்டெக்สต์ செட்டப் 
 // ==========================================
 LLVMContextRef context; // 🌟 உலகளாவிய புதிய கான்டெக்ஸ்ட் ரெஃபரன்ஸ்
 LLVMModuleRef module;
@@ -166,7 +166,6 @@ void tamizhi_gen_math_ast(char* res_name, ASTNode* root) {
     }
 
     if (!target_ptr && var_count < 100) {
-        // 🌟 [SCOPE FIX]: பிக்ஸட் 'main'-க்கு பதிலாக டைனமிக் ஸ்கோப் ரெஃபரன்ஸ் அப்ளை செய்யப்படுகிறது
         if (current_function == NULL) {
             current_function = LLVMGetNamedFunction(module, "main");
         }
@@ -263,13 +262,60 @@ void tamizhi_codegen_init() {
     #endif
 }
 
+// 🌟 [NEW FUNCTION LOGIC]: சொந்தப் பயனர் ஃபங்ஷன்களை மாட்யூலில் கிரியேட் செய்து டேபிளில் சேர்க்கும் அம்சம்!
+void tamizhi_gen_function_start(char* func_name) {
+    char clean_name[100];
+    snprintf(clean_name, sizeof(clean_name), "%s", func_name);
+    tamizhi_codegen_trim(clean_name);
+
+    if (LLVMGetNamedFunction(module, clean_name)) return;
+
+    LLVMTypeRef func_type = LLVMFunctionType(LLVMInt32TypeInContext(context), NULL, 0, 0);
+    LLVMValueRef function = LLVMAddFunction(module, clean_name, func_type);
+
+    current_function = function; // ஸ்கோப்பை இந்த ஃபங்ஷனுக்கு மாற்றுகிறோம்
+
+    LLVMBasicBlockRef entry_block = LLVMAppendBasicBlockInContext(context, function, "entry");
+    LLVMPositionBuilderAtEnd(builder, entry_block);
+
+    if (func_count < 50) {
+        snprintf(function_table[func_count].name, sizeof(function_table[func_count].name), "%s", clean_name);
+        function_table[func_count].func_ref = function;
+        func_count++;
+    }
+}
+
+void tamizhi_gen_function_end() {
+    if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder)) == NULL) {
+        LLVMBuildRet(builder, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0));
+    }
+    current_function = LLVMGetNamedFunction(module, "main"); // மீண்டும் மெயின் பிளாக்கிற்கு ஸ்கோப் மாறுகிறது
+    if (current_function) {
+        LLVMBasicBlockRef last_bb = LLVMGetLastBasicBlock(current_function);
+        LLVMPositionBuilderAtEnd(builder, last_bb);
+    }
+}
+
+void tamizhi_gen_function_call(char* func_name) {
+    char clean_name[100];
+    snprintf(clean_name, sizeof(clean_name), "%s", func_name);
+    tamizhi_codegen_trim(clean_name);
+
+    LLVMValueRef target_func = LLVMGetNamedFunction(module, clean_name);
+    if (target_func) {
+        LLVMTypeRef func_type = LLVMFunctionType(LLVMInt32TypeInContext(context), NULL, 0, 0);
+        LLVMBuildCall2(builder, func_type, target_func, NULL, 0, "call_tmp");
+    } else {
+        fprintf(stderr, "[Codegen Error] அழைக்க முயன்ற ஃபங்ஷன் வரையறுக்கப்படவில்லை: '%s'\n", clean_name);
+    }
+}
+
 void tamizhi_generate_entry() {
     if (LLVMGetNamedFunction(module, "main")) return; 
 
     LLVMTypeRef main_func_type = LLVMFunctionType(LLVMInt32TypeInContext(context), NULL, 0, 0);
     LLVMValueRef main_func = LLVMAddFunction(module, "main", main_func_type);
 
-    // 🌟 மெயின் என்ட்ரி பாயிண்ட் உருவாகும்போது ஸ்கோப்பைக் குறிக்கிறோம்
     current_function = main_func; 
 
     LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(context, main_func, "entry");
@@ -294,7 +340,6 @@ void tamizhi_gen_var(char* name, int value) {
     }
     if (var_count >= 100) return;
 
-    // 🌟 [SCOPE FIX]: மாறிகள் அதற்குரிய தற்போதைய ஃபங்ஷன் ஸ்கோப்பிற்குள் அலோகேட் ஆகிறது
     if (current_function == NULL) {
         current_function = LLVMGetNamedFunction(module, "main");
     }
@@ -332,7 +377,6 @@ void tamizhi_gen_str(char* name, char* value) {
     var_count++;
 }
 
-// ⚠️ Direct Math Ops
 void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2) {
     char clean_res[100], clean_v1[100], clean_v2[100];
     snprintf(clean_res, sizeof(clean_res), "%s", res_name); tamizhi_codegen_trim(clean_res);
@@ -392,7 +436,7 @@ void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2) {
             calculated_val = s_val1 * s_val2;
         } else if (strcmp(op, "/") == 0) {
             if(f2 && s_val2 == 0) {
-                fprintf(stderr, "[Runtime Error] வரி %d: பூஜ்ஜியத்தால் வகுக்க முடியாது (Division by zero)!\n", current_line);
+                fprintf(stderr, "[Runtime Error] வரி %d: பூஜ்ஜியத்தால் வகுக்க முடியாது!\n", current_line);
                 return;
             }
             math_res = LLVMBuildSDiv(builder, v1_val, v2_val, "div_tmp");
@@ -456,7 +500,6 @@ void tamizhi_gen_print(char* var_name) {
         is_literal = 1;
         is_string = 1;
     }
-    // சிங்கிள் கோட்ஸ் செக்
     else if (clean_name[0] == '\'' && clean_name[strlen(clean_name)-1] == '\'') {
         char temp[1024];
         strncpy(temp, clean_name + 1, strlen(clean_name) - 2);
@@ -467,7 +510,6 @@ void tamizhi_gen_print(char* var_name) {
     }
 
     if (!is_literal) {
-        // Variable/AST Result Search
         for(int i = 0; i < var_count; i++) {
             if(strcmp(symbol_table[i].name, clean_name) == 0) {
                 val = symbol_table[i].alloca_ptr;
@@ -481,23 +523,19 @@ void tamizhi_gen_print(char* var_name) {
         }
     }
 
-    // Loop Index i
     if(!val && loop_top >= 0 && strcmp(clean_name, "i") == 0) {
         val = LLVMBuildLoad2(builder, LLVMInt32TypeInContext(context), loop_stack[loop_top].i_ptr, "load_loop_i");
     }
 
-    // Fallback: Raw integer constant
     if(!val && (isdigit((unsigned char)clean_name[0]) || clean_name[0] == '-') && !is_literal) {
         val = LLVMConstInt(LLVMInt32TypeInContext(context), atoi(clean_name), 0);
     }
 
-    // Raw String literal fallback
     if(!val) {
         val = LLVMBuildGlobalStringPtr(builder, clean_name, "str_lit");
         is_string = 1;
     }
 
-    // Print Logic Execution
     if(val) {
         const char* fmt = is_string ? "%s\n" : "%d\n";
         LLVMValueRef fmt_ref = LLVMBuildGlobalStringPtr(builder, fmt, "fmt");
@@ -506,7 +544,6 @@ void tamizhi_gen_print(char* var_name) {
     }
 }
 
-// 🌟 [BUG FIX]: பேராமீட்டர் பெயர்கள் 'v1' மற்றும் 'var2' கச்சிதமாக மேட்ச் செய்யப்பட்டுள்ளது!
 void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* var2, char* true_val, char* false_val) {
     char clean_res[100], clean_v1[100], clean_v2[100], clean_t[100], clean_f[100];
     snprintf(clean_res, sizeof(clean_res), "%s", res_name); tamizhi_codegen_trim(clean_res);
@@ -653,9 +690,6 @@ void tamizhi_gen_loop_end() {
     loop_top--;
 }
 
-// ==========================================================
-// Return Statement (Secret Register Logic)
-// ==========================================================
 void tamizhi_gen_return(char* return_val) {
     char clean_name[1024];
     snprintf(clean_name, sizeof(clean_name), "%s", return_val);
@@ -663,11 +697,9 @@ void tamizhi_gen_return(char* return_val) {
 
     LLVMValueRef ret_llvm_val = NULL;
 
-    // 1. எண்ணாக இருந்தால்
     if (isdigit((unsigned char)clean_name[0]) || clean_name[0] == '-') {
         ret_llvm_val = LLVMConstInt(LLVMInt32TypeInContext(context), atoi(clean_name), 0);
     } 
-    // 2. மாறியாக இருந்தால்
     else {
         for(int i = 0; i < var_count; i++) {
             if(strcmp(symbol_table[i].name, clean_name) == 0) {
@@ -703,9 +735,6 @@ void tamizhi_gen_return(char* return_val) {
     LLVMBuildStore(builder, ret_llvm_val, target_ptr);
 }
 
-// ==========================================================
-// Return Capture Logic
-// ==========================================================
 void tamizhi_gen_assign_from_return(char* var_name) {
     char clean_name[100];
     snprintf(clean_name, sizeof(clean_name), "%s", var_name);
@@ -752,7 +781,7 @@ void tamizhi_codegen_destroy() {
     if(target_machine) LLVMDisposeTargetMachine(target_machine);
     if(builder) LLVMDisposeBuilder(builder);
     if(module) LLVMDisposeModule(module);
-    if(context) LLVMContextDispose(context); // 🌟 மெமரி லீக் ஆகாமல் கான்டெக்ஸ்ட்டை அழிக்கிறோம்!
+    if(context) LLVMContextDispose(context); 
 }
 
 static void tamizhi_optimize_module() {
@@ -763,7 +792,6 @@ static void tamizhi_optimize_module() {
     fprintf(stderr, " [Optimizer] Optimizations layer deployment complete.\n");
 }
 
-// 🌟 இங்க உங்க புதிய பக்கா பாத் பிக்ஸ் ரன்டைம் லாஜிக் கச்சிதமாக இணைக்கப்பட்டுள்ளது!
 void tamizhi_codegen_finish() {
     if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder)) == NULL) {
         LLVMBuildRet(builder, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0));
@@ -795,11 +823,10 @@ void tamizhi_codegen_finish() {
 
     fprintf(stderr, "\n[Execution] Running compiled logic via Native AOT VM...\n");
     #ifdef __ANDROID__
-    // 🌟 பக்கா பாத் பிக்ஸ்: பைனரி எங்கே இருந்தாலும் டெர்மக்ஸின் தற்காலிக பாதுகாப்பான பாத்தில் வச்சு ரன் செய்கிறோம்!
     system("llc output.bc -filetype=obj -o output.o");
     system("clang output.o -o /data/data/com.termux/files/usr/tmp/tamizhi_out");
     system("/data/data/com.termux/files/usr/tmp/tamizhi_out");
-    system("rm -f /data/data/com.termux/files/usr/tmp/tamizhi_out"); // ரன் ஆனதும் கிளீன் செய்கிறோம்
+    system("rm -f /data/data/com.termux/files/usr/tmp/tamizhi_out"); 
     #else
     system("lli output.bc"); 
     #endif
