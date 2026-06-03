@@ -49,7 +49,7 @@ LoopContext loop_stack[100];
 int loop_top = -1;
 
 // ==========================================
-// 🌟 [v0.1.5 FIX]: அட்வான்ஸ்டு பாயிண்டர் மேப்பிங் கொண்ட இஃப்-எல்ஸ் ஸ்டேக்!
+// 🌟 [v0.1.5 FIX]: அண்டர்ஃபுளோ பாதுகாப்பு கொண்ட இஃப்-எல்ஸ் ஸ்டேக் கட்டமைப்பு!
 // ==========================================
 #define MAX_IF_DEPTH 256
 typedef struct {
@@ -85,7 +85,7 @@ typedef struct {
     LLVMBasicBlockRef resume_block; // 🌟 ஒவ்வொரு ஃபங்ஷனோட ஓபன் பிளாக்கைக் கண்காணிக்க
 } TamizhiFunction;
 
-TamizhiFunction function_table[MAX_FUNCS];
+TamizFunction function_table[MAX_FUNCS];
 int func_count = 0;
 
 // 🌟 கோடெஜன் லெவலில் பெயர்களை சுத்தமாக்கும் பக்கா ட்ரிம் மெக்கானிசம்
@@ -340,7 +340,7 @@ void tamizhi_gen_function_call(char* func_name) {
         LLVMTypeRef func_type = LLVMFunctionType(LLVMInt32TypeInContext(context), NULL, 0, 0);
         LLVMBuildCall2(builder, func_type, target_func, NULL, 0, "call_tmp");
     } else {
-        fprintf(stderr, "[Codegen Error] ಫಂಗ್ಷನ್ வரையறுக்கப்படவில்லை: '%s'\n", clean_name);
+        fprintf(stderr, "[Codegen Error] ಫಂಗ್ಷன் வரையறுக்கப்படவில்லை: '%s'\n", clean_name);
     }
 }
 
@@ -590,7 +590,7 @@ void tamizhi_gen_print(char* var_name) {
 void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* var2, char* true_val, char* false_val) {
     char clean_res[100], clean_v1[100], clean_v2[100], clean_t[100], clean_f[100];
     snprintf(clean_res, sizeof(clean_res), "%s", res_name); tamizhi_codegen_trim(clean_res);
-    snprintf(clean_v1, sizeof(clean_v1), "%s", v1); tamizhi_codegen_trim(clean_v1);
+    snprintf(clean_v1, sizeof(clean_v1), "%s", var1); tamizhi_codegen_trim(clean_v1);
     snprintf(clean_v2, sizeof(clean_v2), "%s", var2); tamizhi_codegen_trim(clean_v2);
     snprintf(clean_t, sizeof(clean_t), "%s", true_val); tamizhi_codegen_trim(clean_t);
     snprintf(clean_f, sizeof(clean_f), "%s", false_val); tamizhi_codegen_trim(clean_f);
@@ -745,6 +745,7 @@ void tamizhi_gen_if_start(char* lhs, char* rel_op, char* rhs) {
     snprintf(clean_op, sizeof(clean_op), "%s", rel_op); tamizhi_codegen_trim(clean_op);
 
     if_top++;
+    // 🌟 [FIX] இஃப் டெப்த் அண்டர்ஃபுளோ/ஓவர்ஃபுளோ செக் பாதுகாப்பு
     if (if_top >= MAX_IF_DEPTH - 1) {
         fprintf(stderr, "[If Error] Maximum nested if depth exceeded\n");
         return;
@@ -812,7 +813,7 @@ void tamizhi_gen_else_start() {
     IfContext* ctx = &if_stack[if_top];
     ctx->has_else = 1;
 
-    // 🌟 [FIX #2] Terminator Safety: ஏற்கனவே ட்ரூ பிளாக் டெர்மினேட் ஆகவில்லை என்றால் மட்டுமே ஜம்ப் லிங்க் தரணும்
+    // 🌟 [FIX #2] Terminator Safety Check: ட்ரூ பிளாக்ல கமாண்டுகள் ரன் ஆகி முடிஞ்சதும் அதுக்குள்ள டெர்மினேட்டர் இல்லனா மட்டும் பிரான்ச் ஜம்ப் கொடுக்கிறோம் பிரபா!
     LLVMValueRef current_bb = LLVMGetInsertBlock(builder);
     if (current_bb && LLVMGetBasicBlockTerminator(current_bb) == NULL) {
         LLVMBuildBr(builder, ctx->end_block);
@@ -830,12 +831,12 @@ void tamizhi_gen_if_end() {
     IfContext* ctx = &if_stack[if_top];
     LLVMValueRef current_bb = LLVMGetInsertBlock(builder);
 
-    // 🌟 ஆக்டிவ் பிளாக் டெர்மினேட் ஆகவில்லை என்றால் எண்ட் பிளாக்கிற்கு பிரான்ச் செய்கிறோம்
+    // 🌟 [FIX #2] ஆக்டிவ் பிளாக்கோட எண்டுல டெர்மினேட்டர் பிரான்ச் மிஸ் ஆகிருந்தா எண்ட் பிளாக்குக்கு லிங்க் தர்றோம் பிரபா
     if (current_bb && LLVMGetBasicBlockTerminator(current_bb) == NULL) {
         LLVMBuildBr(builder, ctx->end_block);
     }
 
-    // 🌟 [FIX #3] Orphan False Block Fix: எல்ஸ் இல்லையென்றால் ஃபால்ஸ் பிளாக்கை அநாதையாக விடாமல் எண்ட் பிளாக்கிற்கு பிரான்ச் செய்ய லிங்க் செய்கிறோம் பிரபா!
+    // 🌟 [FIX #3] Orphan False Block Fix: பயனர் கோடுல 'else' எழுதாதப்போ, ஃபால்ஸ் பிளாக்கை அநாதையா விடாம எண்ட் பிளாக்கோட லிங்க் செஞ்சு மாஸ் பண்றோம்!
     if (!ctx->has_else) {
         LLVMPositionBuilderAtEnd(builder, ctx->false_block);
         if (LLVMGetBasicBlockTerminator(ctx->false_block) == NULL) {
@@ -958,7 +959,7 @@ static void tamizhi_optimize_module() {
     if (err) {
         char *msg = LLVMGetErrorMessage(err);
         fprintf(stderr, " [Optimizer Warning] %s\n", msg);
-        LLVMDisposeErrorMessage(msg);
+        LLVMDisposeMessage(msg);
         LLVMConsumeError(err);
     } else {
         fprintf(stderr, " [Optimizer] O2 optimization pipeline complete.\n");
