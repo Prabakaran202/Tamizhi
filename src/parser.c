@@ -379,7 +379,7 @@ void parse_statement(FILE *file, Token t) {
     }
 
     // ======================================================
-    // 🌟 [v0.1.5 NEW FEATURE]: if - else (எனில் - இல்லையெனில்) கண்டிஷனல் பிளாக்
+    // 🌟 [v0.1.5 CORE FIX]: இஃப்-எல்ஸ் டோக்கன் பவுண்டரி மற்றும் பிரான்ச் கண்ட்ரோல் பிக்ஸ்!
     // ======================================================
     if (strcmp(t.value, "if") == 0 || strcmp(t.value, "எனில்") == 0) {
         Token open_p = get_next_token(file);  // '(' குறியீட்டை உட்கொள்கிறது
@@ -393,7 +393,7 @@ void parse_statement(FILE *file, Token t) {
         extern void tamizhi_gen_if_start(char* lhs, char* rel_op, char* rhs);
         tamizhi_gen_if_start(v1.value, op.value, v2.value);
 
-        // If பாடி பிளாக்கிற்குள் இருக்கும் ஸ்டேட்மென்ட்களை இயக்குகிறோம்
+        // [TRUE BLOCK PARSING]: இஃப் பாடி பிளாக்கிற்குள் இருக்கும் ஸ்டேட்மென்ட்களை இயக்குகிறோம்
         int brace_count = 1;
         Token if_body;
         while (brace_count > 0 && (if_body = get_next_token(file)).type != T_EOF) {
@@ -405,13 +405,18 @@ void parse_statement(FILE *file, Token t) {
             else parse_statement(file, if_body);
         }
 
+        // 🌟 [CRITICAL]: ட்ரூ பிளாக் பார்சிங் முடிஞ்ச உடனே, எல்ஸ் செக் பண்றதுக்கு முன்னாடியே 
+        // இந்த ட்ரூ பிளாக்கோட எண்டைக் குறிக்க codegen-க்கு சிக்னல் தர்றோம் பிரபா!
+        extern void tamizhi_gen_if_body_end();
+        tamizhi_gen_if_body_end();
+
         // அடுத்து 'else' அல்லது 'இல்லையெனில்' பிளாக் வருகிறதா என்று பார்க்க பேக்-அப் பொசிஷன்
         long backup_pos = ftell(file);
         Token next_tok = get_next_token(file);
 
         if (strcmp(next_tok.value, "else") == 0 || strcmp(next_tok.value, "இல்லையெனில்") == 0) {
             Token else_open_b = get_next_token(file); // எல்ஸ் பிளாக்கோட '{'
-            
+
             extern void tamizhi_gen_else_start();
             tamizhi_gen_else_start();
 
