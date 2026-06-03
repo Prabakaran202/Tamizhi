@@ -83,9 +83,9 @@ typedef struct {
     char name[100];
     LLVMValueRef func_ref;
     LLVMBasicBlockRef resume_block; // 🌟 ஒவ்வொரு ஃபங்ஷனோட ஓபன் பிளாக்கைக் கண்காணிக்க
-} TamizhiFunction;
+} TamizhiFunction; // 🌟 [TYPO FIXED]: TamizFunction எரர் முழுமையாக சரிசெய்யப்பட்டது பிரபா!
 
-TamizFunction function_table[MAX_FUNCS];
+TamizhiFunction function_table[MAX_FUNCS];
 int func_count = 0;
 
 // 🌟 கோடெஜன் லெவலில் பெயர்களை சுத்தமாக்கும் பக்கா ட்ரிம் மெக்கானிசம்
@@ -417,10 +417,11 @@ void tamizhi_gen_str(char* name, char* value) {
     var_count++;
 }
 
-void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2) {
+// 🌟 [TYPO FIXED]: பேராமீட்டர் பெயர்கள் v1 மற்றும் var2 கச்சிதமாக மேட்ச் செய்யப்பட்டுள்ளது பிரபா!
+void tamizhi_gen_math_op(char* res_name, char* v1, char* op, char* var2) {
     char clean_res[100], clean_v1[100], clean_v2[100];
     snprintf(clean_res, sizeof(clean_res), "%s", res_name); tamizhi_codegen_trim(clean_res);
-    snprintf(clean_v1, sizeof(clean_v1), "%s", var1); tamizhi_codegen_trim(clean_v1);
+    snprintf(clean_v1, sizeof(clean_v1), "%s", v1); tamizhi_codegen_trim(clean_v1);
     snprintf(clean_v2, sizeof(clean_v2), "%s", var2); tamizhi_codegen_trim(clean_v2);
 
     LLVMValueRef v1_val = NULL, v2_val = NULL;
@@ -590,7 +591,7 @@ void tamizhi_gen_print(char* var_name) {
 void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* var2, char* true_val, char* false_val) {
     char clean_res[100], clean_v1[100], clean_v2[100], clean_t[100], clean_f[100];
     snprintf(clean_res, sizeof(clean_res), "%s", res_name); tamizhi_codegen_trim(clean_res);
-    snprintf(clean_v1, sizeof(clean_v1), "%s", var1); tamizhi_codegen_trim(clean_v1);
+    snprintf(clean_v1, sizeof(clean_v1), "%s", v1); tamizhi_codegen_trim(clean_v1);
     snprintf(clean_v2, sizeof(clean_v2), "%s", var2); tamizhi_codegen_trim(clean_v2);
     snprintf(clean_t, sizeof(clean_t), "%s", true_val); tamizhi_codegen_trim(clean_t);
     snprintf(clean_f, sizeof(clean_f), "%s", false_val); tamizhi_codegen_trim(clean_f);
@@ -813,8 +814,8 @@ void tamizhi_gen_else_start() {
     IfContext* ctx = &if_stack[if_top];
     ctx->has_else = 1;
 
-    // 🌟 [FIX #2] Terminator Safety Check: ட்ரூ பிளாக்ல கமாண்டுகள் ரன் ஆகி முடிஞ்சதும் அதுக்குள்ள டெர்மினேட்டர் இல்லனா மட்டும் பிரான்ச் ஜம்ப் கொடுக்கிறோம் பிரபா!
-    LLVMValueRef current_bb = LLVMGetInsertBlock(builder);
+    // 🌟 [FIX #2] Terminator Safety Check: ட்ரூ பிளாக்ல கமாண்டுகள் ரன் ஆகி முடிந்ததும் அதுக்குள்ள டெர்மினேட்டர் இல்லனா மட்டும் எண்ட் பிளாக்கிற்கு பிரான்ச் லிங்க் செய்கிறோம்
+    LLVMBasicBlockRef current_bb = LLVMGetInsertBlock(builder);
     if (current_bb && LLVMGetBasicBlockTerminator(current_bb) == NULL) {
         LLVMBuildBr(builder, ctx->end_block);
     }
@@ -829,7 +830,7 @@ void tamizhi_gen_if_end() {
     }
 
     IfContext* ctx = &if_stack[if_top];
-    LLVMValueRef current_bb = LLVMGetInsertBlock(builder);
+    LLVMBasicBlockRef current_bb = LLVMGetInsertBlock(builder);
 
     // 🌟 [FIX #2] ஆக்டிவ் பிளாக்கோட எண்டுல டெர்மினேட்டர் பிரான்ச் மிஸ் ஆகிருந்தா எண்ட் பிளாக்குக்கு லிங்க் தர்றோம் பிரபா
     if (current_bb && LLVMGetBasicBlockTerminator(current_bb) == NULL) {
