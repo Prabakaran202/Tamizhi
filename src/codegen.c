@@ -83,7 +83,7 @@ typedef struct {
     char name[100];
     LLVMValueRef func_ref;
     LLVMBasicBlockRef resume_block; // 🌟 ஒவ்வொரு ஃபங்ஷனோட ஓபன் பிளாக்கைக் கண்காணிக்க
-} TamizhiFunction; // 🌟 [TYPO FIXED]: TamizFunction எரர் முழுமையாக சரிசெய்யப்பட்டது பிரபா!
+} TamizhiFunction; 
 
 TamizhiFunction function_table[MAX_FUNCS];
 int func_count = 0;
@@ -307,9 +307,9 @@ void tamizhi_gen_function_start(char* func_name) {
 }
 
 void tamizhi_gen_function_end() {
-    // 🌟 [GHOST 0 FIX]: இங்க வெற்று ரிட்டன் (Void Return) மாத்தியாச்சு பிரபா!
+    // 🌟 [CRITICAL FIX]: i32 ரிட்டன் டைப்பிற்கு இணங்க கச்சிதமாக i32 0 ரிட்டன் செய்கிறோம்!
     if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder)) == NULL) {
-        LLVMBuildRetVoid(builder);
+        LLVMBuildRet(builder, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0));
     }
 
     LLVMValueRef main_fn = LLVMGetNamedFunction(module, "main");
@@ -343,7 +343,7 @@ void tamizhi_gen_function_call(char* func_name) {
         LLVMTypeRef func_type = LLVMFunctionType(LLVMInt32TypeInContext(context), NULL, 0, 0);
         LLVMBuildCall2(builder, func_type, target_func, NULL, 0, "call_tmp");
     } else {
-        fprintf(stderr, "[Codegen Error] ಫಂಗ್ಷನ್ வரையறுக்கப்படவில்லை: '%s'\n", clean_name);
+        fprintf(stderr, "[Codegen Error] ಫಂಗ್ಷன் வரையறுக்கப்படவில்லை: '%s'\n", clean_name);
     }
 }
 
@@ -420,7 +420,6 @@ void tamizhi_gen_str(char* name, char* value) {
     var_count++;
 }
 
-// 🌟 [TYPO FIXED]: பேராமீட்டர் பெயர்கள் v1 மற்றும் var2 கச்சிதமாக மேட்ச் செய்யப்பட்டுள்ளது பிரபா!
 void tamizhi_gen_math_op(char* res_name, char* v1, char* op, char* var2) {
     char clean_res[100], clean_v1[100], clean_v2[100];
     snprintf(clean_res, sizeof(clean_res), "%s", res_name); tamizhi_codegen_trim(clean_res);
@@ -522,7 +521,6 @@ void tamizhi_gen_math_op(char* res_name, char* v1, char* op, char* var2) {
     }
 }
 
-// 🌟 [MASTER CODE FIX]: ஸ்ட்ரிங்கின் ஆரம்பத்திலும் இறுதியிலும் இருக்கும் டபுள் கோட்ஸை மட்டும் துல்லியமாக நீக்குகிறது பிரபா!
 void tamizhi_gen_print(char* var_name) {
     LLVMValueRef val = NULL;
     int is_string = 0;
@@ -960,9 +958,9 @@ static void tamizhi_optimize_module() {
 }
 
 void tamizhi_codegen_finish() {
-    // 🌟 [GHOST 0 FIX]: மெயின் எக்சிட் பாயிண்டிலும் வெற்று ரிட்டன் (Void Return) மாத்தியாச்சு பிரபா!
+    // 🌟 [GHOST 0 FIXED]: மெயின் பிளாக்கின் இறுதி எக்சிட் பாயிண்டிலும் கச்சிதமாக i32 0 ரிட்டன் தந்து வெரிஃபையர் எரரை முழுமையாகத் தீர்க்கிறோம் பிரபா!
     if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder)) == NULL) {
-        LLVMBuildRetVoid(builder);
+        LLVMBuildRet(builder, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0));
     }
 
     char *verify_err = NULL;
