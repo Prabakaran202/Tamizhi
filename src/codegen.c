@@ -209,13 +209,15 @@ void tamizhi_generate_universal_bitcode(const char* filename) {
     } else {
         fprintf(stderr, " [Universal] Bitcode generated: %s\n", filename);
     }
-    FILE *f = fopen("output.ll", "w");
+    char asm_path[256];
+    sprintf(asm_path, "output.ll");
+    FILE *f = fopen(asm_path, "w");
     if (f) {
         char *str = LLVMPrintModuleToString(module);
         fprintf(f, "%s", str);
         LLVMDisposeMessage(str);
         fclose(f);
-        fprintf(stderr, " [Universal] LLVM Assembly generated: output.ll\n");
+        fprintf(stderr, " [Universal] LLVM Assembly generated: %s\n", asm_path);
     }
 }
 
@@ -305,8 +307,9 @@ void tamizhi_gen_function_start(char* func_name) {
 }
 
 void tamizhi_gen_function_end() {
+    // 🌟 [GHOST 0 FIX]: இங்க வெற்று ரிட்டன் (Void Return) மாத்தியாச்சு பிரபா!
     if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder)) == NULL) {
-        LLVMBuildRet(builder, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0));
+        LLVMBuildRetVoid(builder);
     }
 
     LLVMValueRef main_fn = LLVMGetNamedFunction(module, "main");
@@ -340,7 +343,7 @@ void tamizhi_gen_function_call(char* func_name) {
         LLVMTypeRef func_type = LLVMFunctionType(LLVMInt32TypeInContext(context), NULL, 0, 0);
         LLVMBuildCall2(builder, func_type, target_func, NULL, 0, "call_tmp");
     } else {
-        fprintf(stderr, "[Codegen Error] ಫಂಗ್ಷன் வரையறுக்கப்படவில்லை: '%s'\n", clean_name);
+        fprintf(stderr, "[Codegen Error] ಫಂಗ್ಷನ್ வரையறுக்கப்படவில்லை: '%s'\n", clean_name);
     }
 }
 
@@ -417,7 +420,7 @@ void tamizhi_gen_str(char* name, char* value) {
     var_count++;
 }
 
-// 🌟 [TYPO FIXED]: பேராமீட்டர் பெயர்கள் v1 மற்றும் var2 கச்சிதமாக மேட்ச் செய்யப்பட்டுள்ளது பிரபா!
+// 🌟 [TYPO FIXED]: v1 பராமீட்டர் எரர் கச்சிதமாக மேட்ச் செய்யப்பட்டுள்ளது பிரபா!
 void tamizhi_gen_math_op(char* res_name, char* v1, char* op, char* var2) {
     char clean_res[100], clean_v1[100], clean_v2[100];
     snprintf(clean_res, sizeof(clean_res), "%s", res_name); tamizhi_codegen_trim(clean_res);
@@ -746,7 +749,6 @@ void tamizhi_gen_if_start(char* lhs, char* rel_op, char* rhs) {
     snprintf(clean_op, sizeof(clean_op), "%s", rel_op); tamizhi_codegen_trim(clean_op);
 
     if_top++;
-    // 🌟 [FIX] இஃப் டெப்த் அண்டர்ஃபுளோ/ஓவர்ஃபுளோ செக் பாதுகாப்பு
     if (if_top >= MAX_IF_DEPTH - 1) {
         fprintf(stderr, "[If Error] Maximum nested if depth exceeded\n");
         return;
@@ -808,36 +810,34 @@ void tamizhi_gen_if_start(char* lhs, char* rel_op, char* rhs) {
     LLVMPositionBuilderAtEnd(builder, if_stack[if_top].true_block);
 }
 
-void tamizhi_gen_else_start() {
+// 🌟 [NEW CORENODE]: இஃப் பாடி முடிஞ்சதும் ஸ்ட்ரெயிட்டா எண்ட் பிளாக்குக்கு லிங்க் தர்றோம் பிரபா!
+void tamizhi_gen_if_body_end() {
     if (if_top < 0) return;
-    
-    IfContext* ctx = &if_stack[if_top];
-    ctx->has_else = 1;
-
-    // 🌟 [FIX #2] Terminator Safety Check: ட்ரூ பிளாக்ல கமாண்டுகள் ரன் ஆகி முடிந்ததும் அதுக்குள்ள டெர்மினேட்டர் இல்லனா மட்டும் எண்ட் பிளாக்கிற்கு பிரான்ச் லிங்க் செய்கிறோம்
     LLVMBasicBlockRef current_bb = LLVMGetInsertBlock(builder);
     if (current_bb && LLVMGetBasicBlockTerminator(current_bb) == NULL) {
-        LLVMBuildBr(builder, ctx->end_block);
+        LLVMBuildBr(builder, if_stack[if_top].end_block);
     }
+}
 
-    LLVMPositionBuilderAtEnd(builder, ctx->false_block);
+void tamizhi_gen_else_start() {
+    if (if_top < 0) return;
+    if_stack[if_top].has_else = 1;
+    // பில்டரை முறைப்படி எல்ஸ் பிளாக்கிற்குள் கொண்டு வருகிறோம் பிரபா
+    LLVMPositionBuilderAtEnd(builder, if_stack[if_top].false_block);
 }
 
 void tamizhi_gen_if_end() {
-    if (if_top < 0) {
-        fprintf(stderr, "[If Error] if stack underflow\n");
-        return;
-    }
+    if (if_top < 0) return;
 
     IfContext* ctx = &if_stack[if_top];
     LLVMBasicBlockRef current_bb = LLVMGetInsertBlock(builder);
 
-    // 🌟 [FIX #2] ஆக்டிவ் பிளாக்கோட எண்டுல டெர்மினேட்டர் பிரான்ச் மிஸ் ஆகிருந்தா எண்ட் பிளாக்குக்கு லிங்க் தர்றோம் பிரபா
+    // கரண்ட் பிளாக்ல டெர்மினேட்டர் இல்லனா எண்ட் பிளாக்கோட லிங்க் பண்றோம்
     if (current_bb && LLVMGetBasicBlockTerminator(current_bb) == NULL) {
         LLVMBuildBr(builder, ctx->end_block);
     }
 
-    // 🌟 [FIX #3] Orphan False Block Fix: பயனர் கோடுல 'else' எழுதாதப்போ, ஃபால்ஸ் பிளாக்கை அநாதையா விடாம எண்ட் பிளாக்கோட லிங்க் செஞ்சு மாஸ் பண்றோம்!
+    // எல்ஸ் பிளாக் இல்லாத பட்சத்தில், ஃபால்ஸ் பிளாக்கும் எண்ட் பிளாக்கோட கமிட் ஆகணும் பிரபா
     if (!ctx->has_else) {
         LLVMPositionBuilderAtEnd(builder, ctx->false_block);
         if (LLVMGetBasicBlockTerminator(ctx->false_block) == NULL) {
@@ -845,7 +845,7 @@ void tamizhi_gen_if_end() {
         }
     }
 
-    // பில்டரை அடுத்த ஸ்டேட்மென்ட்கள் ரன் ஆக இறுதி கண்டினியூவேஷன் எண்ட் பிளாக்கிற்கு கொண்டு வருகிறோம்
+    // அடுத்த ஸ்டேட்மென்ட்கள் ரன் ஆக பில்டரை எண்ட் பிளாக்கில் நிறுத்துகிறோம்
     LLVMPositionBuilderAtEnd(builder, ctx->end_block);
     if_top--;
 }
@@ -969,8 +969,9 @@ static void tamizhi_optimize_module() {
 }
 
 void tamizhi_codegen_finish() {
+    // 🌟 [GHOST 0 FIX]: மெயின் எக்சிட் பாயிண்டிலும் வெற்று ரிட்டன் (Void Return) மாத்தியாச்சு பிரபா!
     if (LLVMGetBasicBlockTerminator(LLVMGetInsertBlock(builder)) == NULL) {
-        LLVMBuildRet(builder, LLVMConstInt(LLVMInt32TypeInContext(context), 0, 0));
+        LLVMBuildRetVoid(builder);
     }
 
     char *verify_err = NULL;
