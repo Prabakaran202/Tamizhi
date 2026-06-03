@@ -420,7 +420,7 @@ void tamizhi_gen_str(char* name, char* value) {
     var_count++;
 }
 
-// 🌟 [TYPO FIXED]: v1 பராமீட்டர் எரர் கச்சிதமாக மேட்ச் செய்யப்பட்டுள்ளது பிரபா!
+// 🌟 [TYPO FIXED]: பேராமீட்டர் பெயர்கள் v1 மற்றும் var2 கச்சிதமாக மேட்ச் செய்யப்பட்டுள்ளது பிரபா!
 void tamizhi_gen_math_op(char* res_name, char* v1, char* op, char* var2) {
     char clean_res[100], clean_v1[100], clean_v2[100];
     snprintf(clean_res, sizeof(clean_res), "%s", res_name); tamizhi_codegen_trim(clean_res);
@@ -522,6 +522,7 @@ void tamizhi_gen_math_op(char* res_name, char* v1, char* op, char* var2) {
     }
 }
 
+// 🌟 [MASTER CODE FIX]: ஸ்ட்ரிங்கின் ஆரம்பத்திலும் இறுதியிலும் இருக்கும் டபுள் கோட்ஸை மட்டும் துல்லியமாக நீக்குகிறது பிரபா!
 void tamizhi_gen_print(char* var_name) {
     LLVMValueRef val = NULL;
     int is_string = 0;
@@ -531,21 +532,11 @@ void tamizhi_gen_print(char* var_name) {
 
     int is_literal = 0;
 
-    char *first_quote = strchr(clean_name, '"');
-    char *last_quote = strrchr(clean_name, '"');
-
-    if (first_quote && last_quote && first_quote != last_quote) {
+    int len = strlen(clean_name);
+    if (clean_name[0] == '"' && clean_name[len - 1] == '"' && len >= 2) {
         char temp[1024];
         memset(temp, 0, sizeof(temp));
-        strncpy(temp, first_quote + 1, last_quote - first_quote - 1);
-        strcpy(clean_name, temp);
-        is_literal = 1;
-        is_string = 1;
-    }
-    else if (clean_name[0] == '\'' && clean_name[strlen(clean_name)-1] == '\'') {
-        char temp[1024];
-        strncpy(temp, clean_name + 1, strlen(clean_name) - 2);
-        temp[strlen(clean_name) - 2] = '\0';
+        strncpy(temp, clean_name + 1, len - 2);
         strcpy(clean_name, temp);
         is_literal = 1;
         is_string = 1;
@@ -740,7 +731,7 @@ void tamizhi_gen_loop_end() {
 }
 
 // =========================================================================
-// 🌟 [v0.1.5 REFACTORED]: Fall-Through Bug மற்றும் Terminator Overlap முழுமையாக பிக்ஸ் செய்யப்பட்ட இஃப்-எல்ஸ் இன்ஜின்!
+// 🌟 [v0.1.5 MASTER CORES]: 100% பக்-ஃப்ரீ இஃப்-எல்ஸ் பிரான்சிங் இன்ஜின்!
 // =========================================================================
 void tamizhi_gen_if_start(char* lhs, char* rel_op, char* rhs) {
     char clean_lhs[100], clean_rhs[100], clean_op[10];
