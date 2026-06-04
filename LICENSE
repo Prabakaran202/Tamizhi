@@ -1,5 +1,3 @@
-// SPDX-License-Identifier: GPL-3.0-or-later
-// Tamizhi Compiler - Tamil Programming Language
-// Copyright (C) 2026 PRABAKARAN P [BDH]
-//
-// This program is free software...
+# Replace short header with full GPL v3 text
+wget https://www.gnu.org/licenses/gpl-3.0.txt -O LICENSE
+
