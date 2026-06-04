@@ -381,7 +381,7 @@ void parse_statement(FILE *file, Token t) {
     // ======================================================
     // 🌟 [v0.1.5 CORE FIX]: இஃப்-எல்ஸ் டோக்கன் பவுண்டரி மற்றும் பிரான்ச் கண்ட்ரோல் பிக்ஸ்!
     // ======================================================
-    if (strcmp(t.value, "if") == 0 || strcmp(t.value, "எனில்") == 0) {
+    if (strcmp(t.value, "if") == 0 || strcmp(t.value, "எனர்") == 0 || strcmp(t.value, "எனில்") == 0) {
         Token open_p = get_next_token(file);  // '(' குறியீட்டை உட்கொள்கிறது
         Token v1 = get_next_token(file);      // முதல் மாறி அல்லது எண்
         Token op = get_next_token(file);      // ரிலேஷனல் ஆபரேட்டர் (<, >, ==, !=)
@@ -738,12 +738,12 @@ void parse_statement(FILE *file, Token t) {
     }
 
     // ======================================================
-    // Loop Block 
+    // 🚀 [v0.1.5 ROBUST LOOP BOUNDARY FIX] - லூப் இன்பினைட் டோக்கன் மற்றும் கிராஷ் பிக்ஸ்!
     // ======================================================
-
     else if (t.type == T_FOR || strcmp(t.value, "சு") == 0) {
 
         Token limit_token = get_next_token(file);
+        tamizhi_trim_token(limit_token.value); // டோக்கனில் இருக்கக்கூடிய செமிகோலன் மற்றும் ஸ்பேஸ்களை நீக்குகிறது
 
         int limit = 0;
         if (isdigit((unsigned char)limit_token.value[0]) ||
@@ -773,20 +773,38 @@ void parse_statement(FILE *file, Token t) {
 
         Token next = get_next_token(file);
 
+        // பக் தடுப்பு: ஒருவேளை லிமிட் டோக்கனுக்கு அடுத்து தவறுதலாக ';' இருந்தால் அதைத் தாண்டிச் செல்லும்
+        if (strcmp(next.value, ";") == 0 || next.type == 21) {
+            next = get_next_token(file);
+        }
+
         if (next.type == 22 || strcmp(next.value, "{") == 0) {
 
             tamizhi_gen_loop_start(limit);
 
             Token body;
-            while ((body = get_next_token(file)).type != T_EOF) {
+            int loop_brace_depth = 1; // நெஸ்டட் லூப்களை (Nested Loops) கச்சிதமாக டிராக் செய்ய டெப்த் டிராக்கர் பிரபா
 
-                if (body.type == 23 || strcmp(body.value, "}") == 0)
-                    break;
+            while (loop_brace_depth > 0 && (body = get_next_token(file)).type != T_EOF) {
+
+                if (strcmp(body.value, "{") == 0 || body.type == 22) {
+                    loop_brace_depth++;
+                    continue;
+                }
+
+                if (body.type == 23 || strcmp(body.value, "}") == 0) {
+                    loop_brace_depth--;
+                    if (loop_brace_depth <= 0) break;
+                    continue;
+                }
 
                 parse_statement(file, body);
             }
 
             tamizhi_gen_loop_end();
+        } else {
+            fprintf(stderr, "[Syntax Error] Expected '{' after loop limit but found '%s'\n", next.value);
         }
+        return;
     }
 }
