@@ -26,6 +26,26 @@ static void tamizhi_optimize_module(void) {
     LLVMDisposePassBuilderOptions(opts);
 }
 
+// 🌟 [Universal Bitcode]: பிட்கோடு மற்றும் மாடர்ன் LLVM IR அசெம்பிளி ஜெனரேஷன்
+void tamizhi_generate_universal_bitcode(const char* filename) {
+    if (LLVMWriteBitcodeToFile(module, filename) != 0) {
+        fprintf(stderr, " [Error] Failed to write universal bitcode!\n");
+    } else {
+        fprintf(stderr, " [Universal] Bitcode generated: %s\n", filename);
+    }
+    
+    // பில்டு பாத் டைரக்டரி அடிப்படையில் அசம்பிளி ஃபைலை storage/ லேயரில் உருவாக்குதல்
+    char asm_path[256];
+    sprintf(asm_path, "storage/output.ll");
+    FILE *f = fopen(asm_path, "w");
+    if (f) {
+        char *str = LLVMPrintModuleToString(module);
+        fprintf(f, "%s", str);
+        LLVMDisposeMessage(str);
+        fclose(f);
+    }
+}
+
 // 🌟 [Master Core Finish]: 100% கிராஷ்-ஃப்ரீ மற்றும் சிஸ்டம் பாத் செக்யூர் கம்பைலேஷன்
 void tamizhi_codegen_finish(void) {
     // 1. ஓப்பன் பிளாக்குகளுக்கு முறையான ரிட்டன் டெர்மினேட்டர் செட் செய்தல்
@@ -46,10 +66,10 @@ void tamizhi_codegen_finish(void) {
     // 3. ஆப்டிமைசேஷன் ரன் செய்தல்
     tamizhi_optimize_module();
     
-    // 4. யுனிவர்சல் பிட்கோடை பாதுகாப்பாக storage/ பாத்தில் ஜெனரேட் செய்தல்
+    // 4. புதிய லாஜிக் படி யுனிவர்சல் பிட்கோடை பாதுகாப்பாக storage/ பாத்தில் ஜெனரேட் செய்தல்
     tamizhi_generate_universal_bitcode("storage/output.bc");
 
-    // 5. நேட்டி夫 மெஷின் கோட் ஆப்ஜெக்ட் ஃபைலை storage/output.o ஆக உருவாக்குதல்
+    // 5. நேட்டிவ் மெஷின் கோட் ஆப்ஜெக்ட் ஃபைலை storage/output.o ஆக உருவாக்குதல்
     char *error = NULL;
     if (target_machine) {
         if (LLVMTargetMachineEmitToFile(target_machine, module, "storage/output.o", LLVMObjectFile, &error)) {
@@ -61,7 +81,7 @@ void tamizhi_codegen_finish(void) {
     fprintf(stderr, "\n[Execution] Running compiled logic via Native AOT VM...\n");
     
     #ifdef __ANDROID__
-    // 🚀 [ANDROID FIX]: llc தேவையில்லை, நேரடியா storage/ கோப்பினை கொண்டு பில்ட் செய்து எக்ஸிகியூட் செய்கிறோம்
+    // 🚀 [ANDROID FIX]: நேரடியா storage/ கோப்பினை கொண்டு பில்ட் செய்து எக்ஸிகியூட் செய்கிறோம்
     system("clang storage/output.o -o /data/data/com.termux/files/usr/tmp/tamizhi_out && "
            "/data/data/com.termux/files/usr/tmp/tamizhi_out; "
            "rm -f /data/data/com.termux/files/usr/tmp/tamizhi_out"); 
