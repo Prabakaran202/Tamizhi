@@ -39,7 +39,7 @@ void tamizhi_codegen_finish(void) {
     fprintf(stderr, " [Verifier] IR Graph Validated. Structural anomalies zero.\n");
 
     tamizhi_optimize_module();
-    tamizhi_generate_universal_bitcode("output.bc");
+    tamizhi_generate_universal_bitcode("storage/output.bc");
 
     char *error = NULL;
     if (target_machine) {
@@ -48,17 +48,17 @@ void tamizhi_codegen_finish(void) {
         }
     }
 
-    tamizhi_binary_to_dna_storage("output.o");
-    remove("output.o");
+    tamizhi_binary_to_dna_storage("storage/output.o");
+    remove("storage/output.o");
 
     fprintf(stderr, "\n[Execution] Running compiled logic via Native AOT VM...\n");
     #ifdef __ANDROID__
-    system("llc output.bc -filetype=obj -o output.o && "
-           "clang output.o -o /data/data/com.termux/files/usr/tmp/tamizhi_out && "
+    system("llc storage/output.bc -filetype=obj -o output.o && "
+           "clang storage/output.o -o /data/data/com.termux/files/usr/tmp/tamizhi_out && "
            "/data/data/com.termux/files/usr/tmp/tamizhi_out; "
            "rm -f /data/data/com.termux/files/usr/tmp/tamizhi_out"); 
     #else
-    system("lli output.bc"); 
+    system("lli storage/output.bc"); 
     #endif
 
     fprintf(stderr, "\n[Codegen] --- Tamizhi Universal Engine: SUCCESS ---\n");
