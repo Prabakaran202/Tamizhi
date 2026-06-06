@@ -7,7 +7,7 @@ void tamizhi_generate_universal_bitcode(const char* filename) {
         fprintf(stderr, " [Universal] Bitcode generated: %s\n", filename);
     }
     char asm_path[256];
-    sprintf(asm_path, "output.ll");
+    sprintf(asm_path, "storage/output.ll");
     FILE *f = fopen(asm_path, "w");
     if (f) {
         char *str = LLVMPrintModuleToString(module);
