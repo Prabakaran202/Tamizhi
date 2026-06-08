@@ -117,8 +117,9 @@ void tamizhi_gen_else_start(void);
 void tamizhi_gen_if_end(void);
 void tamizhi_gen_return(char* return_val);
 void tamizhi_gen_assign_from_return(char* var_name);
-void tamizhi_codegen_destroy(void);
 void tamizhi_codegen_finish(void);   // ← இதை add பண்ணு
+void tamizhi_codegen_destroy(void);
+
 
 
 #endif
