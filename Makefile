@@ -1,5 +1,5 @@
 # =====================================================================
-# 🌟 தமிழி யுனிவர்சல் ஆண்ட்ராய்டு / லினக்ஸ் மாஸ்டர் மேக்ஃபைல் (Stable Build)
+# 🌟 தமிழி யுனிவர்சல் ஆண்ட்ராய்டு / லினக்ஸ் மாஸ்டர் மேக்ஃபைல் (v0.1.5 Stable)
 # =====================================================================
 
 # 1. கம்பைலர் தேர்வு: பெர்மிஷன் பிளாக் செய்யும் gcc-க்கு பதிலாக நேடிவ் 'clang' பயன்படுத்துகிறோம்
@@ -10,23 +10,30 @@ CFLAGS = -Iinclude -Wall -Wno-unused-function
 # 'llvm-config' பெர்மிஷன் எரர் தருவதால், அதற்கு பதிலாக நேரடி எல்எல்விஎம் லிங்கிங் ஃபிளாக்ஸ்
 LLVM_FLAGS = -lLLVM
 
-# 3. சோர்ஸ் கோப்புகள் (Source Files Layout - AST Added)
-SRCS = src/main.c src/lexer.c src/parser.c src/codegen.c src/ast.c core/encoder.c core/decoder.c
+# 3. சோர்ஸ் கோப்புகள் (Wildcard Layout - Sub-modules directory tracking fixed)
+SRC_DIR = src
+CODEGEN_DIR = src/codegen
+CORE_DIR = core
+
+# ஆட்டோமேட்டிக்காக அனைத்து ஃபோல்டர்களில் இருக்கும் .c ஃபைல்களையும் ஸ்கேன் செய்து எடுத்தல்
+SRCS = $(wildcard $(SRC_DIR)/*.c) $(wildcard $(CODEGEN_DIR)/*.c) $(wildcard $(CORE_DIR)/*.c)
 TARGET = tamizhi
 
 # டிஃபால்ட் கமெண்ட்: 'make' அடிச்சா இது ரன் ஆகும்
 all: setup $(TARGET)
 
-# 1. தேவையான ஸ்டோரேஜ் ஃபோல்டர்களை உருவாக்குதல்
+# 1. தேவையான ஸ்டோரேஜ் மற்றும் கேச் ஃபோல்டர்களை உருவாக்குதல்
 setup:
 	@mkdir -p storage
-	@echo "[System] Storage folder initialized."
+	@echo "[System] Storage infrastructure initialized safely."
 
-# 2. தமிழி மெயின் இன்ஜினை பில்ட் செய்தல் (No llvm-config or gcc permission dependency)
+# 2. தமிழி மெயின் இன்ஜினை பில்ட் செய்தல் (Modular Expansion Enabled)
 $(TARGET): $(SRCS)
-	@echo "[Building] Tamizhi Engine with Native Clang Toolchain..."
+	@echo "[Building] Orchestrating Tamizhi Modules with Native Clang Toolchain..."
 	$(CC) $(CFLAGS) $(SRCS) $(LLVM_FLAGS) -o $(TARGET)
-	@echo "[Success] Tamizhi is ready to use!"
+	@echo -e "\033[1;36m==================================================\033[0m"
+	@echo -e "\033[1;32m   🚀 TAMIZHI UNIVERSAL SHELL ENGINE READY! 🔥    \033[0m"
+	@echo -e "\033[1;36m==================================================\033[0m"
 
 # பழைய டெம்ப்ரவரி ஃபைல்களை நீக்க
 clean:
