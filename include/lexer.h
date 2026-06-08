@@ -15,7 +15,7 @@ typedef enum {
     T_IF, 
     T_ELSE, 
     T_FOR, 
-    T_WHILE,
+    T_WHILE,T_SYSTEM, 
 
     // செயல்பாடுகள்
     T_RET, 
