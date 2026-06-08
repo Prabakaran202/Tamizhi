@@ -14,7 +14,9 @@
 #include <string.h>
 #include <ctype.h>
 
-// மாடர்ன் LLVM குளோபல் எக்ஸ்டெர்ன் மாறிகள்
+// =========================================================================
+// 🌟 மாடர்ன் LLVM குளோபல் எக்ஸ்டெர்ன் மாறிகள்
+// =========================================================================
 extern LLVMContextRef context;
 extern LLVMModuleRef module;
 extern LLVMBuilderRef builder;
@@ -23,10 +25,16 @@ extern LLVMTypeRef printf_type;
 extern LLVMValueRef printf_func;
 extern LLVMValueRef current_function;
 
+// லினக்ஸ் சிஸ்டம் கால்களுக்கான (இயக்கு / system_call) எல்எல்விஎம் டிராக்கர்ஸ்
+extern LLVMTypeRef system_type;
+extern LLVMValueRef system_func;
+
 extern int loop_counter;
 extern int if_counter;
 
-// நெஸ்டட் லூப் ஸ்டேக்
+// =========================================================================
+// 🌟 நெஸ்டட் லூப் ஸ்டேக்
+// =========================================================================
 typedef struct {
     LLVMValueRef i_ptr;
     LLVMBasicBlockRef cond_block;
@@ -38,7 +46,9 @@ typedef struct {
 extern LoopContext loop_stack[MAX_LOOPS];
 extern int loop_top;
 
-// இஃப்-எல்ஸ் ஸ்டேக்
+// =========================================================================
+// 🌟 இஃப்-எல்ஸ் ஸ்டேக்
+// =========================================================================
 #define MAX_IF_DEPTH 256
 typedef struct {
     LLVMBasicBlockRef true_block;
@@ -50,7 +60,9 @@ typedef struct {
 extern IfContext if_stack[MAX_IF_DEPTH];
 extern int if_top;
 
-// சிம்பல் மற்றும் ஃபங்ஷன் டேபிள்
+// =========================================================================
+// 🌟 சிம்பல் மற்றும் ஃபங்ஷன் டேபிள்
+// =========================================================================
 #define MAX_VARS 100
 #define MAX_FUNCS 50
 
@@ -74,7 +86,9 @@ typedef struct {
 extern TamizhiFunction function_table[MAX_FUNCS];
 extern int func_count;
 
-// 25 ஃபங்ஷன்களின் எக்ஸ்டெர்ன் டிக்ளரேஷன்ஸ்
+// =========================================================================
+// 🚀 தமிழியின் 26 மாடுலர் ஃபங்ஷன்களின் எக்ஸ்டெர்ன் டிக்ளரேஷன்ஸ்
+// =========================================================================
 void tamizhi_codegen_trim(char *str);
 LLVMValueRef create_entry_alloca(LLVMValueRef function, LLVMTypeRef type, const char* name);
 LLVMValueRef tamizhi_evaluate_ast(ASTNode* node);
@@ -91,6 +105,10 @@ void tamizhi_gen_str(char* name, char* value);
 void tamizhi_gen_math_op(char* res_name, char* v1, char* op, char* var2);
 void tamizhi_gen_print(char* var_name);
 void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* var2, char* true_val, char* false_val);
+
+// [ADDED]: லினக்ஸ் சிஸ்டம் ஆட்டோமேஷன் ஷெல் இன்ஜின் டிக்ளரேஷன்
+void tamizhi_gen_system_call(char* command);
+
 void tamizhi_gen_loop_start(int limit);
 void tamizhi_gen_loop_end(void);
 void tamizhi_gen_if_start(char* lhs, char* rel_op, char* rhs);
