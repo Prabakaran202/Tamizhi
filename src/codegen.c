@@ -1,8 +1,7 @@
 #include "codegen_bridge.h"
 
 // குளோபல் மாறிகளின் மெமரி அலோகேஷன்
-LLVMTypeRef system_type;
-LLVMValueRef system_func;
+
 
 LLVMContextRef context; 
 LLVMModuleRef module;
