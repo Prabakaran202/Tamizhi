@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include "lexer.h"
+#include "ast.h"
 
 // 🌟 AST Node வகைகள் (NodeType)
 typedef enum {
