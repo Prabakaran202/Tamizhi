@@ -26,7 +26,7 @@ static void tamizhi_optimize_module(void) {
     LLVMDisposePassBuilderOptions(opts);
 }
 
-// 🌟 [Universal Bitcode]: பிட்கோடு மற்றும் மாடர்ன் LLVM IR அசெம்பிளி ஜெனரேஷன்
+/*🌟 [Universal Bitcode]: பிட்கோடு மற்றும் மாடர்ன் LLVM IR அசெம்பிளி ஜெனரேஷன்
 void tamizhi_generate_universal_bitcode(const char* filename) {
     if (LLVMWriteBitcodeToFile(module, filename) != 0) {
         fprintf(stderr, " [Error] Failed to write universal bitcode!\n");
@@ -45,7 +45,7 @@ void tamizhi_generate_universal_bitcode(const char* filename) {
         fclose(f);
     }
 }
-
+*/
 // 🌟 [Master Core Finish]: 100% கிராஷ்-ஃப்ரீ மற்றும் சிஸ்டம் பாத் செக்யூர் கம்பைலேஷன்
 void tamizhi_codegen_finish(void) {
     // 1. ஓப்பன் பிளாக்குகளுக்கு முறையான ரிட்டன் டெர்மினேட்டர் செட் செய்தல்
