@@ -83,6 +83,7 @@ int main(int argc, char *argv[]) {
     parse(file); 
 
     // 6. LLVM IR மற்றும் DNA-VM பணிகளை முடித்தல்
+   // tamizhi_codegen_destroy();
     tamizhi_codegen_finish();
 
     // 7. கோப்பை மூடுதல்

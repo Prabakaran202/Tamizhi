@@ -3,6 +3,7 @@
 
 #include <stdio.h>
 #include "lexer.h"
+#include "ast.h"
 
 // 🌟 AST Node வகைகள் (NodeType)
 typedef enum {
@@ -14,7 +15,7 @@ typedef enum {
     NODE_FUNC_CALL,
     NODE_RETURN      // 🌟 ரிட்டர்ன் கீவேர்டுக்கான புதிய நோட்!
 } NodeType;
-
+/*
 // 🌟 AST Structure
 typedef struct ASTNode {
     NodeType type;          
@@ -22,6 +23,7 @@ typedef struct ASTNode {
     struct ASTNode *left;   
     struct ASTNode *right;  
 } ASTNode;
+*/
 
 // 🌟 Function declarations
 void parse(FILE *file);                      

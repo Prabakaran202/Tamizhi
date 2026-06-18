@@ -11,7 +11,7 @@ void print_banner() {
     printf("----------------------------------------\n\n");
 }
 
-int main(int argc, char *argv[]) {
+int tamizhi_cli_main(int argc, char *argv[]) {
     if (argc < 3) {
         print_banner();
         printf("பயன்பாடு: tamizhi run <filename.tz>\n");
