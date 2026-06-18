@@ -3,8 +3,8 @@
 // =========================================================================
 // 🌟 லினக்ஸ் சிஸ்டம் கால்களுக்கான (இயக்கு / system_call) குளோபல் டிராக்கர்ஸ்
 // =========================================================================
-LLVMTypeRef system_type;
-LLVMValueRef system_func;
+//LLVMTypeRef system_type;
+//LLVMValueRef system_func;
 
 void tamizhi_codegen_init(void) {
     LLVMInitializeAllTargetInfos();
