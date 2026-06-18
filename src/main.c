@@ -4,8 +4,8 @@
 #include "parser.h"
 #include "codegen.h"
 
-// 🌟 வெர்ஷனை குளோபல் மேக்ரோவாக அறிவிக்கிறோம் (இனி இங்க மட்டும் மாத்தினால் போதும் பிரபா!)
-#define TAMIZHI_VERSION "v0.1.4"
+// 🌟 வெர்ஷனை குளோபல் மேக்ரோவாக அறிவிக்கிறோம் (இனி இங்க மட்டும் மாத்தினால் போதும்!)
+#define TAMIZHI_VERSION "v0.1.5"
 
 // 🌟 தமிழி மொழிக்கான பிரத்தியேக கலைநயமிக்க பேனர் மற்றும் சூழல் தகவல்
 void print_tamizhi_environment() {
@@ -26,7 +26,7 @@ void print_tamizhi_environment() {
     printf("  • Purpose       : High-Speed Linux System Automation\033[0m\n");
     printf("  • DNA Storage   : Enabled (storage/project_binary.dna)\033[0m\n");
     printf("  • Architecture  : Android Termux (aarch64-linux-android)\033[0m\n\n");
-    
+
     printf("\033[1;35m[Usage]:\033[0m\n");
     printf("  • tamizhi run <file_name.tz>\n");
     printf("  • tamizhi <file_name.tz>\n");
@@ -34,6 +34,13 @@ void print_tamizhi_environment() {
 }
 
 int main(int argc, char *argv[]) {
+    // =========================================================================
+    // 🧹 [v0.1.5 AUTOMATION]: பழைய அவுட்புட் பைல்களை ரன் டைமில் துடைத்து அழித்தல்
+    // =========================================================================
+    fprintf(stderr, " \033[1;33m[System] Cleaning old artifacts before execution...\033[0m\n");
+    system("rm -f storage/output.bc storage/output.o storage/output.ll 2>/dev/null");
+    system("rm -f storage/project_binary.dna 2>/dev/null");
+
     // 1. பயன்பாட்டு முறை சரிபார்ப்பு (ஆர்குமெண்ட்ஸ் எதுவும் இல்லை என்றால் பேனரைக் காட்டு)
     if (argc < 2) {
         print_tamizhi_environment();
@@ -42,7 +49,7 @@ int main(int argc, char *argv[]) {
 
     char *target_file;
 
-    // 2. 'run' என்ற வார்த்தை இருந்தால் அடுத்த ಆர்குமெண்ட்டை கோப்பாக எடு
+    // 2. 'run' என்ற வார்த்தை இருந்தால் அடுத்த ஆர்குமெண்ட்டை கோப்பாக எடு
     if (strcmp(argv[1], "run") == 0) {
         if (argc < 3) {
             fprintf(stderr, "\033[1;31mபிழை: கோப்புப் பெயரை உள்ளிடவும்!\033[0m\n");
@@ -83,7 +90,6 @@ int main(int argc, char *argv[]) {
     parse(file); 
 
     // 6. LLVM IR மற்றும் DNA-VM பணிகளை முடித்தல்
-   // tamizhi_codegen_destroy();
     tamizhi_codegen_finish();
 
     // 7. கோப்பை மூடுதல்
