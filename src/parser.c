@@ -322,7 +322,7 @@ void parse_statement(FILE *file, Token t) {
     // ======================================================
     // 👑 [v0.1.5 NEW FEATURE]: லினக்ஸ் சிஸ்டம் கமாண்ட் 'இயக்கு' லாஜிக் இன்டகிரேஷன்!
     // ======================================================
-    if (strcmp(t.value, "இயக்கு")||strcmp(t.value, "call") == 0 || t.type == T_SYSTEM) {
+    if (strcmp(t.value, "இயக்கு") == 0||strcmp(t.value, "call") == 0 || t.type == T_SYSTEM) {
         Token cmd_token = get_next_token(file); // கமாண்ட் ஸ்ட்ரிங் வாங்குதல்
         tamizhi_gen_system_call(cmd_token.value);
         
