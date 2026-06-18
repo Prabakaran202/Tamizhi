@@ -2,7 +2,6 @@
 
 // குளோபல் மாறிகளின் மெமரி அலோகேஷன்
 
-
 LLVMContextRef context; 
 LLVMModuleRef module;
 LLVMBuilderRef builder;
@@ -10,6 +9,10 @@ LLVMTargetMachineRef target_machine = NULL;
 LLVMTypeRef printf_type;
 LLVMValueRef printf_func;
 LLVMValueRef current_function = NULL; 
+
+// [ADDED]: லினக்ஸ் சிஸ்டம் கால்களுக்கான மாறிகள் (System Call Variables)
+LLVMTypeRef system_type = NULL;
+LLVMValueRef system_func = NULL;
 
 int loop_counter = 0;
 int if_counter = 0; 
