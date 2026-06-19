@@ -245,7 +245,9 @@ void parse(FILE *file) {
             parse_statement(file, t);
         }
     }
-    fprintf(stderr, "[Parser] --- Completed Successfully ---\n");
+    if (tamizhi_debug_mode) {
+    fprintf(stderr, "[Parser] ---Completed Successfully ---\n");
+}
 }
 
 // ==========================================================
