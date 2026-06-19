@@ -13,6 +13,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <ctype.h>
+// Debug Mode Flag (main.c-ல் இருந்து வருகிறது)
+extern int tamizhi_debug_mode;
+
 
 // =========================================================================
 // 🌟 மாடர்ன் LLVM குளோபல் எக்ஸ்டெர்ன் மாறிகள்
