@@ -162,7 +162,10 @@ void scan_headers(FILE *file) {
                     strcpy(functions[function_count].name, clean_name);
                     functions[function_count].pos = ftell(file);
                     function_count++;
-                    fprintf(stderr, "    [Header] Registered: %s\n", clean_name);
+                    if (tamizhi_debug_mode) {
+                        fprintf(stderr, "    [Header] Registered: %s\n", clean_name);  
+                    }
+                    
                     break;
                 }
             }
@@ -178,8 +181,9 @@ void parse(FILE *file) {
     Token t;
     long main_pos = -1L;
     long footer_pos = -1L;
-
-    fprintf(stderr, "\n[Parser] --- Tamizhi Engine Started ---\n");
+    if (tamizhi_debug_mode) { 
+        fprintf(stderr, "\n[Parser] --- Tamizhi Engine Started ---\n");
+    }
     scan_headers(file);
 
     long check_main = find_function("main");
@@ -245,9 +249,9 @@ void parse(FILE *file) {
             parse_statement(file, t);
         }
     }
-    if (tamizhi_debug_mode) {
-    fprintf(stderr, "[Parser] ---Completed Successfully ---\n");
-}
+    if (tamizhi_debug_mode) { fprintf(stderr, "[Parser] --- Completed Successfully ---\n");
+                            }
+    
 }
 
 // ==========================================================
