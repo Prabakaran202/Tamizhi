@@ -5,5 +5,6 @@
 
 // Extra function declarations if any...
 void tamizhi_gen_if_body_end(void);
-
+// Debug Mode Flag (main.c-ல் இருந்து வருகிறது)
+extern int tamizhi_debug_mode;
 #endif
