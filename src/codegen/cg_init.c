@@ -55,7 +55,7 @@ void tamizhi_codegen_init(void) {
     system_type = LLVMFunctionType(LLVMInt32TypeInContext(context), system_args, 1, 0);
     system_func = LLVMAddFunction(module, "system", system_type);
     if (tamizhi_debug_mode) {
-    fprintf(stderr, [Codegen] LLVM Engine & System Call Linker Initialized for Target: %s\n", target_triple);
+    fprintf(stderr, "[Codegen] LLVM Engine & System Call Linker Initialized for Target: %s\n", target_triple);
 }
 
 
