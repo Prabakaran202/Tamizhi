@@ -162,7 +162,10 @@ void scan_headers(FILE *file) {
                     strcpy(functions[function_count].name, clean_name);
                     functions[function_count].pos = ftell(file);
                     function_count++;
-                    fprintf(stderr, "    [Header] Registered: %s\n", clean_name);
+                    if (tamizhi_debug_mode) {
+                        fprintf(stderr, "    [Header] Registered: %s\n", clean_name);  
+                    }
+                    
                     break;
                 }
             }
