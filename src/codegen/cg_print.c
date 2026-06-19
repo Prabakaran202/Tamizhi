@@ -9,7 +9,7 @@ void tamizhi_gen_print(char* var_name) {
 
     int is_literal = 0;
     int len = strlen(clean_name);
-    
+
     // 1. ஸ்ட்ரிங் லிட்ரல்களை சரிபார்த்தல் ("தமிழி மொழி")
     if (clean_name[0] == '"' && clean_name[len - 1] == '"' && len >= 2) {
         char temp[1024];
@@ -24,15 +24,15 @@ void tamizhi_gen_print(char* var_name) {
     if (!is_literal) {
         for(int i = 0; i < var_count; i++) {
             if(strcmp(symbol_table[i].name, clean_name) == 0) {
-                val = symbol_table[i].alloca_ptr;
-                
                 // [FIX] ஸ்ட்ரிங் மற்றும் எண்களுக்கான சரியான Load லாஜிக்
                 if (symbol_table[i].is_str_type) {
                     is_string = 1;
-                    // i8** பாயிண்டரை i8* மதிப்பாக லோட் செய்கிறோம்
-                    val = LLVMBuildLoad2(builder, LLVMPointerType(LLVMInt8TypeInContext(context), 0), val, "load_str_val");
+                    // 🌟 ஸ்ட்ரிங் ஏற்கனவே Pointer ஆகத்தான் உள்ளது. 
+                    // எனவே Load செய்யக்கூடாது! நேரடியாக எடுத்துக்கொள்ள வேண்டும்.
+                    val = symbol_table[i].alloca_ptr; 
                 } else {
-                    // i32** பாயிண்டரை i32 மதிப்பாக லோட் செய்கிறோம்
+                    // எண்களுக்கு (Numbers) மட்டும் i32 மதிப்பாக லோட் செய்ய வேண்டும்
+                    val = symbol_table[i].alloca_ptr;
                     val = LLVMBuildLoad2(builder, LLVMInt32TypeInContext(context), val, "load_val");
                 }
                 break;
