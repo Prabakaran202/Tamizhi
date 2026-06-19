@@ -33,8 +33,6 @@ extern LLVMValueRef system_func;
 
 extern int loop_counter;
 extern int if_counter;
-// Debug Mode Flag (main.c-ல் இருந்து வருகிறது)
-extern int tamizhi_debug_mode;
 
 
 // =========================================================================
