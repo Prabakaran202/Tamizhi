@@ -56,7 +56,7 @@ void tamizhi_codegen_init(void) {
     system_func = LLVMAddFunction(module, "system", system_type);
     if (tamizhi_debug_mode) {
     fprintf(stderr,"[Codegen] LLVM Engine & System Call Linker Initialized for Target: %s\n", target_triple);
-}
+    }
 
 
     #ifdef __ANDROID__
