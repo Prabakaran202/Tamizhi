@@ -12,6 +12,9 @@ void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2);
 void tamizhi_gen_print(char* var_name);
 void tamizhi_gen_str(char* name, char* value);
 
+// 🌟 Lexer Reset Function (lexer.c-ல் இருந்து வருகிறது)
+extern void tamizhi_reset_lexer();
+
 extern int current_line;
 extern LLVMValueRef current_function; 
 extern LLVMModuleRef module;          
@@ -140,12 +143,17 @@ long find_function(const char* name) {
 }
 
 // ==========================================================
-// Header Scan
+// Header Scan (🔥 BUG FIXED & LEXER RESET INCLUDED)
 // ==========================================================
 void scan_headers(FILE *file) {
     Token t;
     rewind(file);
-    fprintf(stderr, " -> Starting Header Pre-Scan...\n");
+    function_count = 0; // டேபிளை முதலில் ரீசெட் செய்கிறோம்
+
+    if (tamizhi_debug_mode) {
+        fprintf(stderr, " -> Starting Header Pre-Scan...\n");
+    }
+
     while ((t = get_next_token(file)).type != T_EOF) {
         if (strcmp(t.value, "fun") == 0 || strcmp(t.value, "நிகழ்") == 0 || t.type == T_FUNC) {
             Token name = get_next_token(file);
@@ -162,16 +170,27 @@ void scan_headers(FILE *file) {
                     strcpy(functions[function_count].name, clean_name);
                     functions[function_count].pos = ftell(file);
                     function_count++;
+                    
                     if (tamizhi_debug_mode) {
                         fprintf(stderr, "    [Header] Registered: %s\n", clean_name);  
                     }
                     
-                    break;
+                    // 🌟 மாஸான பிக்ஸ்: ஃபங்ஷன் பாடியை முழுமையாக ஸ்கிப் செய்கிறோம்!
+                    int brace_depth = 1;
+                    Token skip_tk;
+                    while (brace_depth > 0 && (skip_tk = get_next_token(file)).type != T_EOF) {
+                        if (strcmp(skip_tk.value, "{") == 0 || skip_tk.type == 22) brace_depth++;
+                        if (strcmp(skip_tk.value, "}") == 0 || skip_tk.type == 23) brace_depth--;
+                    }
+                    break; // இன்னர் லூப்பை முடித்து அடுத்த ஃபங்ஷனைத் தேடச் செல்கிறது
                 }
             }
         }
     }
     rewind(file);
+    
+    // 🌟 லெக்சரை ரீசெட் செய்கிறோம் (EOF தடையை உடைக்க)
+    tamizhi_reset_lexer(); 
 }
 
 // ==========================================================
@@ -297,7 +316,6 @@ void parse_statement(FILE *file, Token t) {
             else parse_statement(file, if_body);
         }
 
-        // உங்க புதிய பாடி_எண்ட் சிக்னல்!
         tamizhi_gen_if_body_end();
 
         long backup_pos = ftell(file);
@@ -398,7 +416,6 @@ void parse_statement(FILE *file, Token t) {
         }
     }
 
-    // ... [String and Assignment Blocks Remain Safely Maintained] ...
     else if (t.type == T_STR || strcmp(t.value, "Str") == 0 || strcmp(t.value, "வரி") == 0) {
         Token name = get_next_token(file);
         Token next = get_next_token(file);
