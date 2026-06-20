@@ -24,14 +24,12 @@ void tamizhi_gen_print(char* var_name) {
     if (!is_literal) {
         for(int i = 0; i < var_count; i++) {
             if(strcmp(symbol_table[i].name, clean_name) == 0) {
-                // [FIX] ஸ்ட்ரிங் மற்றும் எண்களுக்கான சரியான Load லாஜிக்
-                if (symbol_table[i].is_str_type) {
+                if (symbol_table[i].is_str_type == 1) {
+                    // 🌟 இது ஸ்ட்ரிங்: நேரடியாக பாயிண்டரை எடுத்துக்கொள்கிறோம்!
                     is_string = 1;
-                    // 🌟 ஸ்ட்ரிங் ஏற்கனவே Pointer ஆகத்தான் உள்ளது. 
-                    // எனவே Load செய்யக்கூடாது! நேரடியாக எடுத்துக்கொள்ள வேண்டும்.
                     val = symbol_table[i].alloca_ptr; 
                 } else {
-                    // எண்களுக்கு (Numbers) மட்டும் i32 மதிப்பாக லோட் செய்ய வேண்டும்
+                    // 🌟 இது எண்: i32 மதிப்பாக லோட் செய்கிறோம்!
                     val = symbol_table[i].alloca_ptr;
                     val = LLVMBuildLoad2(builder, LLVMInt32TypeInContext(context), val, "load_val");
                 }
