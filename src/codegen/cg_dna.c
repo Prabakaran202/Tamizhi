@@ -7,7 +7,9 @@ void tamizhi_binary_to_dna_storage(const char* filename) {
     FILE *check = fopen(filename, "rb");
     if (check) {
         fclose(check);
-        encode_logic(filename, "storage/project_binary.dna"); 
+        encode_logic(filename, "storage/project_binary.dna");
+if (tamizhi_debug_mode){
         fprintf(stderr, " [DNA-VM] Binary AOT Secured at: storage/project_binary.dna\n");
+    }
     }
 }
