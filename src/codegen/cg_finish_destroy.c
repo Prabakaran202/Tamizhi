@@ -61,7 +61,9 @@ void tamizhi_codegen_finish(void) {
         tamizhi_codegen_destroy();
         exit(1);
     }
+    if (tamizhi_debug_mode){
     fprintf(stderr, " [Verifier] IR Graph Validated. Structural anomalies zero.\n");
+    }
 
     // 3. ஆப்டிமைசேஷன் ரன் செய்தல்
     tamizhi_optimize_module();
@@ -77,9 +79,10 @@ void tamizhi_codegen_finish(void) {
             LLVMDisposeMessage(error);
         }
     }
+    if (tamizhi_debug_mode){
 
     fprintf(stderr, "\n[Execution] Running compiled logic via Native AOT VM...\n");
-    
+    }
     #ifdef __ANDROID__
     // 🚀 [ANDROID FIX]: நேரடியா storage/ கோப்பினை கொண்டு பில்ட் செய்து எக்ஸிகியூட் செய்கிறோம்
     system("clang storage/output.o -o /data/data/com.termux/files/usr/tmp/tamizhi_out && "
@@ -93,7 +96,8 @@ void tamizhi_codegen_finish(void) {
     // 6. [CRITICAL SEQUENCE]: எக்ஸிகியூஷன் முடிந்ததும் பாதுகாப்பாக DNA VM மாட்யூலுக்கு மாற்றிவிட்டு ஃபைலை நீக்குதல்
     tamizhi_binary_to_dna_storage("storage/output.o");
     remove("storage/output.o");
-
+    if (tamizhi_debug_mode){
     fprintf(stderr, "\n[Codegen] --- Tamizhi Universal Engine: SUCCESS ---\n");
+    }
     tamizhi_codegen_destroy();
 }
