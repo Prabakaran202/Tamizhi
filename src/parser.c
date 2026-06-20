@@ -170,11 +170,11 @@ void scan_headers(FILE *file) {
                     strcpy(functions[function_count].name, clean_name);
                     functions[function_count].pos = ftell(file);
                     function_count++;
-                    
+
                     if (tamizhi_debug_mode) {
                         fprintf(stderr, "    [Header] Registered: %s\n", clean_name);  
                     }
-                    
+
                     // 🌟 மாஸான பிக்ஸ்: ஃபங்ஷன் பாடியை முழுமையாக ஸ்கிப் செய்கிறோம்!
                     int brace_depth = 1;
                     Token skip_tk;
@@ -188,7 +188,7 @@ void scan_headers(FILE *file) {
         }
     }
     rewind(file);
-    
+
     // 🌟 லெக்சரை ரீசெட் செய்கிறோம் (EOF தடையை உடைக்க)
     tamizhi_reset_lexer(); 
 }
@@ -268,9 +268,7 @@ void parse(FILE *file) {
             parse_statement(file, t);
         }
     }
-    if (tamizhi_debug_mode) { fprintf(stderr, "[Parser] --- Completed Successfully ---\n");
-                            }
-    
+    if (tamizhi_debug_mode) { fprintf(stderr, "[Parser] --- Completed Successfully ---\n"); }
 }
 
 // ==========================================================
@@ -298,19 +296,19 @@ void parse_statement(FILE *file, Token t) {
     if (strcmp(t.value, "if") == 0 || strcmp(t.value, "எனர்") == 0 || strcmp(t.value, "எனில்") == 0) {
         Token tok = get_next_token(file);
         int has_paren = 0;
-        
+
         // '(' இருக்கிறதா என்று செக் செய்கிறோம்
         if (strcmp(tok.value, "(") == 0 || tok.type == 15) {
             has_paren = 1;
             tok = get_next_token(file);
         }
-        
+
         Token v1 = tok;                         // எ.கா: 'i'
         Token op = get_next_token(file);        // எ.கா: '=='
         Token v2 = get_next_token(file);        // எ.கா: '1'
-        
+
         Token brace_tok = get_next_token(file);
-        
+
         // '(' இருந்தால், விதியை முடிக்க ')' இருக்கிறதா என்று பார்த்து ஸ்கிப் செய்கிறோம்
         if (has_paren && (strcmp(brace_tok.value, ")") == 0 || brace_tok.type == 16)) {
             brace_tok = get_next_token(file);   // '{' ஐ வாங்குகிறோம்
@@ -365,7 +363,7 @@ void parse_statement(FILE *file, Token t) {
     if (strcmp(t.value, "இயக்கு") == 0||strcmp(t.value, "call") == 0 || t.type == T_SYSTEM) {
         Token cmd_token = get_next_token(file); // கமாண்ட் ஸ்ட்ரிங் வாங்குதல்
         tamizhi_gen_system_call(cmd_token.value);
-        
+
         Token semi = get_next_token(file);
         skip_remaining_if_needed(file, semi);
         return;
@@ -507,6 +505,9 @@ void parse_statement(FILE *file, Token t) {
         } else { fseek(file, current_pos, SEEK_SET); }
     }
 
+    // ======================================================
+    // 🖨️ [v0.1.7 SMART PRINT FIX]: Print Statement Parser Logic
+    // ======================================================
     else if (t.type == T_PRINT || strcmp(t.value, "அச்சிடு") == 0) {
         long current_pos = ftell(file);
         Token current_tok = get_next_token(file);
@@ -517,16 +518,27 @@ void parse_statement(FILE *file, Token t) {
             tamizhi_gen_print(current_tok.value);
             Token semi = get_next_token(file); skip_remaining_if_needed(file, semi);
         } else {
-            fseek(file, current_pos, SEEK_SET);
-            current_tok = get_next_token(file);
-            if (current_tok.type == 15 || strcmp(current_tok.value, "(") == 0) { current_tok = get_next_token(file); }
-            ASTNode* root = parse_expression(file, &current_tok);
-            if (root) {
-                tamizhi_gen_math_ast("__tamizhi_print_tmp", root);
-                tamizhi_gen_print("__tamizhi_print_tmp");
-                free_ast(root);
+            // 🌟 THE MASTER FIX: ஒற்றை வேரியபிளா (print a;) அல்லது சமன்பாடா (print a+b;) எனப் பிரித்தறிதல்!
+            long backup_peek = ftell(file);
+            Token peek = get_next_token(file);
+            
+            // அடுத்த டோக்கன் ';' அல்லது ')' ஆக இருந்தால் அது ஒற்றை வேரியபிள் தான்!
+            if (peek.type == 21 || strcmp(peek.value, ";") == 0 || peek.type == 16 || strcmp(peek.value, ")") == 0) {
+                tamizhi_trim_token(current_tok.value);
+                tamizhi_gen_print(current_tok.value);
+            } else {
+                // கணித சமன்பாடு (Math Expression) என்றால் மட்டும் AST-க்கு அனுப்பு!
+                fseek(file, current_pos, SEEK_SET);
+                current_tok = get_next_token(file);
+                if (current_tok.type == 15 || strcmp(current_tok.value, "(") == 0) { current_tok = get_next_token(file); }
+                ASTNode* root = parse_expression(file, &current_tok);
+                if (root) {
+                    tamizhi_gen_math_ast("__tamizhi_print_tmp", root);
+                    tamizhi_gen_print("__tamizhi_print_tmp");
+                    free_ast(root);
+                }
+                skip_remaining_if_needed(file, current_tok);
             }
-            skip_remaining_if_needed(file, current_tok);
         }
     }
 
