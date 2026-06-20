@@ -293,23 +293,37 @@ void parse_statement(FILE *file, Token t) {
     }
 
     // ======================================================
-    // 🌟 [v0.1.5 SYNCHRONIZED]: உங்க புதிய இஃப்-எல்ஸ் பார்சர் லாஜிக் பக்காவா இங்க இருக்கு!
+    // 🌟 [v0.1.6 SMART IF-ELSE]: பிராக்கெட் சப்போர்ட் & பக்கா லாஜிக்
     // ======================================================
     if (strcmp(t.value, "if") == 0 || strcmp(t.value, "எனர்") == 0 || strcmp(t.value, "எனில்") == 0) {
-        get_next_token(file);  // '('
-        Token v1 = get_next_token(file);      
-        Token op = get_next_token(file);      
-        Token v2 = get_next_token(file);      
-        get_next_token(file); // ')'
-        get_next_token(file);  // '{'
+        Token tok = get_next_token(file);
+        int has_paren = 0;
+        
+        // '(' இருக்கிறதா என்று செக் செய்கிறோம்
+        if (strcmp(tok.value, "(") == 0 || tok.type == 15) {
+            has_paren = 1;
+            tok = get_next_token(file);
+        }
+        
+        Token v1 = tok;                         // எ.கா: 'i'
+        Token op = get_next_token(file);        // எ.கா: '=='
+        Token v2 = get_next_token(file);        // எ.கா: '1'
+        
+        Token brace_tok = get_next_token(file);
+        
+        // '(' இருந்தால், விதியை முடிக்க ')' இருக்கிறதா என்று பார்த்து ஸ்கிப் செய்கிறோம்
+        if (has_paren && (strcmp(brace_tok.value, ")") == 0 || brace_tok.type == 16)) {
+            brace_tok = get_next_token(file);   // '{' ஐ வாங்குகிறோம்
+        }
 
+        // LLVM-க்கு அனுப்புகிறோம்
         tamizhi_gen_if_start(v1.value, op.value, v2.value);
 
-        int brace_count = 1;
+        int brace_count = 1; // '{' உள்ளே வந்துவிட்டோம்
         Token if_body;
         while (brace_count > 0 && (if_body = get_next_token(file)).type != T_EOF) {
-            if (strcmp(if_body.value, "{") == 0) brace_count++;
-            else if (strcmp(if_body.value, "}") == 0) {
+            if (strcmp(if_body.value, "{") == 0 || if_body.type == 22) brace_count++;
+            else if (strcmp(if_body.value, "}") == 0 || if_body.type == 23) {
                 brace_count--;
                 if (brace_count <= 0) break;
             }
@@ -318,24 +332,26 @@ void parse_statement(FILE *file, Token t) {
 
         tamizhi_gen_if_body_end();
 
+        // Else பகுதியை செக் செய்கிறோம்
         long backup_pos = ftell(file);
         Token next_tok = get_next_token(file);
 
         if (strcmp(next_tok.value, "else") == 0 || strcmp(next_tok.value, "இல்லையெனில்") == 0) {
-            get_next_token(file); // '{'
+            get_next_token(file); // '{' ஐ ஸ்கிப் செய்ய
             tamizhi_gen_else_start();
 
             brace_count = 1;
             Token else_body;
             while (brace_count > 0 && (else_body = get_next_token(file)).type != T_EOF) {
-                if (strcmp(else_body.value, "{") == 0) brace_count++;
-                else if (strcmp(else_body.value, "}") == 0) {
+                if (strcmp(else_body.value, "{") == 0 || else_body.type == 22) brace_count++;
+                else if (strcmp(else_body.value, "}") == 0 || else_body.type == 23) {
                     brace_count--;
                     if (brace_count <= 0) break;
                 }
                 else parse_statement(file, else_body);
             }
         } else {
+            // Else இல்லை என்றால், ஃபைல் பாயிண்டரை பழைய இடத்துக்கே கொண்டு செல்கிறோம்
             fseek(file, backup_pos, SEEK_SET);
         }
 
