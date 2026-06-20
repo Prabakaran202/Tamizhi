@@ -68,7 +68,6 @@ Token get_next_token(FILE *file) {
         }
     }
 
-    // தற்போதைய டோக்கன் எந்த வரியில் இருக்கிறது என்பதை டோக்கன் ஸ்ட்ரக்சரில் லாக் செய்கிறோம்
     token.line = current_line;
 
     if (c == EOF) {
@@ -78,36 +77,26 @@ Token get_next_token(FILE *file) {
     }
 
     // =========================================================================
-    // 🧵 [v0.1.5 REFACTORED STRING LEXER FIX]: டபுள் கோட்ஸ் உள்ளே இருக்கும் அத்தனையையும் உடைக்காமல் பியூர் ஸ்ட்ரிங்காக மாற்றும் மாஸ்டர் லாஜிக் பிரபா!
+    // 🧵 String Lexer Fix
     // =========================================================================
     if (c == '"') {
         token.type = T_STR;
         int i = 0;
-        
-        // ஆரம்ப டபுள் கோட்ஸையும் டோக்கன் வேல்யூவோடு சேர்க்கிறோம் பிரபா
         token.value[i++] = c; 
-
-        // அடுத்த டபுள் கோட்ஸ் அல்லது ஃபைல் எண்ட் வர்ற வரைக்கும் எல்லா கேரக்டரையும் அப்படியே அள்ளுகிறோம்
         while ((c = fgetc(file)) != '"' && c != EOF) {
-            if (c == '\n') current_line++; // ஸ்ட்ரிங்கிற்குள் புதிய வரி இருந்தாலும் கணக்கிடும்
-
-            // பஃபர் பாதுகாப்பு அடுக்கு (1023 லிமிட் செக்)
+            if (c == '\n') current_line++; 
             if (i < 1022) { 
                 token.value[i++] = c;
             }
         }
-        
-        // இறுதி டபுள் கோட்ஸையும் உள்ளே லாக் பண்றோம் பிரபா
         if (c == '"') {
             token.value[i++] = '"';
         }
-        
         token.value[i] = '\0';
         return token;
     }
-    // =========================================================================
 
-    // 🌟 மாஸ்டர் யூனிகோட் ஃபிக்ஸ்: தமிழ் மற்றும் ஆங்கில எழுத்துக்கள் (Identifiers / Keywords)
+    // 🌟 மாஸ்டர் யூனிகோட் ஃபிக்ஸ் (Identifiers / Keywords)
     if (isalpha(c) || (unsigned char)c >= 128 || c == '_') {
         int i = 0;
         do {
@@ -137,18 +126,49 @@ Token get_next_token(FILE *file) {
         return token;
     }
 
-    // குறியீடுகள் (Symbols)
+    // =========================================================================
+    // 🌟 மாஸான பிக்ஸ்: குறியீடுகளை (==, !=, <=, >=) சரியாகப் பிரிக்கும் லாஜிக்
+    // =========================================================================
     token.value[0] = c;
     token.value[1] = '\0';
 
-    if (c == '(') token.type = 15;
+    if (c == '=') {
+        int next_c = fgetc(file);
+        if (next_c == '=') {
+            token.value[1] = '='; token.value[2] = '\0'; token.type = 30; // EQ
+        } else {
+            ungetc(next_c, file); token.type = 20; // ASSIGN
+        }
+    }
+    else if (c == '!') {
+        int next_c = fgetc(file);
+        if (next_c == '=') {
+            token.value[1] = '='; token.value[2] = '\0'; token.type = 31; // NEQ
+        } else {
+            ungetc(next_c, file); token.type = T_ID;
+        }
+    }
+    else if (c == '<') {
+        int next_c = fgetc(file);
+        if (next_c == '=') {
+            token.value[1] = '='; token.value[2] = '\0'; token.type = 32; // LEQ
+        } else {
+            ungetc(next_c, file); token.type = 18; // LT
+        }
+    }
+    else if (c == '>') {
+        int next_c = fgetc(file);
+        if (next_c == '=') {
+            token.value[1] = '='; token.value[2] = '\0'; token.type = 33; // GEQ
+        } else {
+            ungetc(next_c, file); token.type = 24; // GT
+        }
+    }
+    else if (c == '(') token.type = 15;
     else if (c == ')') token.type = 16;
     else if (c == ';') token.type = 21; 
-    else if (c == '<') token.type = 18;
-    else if (c == '>') token.type = 24; 
     else if (c == '+') token.type = 19;
     else if (c == '-') token.type = 56; 
-    else if (c == '=') token.type = 20;
     else if (c == '{') token.type = 22;
     else if (c == '}') token.type = 23;
     else token.type = T_ID;
