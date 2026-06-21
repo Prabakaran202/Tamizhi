@@ -22,4 +22,4 @@ void tamizhi_generate_universal_bitcode(const char* filename) {
             fclose(f);
         }
     }
-}
+
