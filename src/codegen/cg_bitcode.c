@@ -5,19 +5,21 @@ void tamizhi_generate_universal_bitcode(const char* filename) {
         fprintf(stderr, " [Error] Failed to write universal bitcode!\n");
     } else {
         if (tamizhi_debug_mode){
-        fprintf(stderr, " [Universal] Bitcode generated: %s\n", filename);
+            fprintf(stderr, " [Universal] Bitcode generated: %s\n", filename);
+        }
     }
-    }
-    char asm_path[256];
-    if (tamizhi_debug_mode){
-    sprintf(asm_path, "storage/output.ll");
-    }
-    FILE *f = fopen(asm_path, "w");
-    if (f) {
-        char *str = LLVMPrintModuleToString(module);
-        fprintf(f, "%s", str);
-        LLVMDisposeMessage(str);
-        fclose(f);
+    
+    // 🌟 THE MASTER FIX: ஆரம்பத்திலேயே பாதுகாப்பாக Initialize செய்துவிடுகிறோம்!
+    char asm_path[256] = "storage/output.ll";
+    
+    // Debug Mode-ல் இருந்தால் மட்டுமே .ll ஃபைலை டிஸ்க்கில் எழுதுகிறோம்
+    if (tamizhi_debug_mode) {
+        FILE *f = fopen(asm_path, "w");
+        if (f) {
+            char *str = LLVMPrintModuleToString(module);
+            fprintf(f, "%s", str);
+            LLVMDisposeMessage(str);
+            fclose(f);
+        }
     }
 }
-
