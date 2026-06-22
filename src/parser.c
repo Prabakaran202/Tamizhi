@@ -189,7 +189,7 @@ void scan_headers(FILE *file) {
 
             if (tk.type == 22 || strcmp(tk.value, "{") == 0) {
                 functions[function_count].pos = ftell(file);
-                
+
                 if (tamizhi_debug_mode) {
                     fprintf(stderr, "    [Header] Registered: %s | Args: %d\n", clean_name, functions[function_count].arg_count);  
                 }
@@ -487,21 +487,72 @@ void parse_statement(FILE *file, Token t) {
                 skip_remaining_if_needed(file, current_tok);
             }
         }
+        // ======================================================
+        // 🚀 [API FIX]: Standalone Function Call with Dynamic Arguments
+        // ======================================================
         else if (next.type == 15 || strcmp(next.value, "(") == 0) {
-            long func_pos = find_function(var_name);
-            if (func_pos != -1L) {
-                while (get_next_token(file).type != 21);
+            int func_idx = -1;
+            for (int i = 0; i < function_count; i++) {
+                if (strcmp(functions[i].name, var_name) == 0) {
+                    func_idx = i; break;
+                }
+            }
+
+            if (func_idx != -1) {
+                // 🌟 THE MASTER FIX: ஆர்கியுமெண்ட்ஸ்களை (2, 4) எடுத்து மாறிகளில் (a, b) சேமித்தல்!
+                int arg_passed_count = 0;
+                Token tk = get_next_token(file);
+                
+                while (strcmp(tk.value, ")") != 0 && tk.type != 16 && tk.type != T_EOF) {
+                    if (strcmp(tk.value, ",") != 0) {
+                        char* p_name = functions[func_idx].arg_names[arg_passed_count];
+                        char* p_type = functions[func_idx].arg_types[arg_passed_count];
+
+                        // எண்ணாக இருந்தால் (Num) நேரடியாக AST-க்கு அனுப்பு
+                        if (strcmp(p_type, "Num") == 0 || strcmp(p_type, "எண்") == 0) {
+                            ASTNode* root = parse_expression(file, &tk);
+                            if (root) {
+                                tamizhi_gen_math_ast(p_name, root);
+                                free_ast(root);
+                            }
+                        } 
+                        // ஸ்ட்ரிங்காக இருந்தால் (Str)
+                        else if (strcmp(p_type, "Str") == 0 || strcmp(p_type, "வரி") == 0) {
+                            char clean_str[1024] = {0};
+                            int len = strlen(tk.value);
+                            if (tk.value[0] == '"' && tk.value[len - 1] == '"' && len >= 2) {
+                                strncpy(clean_str, tk.value + 1, len - 2);
+                            } else {
+                                strcpy(clean_str, tk.value);
+                            }
+                            tamizhi_gen_str(p_name, clean_str);
+                            tk = get_next_token(file); 
+                        }
+                        arg_passed_count++;
+                    } else {
+                        tk = get_next_token(file); // கமா (,) வந்தால் ஸ்கிப் செய்
+                    }
+                }
+
+                // Call முடிந்தவுடன் செமிகோலனை (;) ஸ்கிப் செய்
+                while (get_next_token(file).type != 21 && get_next_token(file).type != T_EOF);
+
+                // 🌟 Jump & Execute Function Body
                 long return_pos = ftell(file);
                 LLVMValueRef old_func = current_function;
                 current_function = LLVMGetNamedFunction(module, var_name);
-                fseek(file, func_pos, SEEK_SET);
+                
+                fseek(file, functions[func_idx].pos, SEEK_SET);
+                
                 int brace_count = 1; Token body;
                 while (brace_count > 0 && (body = get_next_token(file)).type != T_EOF) {
                     if (body.type == 22 || strcmp(body.value, "{") == 0) brace_count++;
                     else if (body.type == 23 || strcmp(body.value, "}") == 0) { brace_count--; if (brace_count <= 0) break; }
                     else parse_statement(file, body);
                 }
-                current_function = old_func; fseek(file, return_pos, SEEK_SET);
+                
+                current_function = old_func; 
+                fseek(file, return_pos, SEEK_SET);
             }
         } else { fseek(file, current_pos, SEEK_SET); }
     }
@@ -518,7 +569,7 @@ void parse_statement(FILE *file, Token t) {
         } else {
             long backup_peek = ftell(file);
             Token peek = get_next_token(file);
-            
+
             if (peek.type == 21 || strcmp(peek.value, ";") == 0 || peek.type == 16 || strcmp(peek.value, ")") == 0) {
                 tamizhi_trim_token(current_tok.value);
                 tamizhi_gen_print(current_tok.value);
