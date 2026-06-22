@@ -123,11 +123,14 @@ ASTNode* parse_expression(FILE* file, Token* current_tok) {
 }
 
 // ==========================================================
-// Function Table
+// 🌟 Function Table (API ARGUMENTS ENABLED)
 // ==========================================================
 typedef struct {
     char name[100];
     long pos;
+    int arg_count;                  // ஃபங்ஷனில் எத்தனை ஆர்கியுமெண்ட்ஸ் உள்ளன?
+    char arg_names[10][50];         // ஆர்கியுமெண்டின் பெயர் (எ.கா: a, b)
+    char arg_types[10][10];         // ஆர்கியுமெண்டின் வகை (எ.கா: Num, Str)
 } FunctionEntry;
 
 FunctionEntry functions[256];
@@ -143,12 +146,12 @@ long find_function(const char* name) {
 }
 
 // ==========================================================
-// Header Scan (🔥 BUG FIXED & LEXER RESET INCLUDED)
+// 🌟 Header Scan (SMART ARGUMENT PARSER)
 // ==========================================================
 void scan_headers(FILE *file) {
     Token t;
     rewind(file);
-    function_count = 0; // டேபிளை முதலில் ரீசெட் செய்கிறோம்
+    function_count = 0;
 
     if (tamizhi_debug_mode) {
         fprintf(stderr, " -> Starting Header Pre-Scan...\n");
@@ -164,32 +167,44 @@ void scan_headers(FILE *file) {
             char* bracket = strchr(clean_name, '(');
             if (bracket) *bracket = '\0';
 
-            Token tk;
-            while ((tk = get_next_token(file)).type != T_EOF) {
-                if (tk.type == 22 || strcmp(tk.value, "{") == 0) {
-                    strcpy(functions[function_count].name, clean_name);
-                    functions[function_count].pos = ftell(file);
-                    function_count++;
+            strcpy(functions[function_count].name, clean_name);
+            functions[function_count].arg_count = 0;
 
-                    if (tamizhi_debug_mode) {
-                        fprintf(stderr, "    [Header] Registered: %s\n", clean_name);  
-                    }
+            // 🌟 பிராக்கெட்டுக்குள் இருக்கும் ஆர்கியுமெண்ட்ஸ்களைப் படிக்கும் லாஜிக்
+            Token tk = get_next_token(file);
+            while (strcmp(tk.value, ")") != 0 && tk.type != 16 && tk.type != 22 && strcmp(tk.value, "{") != 0 && tk.type != T_EOF) {
+                if (strcmp(tk.value, "Num") == 0 || strcmp(tk.value, "Str") == 0 || strcmp(tk.value, "எண்") == 0 || strcmp(tk.value, "வரி") == 0) {
+                    strcpy(functions[function_count].arg_types[functions[function_count].arg_count], tk.value);
+                    Token arg_name = get_next_token(file);
+                    strcpy(functions[function_count].arg_names[functions[function_count].arg_count], arg_name.value);
+                    functions[function_count].arg_count++;
+                }
+                tk = get_next_token(file);
+            }
 
-                    // 🌟 மாஸான பிக்ஸ்: ஃபங்ஷன் பாடியை முழுமையாக ஸ்கிப் செய்கிறோம்!
-                    int brace_depth = 1;
-                    Token skip_tk;
-                    while (brace_depth > 0 && (skip_tk = get_next_token(file)).type != T_EOF) {
-                        if (strcmp(skip_tk.value, "{") == 0 || skip_tk.type == 22) brace_depth++;
-                        if (strcmp(skip_tk.value, "}") == 0 || skip_tk.type == 23) brace_depth--;
-                    }
-                    break; // இன்னர் லூப்பை முடித்து அடுத்த ஃபங்ஷனைத் தேடச் செல்கிறது
+            // '{' வரும் வரை தேடி ஸ்கிப் செய்தல்
+            while (tk.type != 22 && strcmp(tk.value, "{") != 0 && tk.type != T_EOF) {
+                tk = get_next_token(file);
+            }
+
+            if (tk.type == 22 || strcmp(tk.value, "{") == 0) {
+                functions[function_count].pos = ftell(file);
+                
+                if (tamizhi_debug_mode) {
+                    fprintf(stderr, "    [Header] Registered: %s | Args: %d\n", clean_name, functions[function_count].arg_count);  
+                }
+                function_count++;
+
+                int brace_depth = 1;
+                Token skip_tk;
+                while (brace_depth > 0 && (skip_tk = get_next_token(file)).type != T_EOF) {
+                    if (strcmp(skip_tk.value, "{") == 0 || skip_tk.type == 22) brace_depth++;
+                    if (strcmp(skip_tk.value, "}") == 0 || skip_tk.type == 23) brace_depth--;
                 }
             }
         }
     }
     rewind(file);
-
-    // 🌟 லெக்சரை ரீசெட் செய்கிறோம் (EOF தடையை உடைக்க)
     tamizhi_reset_lexer(); 
 }
 
@@ -290,14 +305,10 @@ void parse_statement(FILE *file, Token t) {
         return;
     }
 
-    // ======================================================
-    // 🌟 [v0.1.6 SMART IF-ELSE]: பிராக்கெட் சப்போர்ட் & பக்கா லாஜிக்
-    // ======================================================
     if (strcmp(t.value, "if") == 0 || strcmp(t.value, "எனர்") == 0 || strcmp(t.value, "எனில்") == 0) {
         Token tok = get_next_token(file);
         int has_paren = 0;
 
-        // '(' இருக்கிறதா என்று செக் செய்கிறோம்
         if (strcmp(tok.value, "(") == 0 || tok.type == 15) {
             has_paren = 1;
             tok = get_next_token(file);
@@ -309,15 +320,13 @@ void parse_statement(FILE *file, Token t) {
 
         Token brace_tok = get_next_token(file);
 
-        // '(' இருந்தால், விதியை முடிக்க ')' இருக்கிறதா என்று பார்த்து ஸ்கிப் செய்கிறோம்
         if (has_paren && (strcmp(brace_tok.value, ")") == 0 || brace_tok.type == 16)) {
             brace_tok = get_next_token(file);   // '{' ஐ வாங்குகிறோம்
         }
 
-        // LLVM-க்கு அனுப்புகிறோம்
         tamizhi_gen_if_start(v1.value, op.value, v2.value);
 
-        int brace_count = 1; // '{' உள்ளே வந்துவிட்டோம்
+        int brace_count = 1; 
         Token if_body;
         while (brace_count > 0 && (if_body = get_next_token(file)).type != T_EOF) {
             if (strcmp(if_body.value, "{") == 0 || if_body.type == 22) brace_count++;
@@ -330,12 +339,11 @@ void parse_statement(FILE *file, Token t) {
 
         tamizhi_gen_if_body_end();
 
-        // Else பகுதியை செக் செய்கிறோம்
         long backup_pos = ftell(file);
         Token next_tok = get_next_token(file);
 
         if (strcmp(next_tok.value, "else") == 0 || strcmp(next_tok.value, "இல்லையெனில்") == 0) {
-            get_next_token(file); // '{' ஐ ஸ்கிப் செய்ய
+            get_next_token(file); 
             tamizhi_gen_else_start();
 
             brace_count = 1;
@@ -349,7 +357,6 @@ void parse_statement(FILE *file, Token t) {
                 else parse_statement(file, else_body);
             }
         } else {
-            // Else இல்லை என்றால், ஃபைல் பாயிண்டரை பழைய இடத்துக்கே கொண்டு செல்கிறோம்
             fseek(file, backup_pos, SEEK_SET);
         }
 
@@ -357,11 +364,8 @@ void parse_statement(FILE *file, Token t) {
         return;
     }
 
-    // ======================================================
-    // 👑 [v0.1.5 NEW FEATURE]: லினக்ஸ் சிஸ்டம் கமாண்ட் 'இயக்கு' லாஜிக் இன்டகிரேஷன்!
-    // ======================================================
     if (strcmp(t.value, "இயக்கு") == 0||strcmp(t.value, "call") == 0 || t.type == T_SYSTEM) {
-        Token cmd_token = get_next_token(file); // கமாண்ட் ஸ்ட்ரிங் வாங்குதல்
+        Token cmd_token = get_next_token(file); 
         tamizhi_gen_system_call(cmd_token.value);
 
         Token semi = get_next_token(file);
@@ -369,9 +373,6 @@ void parse_statement(FILE *file, Token t) {
         return;
     }
 
-    // ======================================================
-    // Number Variable Declaration
-    // ======================================================
     if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
         Token name = get_next_token(file);
         Token next = get_next_token(file);
@@ -505,9 +506,6 @@ void parse_statement(FILE *file, Token t) {
         } else { fseek(file, current_pos, SEEK_SET); }
     }
 
-    // ======================================================
-    // 🖨️ [v0.1.7 SMART PRINT FIX]: Print Statement Parser Logic
-    // ======================================================
     else if (t.type == T_PRINT || strcmp(t.value, "அச்சிடு") == 0) {
         long current_pos = ftell(file);
         Token current_tok = get_next_token(file);
@@ -518,16 +516,13 @@ void parse_statement(FILE *file, Token t) {
             tamizhi_gen_print(current_tok.value);
             Token semi = get_next_token(file); skip_remaining_if_needed(file, semi);
         } else {
-            // 🌟 THE MASTER FIX: ஒற்றை வேரியபிளா (print a;) அல்லது சமன்பாடா (print a+b;) எனப் பிரித்தறிதல்!
             long backup_peek = ftell(file);
             Token peek = get_next_token(file);
             
-            // அடுத்த டோக்கன் ';' அல்லது ')' ஆக இருந்தால் அது ஒற்றை வேரியபிள் தான்!
             if (peek.type == 21 || strcmp(peek.value, ";") == 0 || peek.type == 16 || strcmp(peek.value, ")") == 0) {
                 tamizhi_trim_token(current_tok.value);
                 tamizhi_gen_print(current_tok.value);
             } else {
-                // கணித சமன்பாடு (Math Expression) என்றால் மட்டும் AST-க்கு அனுப்பு!
                 fseek(file, current_pos, SEEK_SET);
                 current_tok = get_next_token(file);
                 if (current_tok.type == 15 || strcmp(current_tok.value, "(") == 0) { current_tok = get_next_token(file); }
@@ -549,9 +544,6 @@ void parse_statement(FILE *file, Token t) {
         return;
     }
 
-    // ======================================================
-    // 🔁 [v0.1.5 OPTIMIZED]: லூப் இன்ஜின் டோக்கன் பவுண்டரி லாஜிக்
-    // ======================================================
     else if (t.type == T_FOR || strcmp(t.value, "சு") == 0) {
         Token limit_token = get_next_token(file);
         tamizhi_trim_token(limit_token.value);
