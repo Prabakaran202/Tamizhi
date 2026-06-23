@@ -81,6 +81,7 @@ typedef struct {
 
 extern Variable symbol_table[MAX_VARS];
 extern int var_count;
+extern int call_depth; 
 
 typedef struct {
     char name[100];
