@@ -537,6 +537,13 @@ void parse_statement(FILE *file, Token t) {
                 // Call முடிந்தவுடன் செமிகோலனை (;) ஸ்கிப் செய்
                 while (get_next_token(file).type != 21 && get_next_token(file).type != T_EOF);
 
+                // 🛡️ SECURITY GUARD: ஆர்கியுமெண்ட் எண்ணிக்கை சரிபார்ப்பு!
+                if (arg_passed_count != functions[func_idx].arg_count) {
+                    fprintf(stderr, "[Compile Error] '%s' expects %d arguments, but got %d!\n", 
+                            var_name, functions[func_idx].arg_count, arg_passed_count);
+                    exit(1); // க்ராஷ் ஆவதைத் தடுத்து, பாதுகாப்பாக வெளியேறும்
+                }
+
                 // 🌟 Jump & Execute Function Body
                 long return_pos = ftell(file);
                 LLVMValueRef old_func = current_function;
