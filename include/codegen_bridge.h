@@ -48,6 +48,7 @@ typedef struct {
 #define MAX_LOOPS 100
 extern LoopContext loop_stack[MAX_LOOPS];
 extern int loop_top;
+extern int call_depth; 
 
 // =========================================================================
 // 🌟 இஃப்-எல்ஸ் ஸ்டேக்
