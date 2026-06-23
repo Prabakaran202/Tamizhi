@@ -75,6 +75,7 @@ typedef struct {
     int is_str_type;
     int has_static_val;
     int static_val;
+    int scope_depth;
 } Variable;
 
 extern Variable symbol_table[MAX_VARS];
