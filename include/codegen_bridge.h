@@ -14,6 +14,8 @@
 #include <string.h>
 #include <ctype.h>
 
+int call_depth = 0; 
+int var_count = 0;
 
 
 // =========================================================================
