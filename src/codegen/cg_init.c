@@ -5,6 +5,8 @@
 // =========================================================================
 //LLVMTypeRef system_type;
 //LLVMValueRef system_func;
+int call_depth = 0; 
+int var_count = 0;
 
 void tamizhi_codegen_init(void) {
     LLVMInitializeAllTargetInfos();
