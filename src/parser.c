@@ -21,7 +21,7 @@ extern LLVMContextRef context;
 int main_generated = 0;
 
 #define MAX_CALL_DEPTH 100
-int call_depth = 0;
+//int call_depth = 0;
 
 // ==========================================================
 // Helpers
