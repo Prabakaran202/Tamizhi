@@ -32,6 +32,9 @@ extern LLVMValueRef system_func;
 
 extern int loop_counter;
 extern int if_counter;
+// codegen_bridge.h
+extern int call_depth;
+extern int var_count;
 
 
 // =========================================================================
