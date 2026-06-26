@@ -21,7 +21,9 @@ extern LLVMContextRef context;
 int main_generated = 0;
 
 #define MAX_CALL_DEPTH 100
-//int call_depth = 0;
+
+// 🌟 FIX: Duplicate எரர் வராமல் இருக்க call_depth கமெண்ட் செய்யப்பட்டுள்ளது!
+// int call_depth = 0; 
 
 // ==========================================================
 // Helpers
@@ -121,7 +123,7 @@ ASTNode* parse_expression(FILE* file, Token* current_tok) {
 // ==========================================================
 typedef struct {
     char name[100];
-    char filepath[256];             // 🌟 மாஸ்டர் அப்டேட்: எந்த ஃபைலில் இந்த ஃபங்ஷன் உள்ளது?
+    char filepath[256];             
     long pos;
     int arg_count;                  
     char arg_names[10][50];         
@@ -148,8 +150,6 @@ void scan_file_headers(FILE *file, const char* filepath) {
     rewind(file);
 
     while ((t = get_next_token(file)).type != T_EOF) {
-        
-        // 🌟 IMPORT LOGIC: புதிய ஃபைலைத் தேடிப் படித்தல்!
         if (t.type == T_IMP || strcmp(t.value, "இணை") == 0 || strcmp(t.value, "import") == 0) {
             Token fname = get_next_token(file);
             char clean_file[256] = {0};
@@ -164,7 +164,7 @@ void scan_file_headers(FILE *file, const char* filepath) {
 
             FILE *imp_file = fopen(clean_file, "r");
             if (imp_file) {
-                scan_file_headers(imp_file, clean_file); // Recursion!
+                scan_file_headers(imp_file, clean_file); 
                 fclose(imp_file);
             } else {
                 fprintf(stderr, "[Import Error] '%s' என்ற கோப்பு காணப்படவில்லை!\n", clean_file);
@@ -172,7 +172,6 @@ void scan_file_headers(FILE *file, const char* filepath) {
             }
         }
 
-        // 🌟 FUNCTION REGISTRATION
         if (strcmp(t.value, "fun") == 0 || strcmp(t.value, "நிகழ்") == 0 || t.type == T_FUNC) {
             Token name = get_next_token(file);
             if (!is_valid(name)) continue;
@@ -183,7 +182,7 @@ void scan_file_headers(FILE *file, const char* filepath) {
             if (bracket) *bracket = '\0';
 
             strcpy(functions[function_count].name, clean_name);
-            strcpy(functions[function_count].filepath, filepath); // 🌟 ஃபைல் பெயர் சேமிப்பு
+            strcpy(functions[function_count].filepath, filepath); 
             functions[function_count].arg_count = 0;
 
             Token tk = get_next_token(file);
@@ -203,7 +202,6 @@ void scan_file_headers(FILE *file, const char* filepath) {
 
             if (tk.type == 22 || strcmp(tk.value, "{") == 0) {
                 functions[function_count].pos = ftell(file);
-
                 if (tamizhi_debug_mode) {
                     fprintf(stderr, "    [Header] Registered: %s | Args: %d | File: %s\n", clean_name, functions[function_count].arg_count, filepath[0] == '\0' ? "Main" : filepath);  
                 }
@@ -225,7 +223,7 @@ void scan_headers(FILE *file) {
     if (tamizhi_debug_mode) {
         fprintf(stderr, " -> Starting Header Pre-Scan...\n");
     }
-    scan_file_headers(file, ""); // Main ஃபைலுக்கு காலியான ஸ்ட்ரிங்
+    scan_file_headers(file, ""); 
     rewind(file);
     tamizhi_reset_lexer(); 
 }
@@ -309,7 +307,7 @@ void parse(FILE *file) {
 }
 
 // ==========================================================
-// Statement Parser System
+// Statement Parser System (SCOPE CLEANUP ENABLED)
 // ==========================================================
 void parse_statement(FILE *file, Token t) {
     if (!is_valid(t)) return;
@@ -327,7 +325,6 @@ void parse_statement(FILE *file, Token t) {
         return;
     }
 
-    // 🌟 IMPORT கட்டளையை புறக்கணித்தல் (Already processed in Header Scan)
     if (t.type == T_IMP || strcmp(t.value, "இணை") == 0 || strcmp(t.value, "import") == 0) {
         skip_to_semicolon(file);
         return;
@@ -336,207 +333,120 @@ void parse_statement(FILE *file, Token t) {
     if (strcmp(t.value, "if") == 0 || strcmp(t.value, "எனர்") == 0 || strcmp(t.value, "எனில்") == 0) {
         Token tok = get_next_token(file);
         int has_paren = 0;
-
-        if (strcmp(tok.value, "(") == 0 || tok.type == 15) {
-            has_paren = 1;
-            tok = get_next_token(file);
-        }
-
-        Token v1 = tok;                         
-        Token op = get_next_token(file);        
-        Token v2 = get_next_token(file);        
-
+        if (strcmp(tok.value, "(") == 0 || tok.type == 15) { has_paren = 1; tok = get_next_token(file); }
+        Token v1 = tok; Token op = get_next_token(file); Token v2 = get_next_token(file); 
         Token brace_tok = get_next_token(file);
-
-        if (has_paren && (strcmp(brace_tok.value, ")") == 0 || brace_tok.type == 16)) {
-            brace_tok = get_next_token(file);   
-        }
-
+        if (has_paren && (strcmp(brace_tok.value, ")") == 0 || brace_tok.type == 16)) brace_tok = get_next_token(file); 
+        
         tamizhi_gen_if_start(v1.value, op.value, v2.value);
-
-        int brace_count = 1; 
-        Token if_body;
+        int brace_count = 1; Token if_body;
         while (brace_count > 0 && (if_body = get_next_token(file)).type != T_EOF) {
             if (strcmp(if_body.value, "{") == 0 || if_body.type == 22) brace_count++;
-            else if (strcmp(if_body.value, "}") == 0 || if_body.type == 23) {
-                brace_count--;
-                if (brace_count <= 0) break;
-            }
+            else if (strcmp(if_body.value, "}") == 0 || if_body.type == 23) { brace_count--; if (brace_count <= 0) break; }
             else parse_statement(file, if_body);
         }
-
         tamizhi_gen_if_body_end();
-
-        long backup_pos = ftell(file);
-        Token next_tok = get_next_token(file);
+        long backup_pos = ftell(file); Token next_tok = get_next_token(file);
 
         if (strcmp(next_tok.value, "else") == 0 || strcmp(next_tok.value, "இல்லையெனில்") == 0) {
-            get_next_token(file); 
-            tamizhi_gen_else_start();
-
-            brace_count = 1;
-            Token else_body;
+            get_next_token(file); tamizhi_gen_else_start();
+            brace_count = 1; Token else_body;
             while (brace_count > 0 && (else_body = get_next_token(file)).type != T_EOF) {
                 if (strcmp(else_body.value, "{") == 0 || else_body.type == 22) brace_count++;
-                else if (strcmp(else_body.value, "}") == 0 || else_body.type == 23) {
-                    brace_count--;
-                    if (brace_count <= 0) break;
-                }
+                else if (strcmp(else_body.value, "}") == 0 || else_body.type == 23) { brace_count--; if (brace_count <= 0) break; }
                 else parse_statement(file, else_body);
             }
-        } else {
-            fseek(file, backup_pos, SEEK_SET);
-        }
-
-        tamizhi_gen_if_end();
-        return;
+        } else { fseek(file, backup_pos, SEEK_SET); }
+        tamizhi_gen_if_end(); return;
     }
 
     if (strcmp(t.value, "இயக்கு") == 0||strcmp(t.value, "call") == 0 || t.type == T_SYSTEM) {
-        Token cmd_token = get_next_token(file); 
-        tamizhi_gen_system_call(cmd_token.value);
-
-        Token semi = get_next_token(file);
-        skip_remaining_if_needed(file, semi);
-        return;
+        Token cmd_token = get_next_token(file); tamizhi_gen_system_call(cmd_token.value);
+        Token semi = get_next_token(file); skip_remaining_if_needed(file, semi); return;
     }
 
     if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
-        Token name = get_next_token(file);
-        Token next = get_next_token(file);
-
+        Token name = get_next_token(file); Token next = get_next_token(file);
         while (next.type != 20 && next.type != T_EOF) { next = get_next_token(file); }
-
-        long value_pos = ftell(file);
-        Token value = get_next_token(file);
-        tamizhi_trim_token(value.value);
-
+        long value_pos = ftell(file); Token value = get_next_token(file); tamizhi_trim_token(value.value);
         Token next_after_val = get_next_token(file);
 
         if (next_after_val.type == 15 || strcmp(next_after_val.value, "(") == 0) {
             int func_idx = -1;
-            for (int i = 0; i < function_count; i++) {
-                if (strcmp(functions[i].name, value.value) == 0) { func_idx = i; break; }
-            }
+            for (int i = 0; i < function_count; i++) { if (strcmp(functions[i].name, value.value) == 0) { func_idx = i; break; } }
             if (func_idx != -1) {
                 while (get_next_token(file).type != 21);
-                LLVMValueRef old_func = current_function;
-                current_function = LLVMGetNamedFunction(module, value.value);
+                LLVMValueRef old_func = current_function; current_function = LLVMGetNamedFunction(module, value.value);
                 call_depth++;
 
-                // 🌟 மாஸ்டர் ஃபிக்ஸ்: எந்த ஃபைலோ அதை ஓபன் பண்ணிப் படித்தல்
-                FILE *exec_file = file;
-                int is_external = 0;
-                if (strlen(functions[func_idx].filepath) > 0) {
-                    exec_file = fopen(functions[func_idx].filepath, "r");
-                    is_external = 1;
-                }
-                
+                FILE *exec_file = file; int is_external = 0;
+                if (strlen(functions[func_idx].filepath) > 0) { exec_file = fopen(functions[func_idx].filepath, "r"); is_external = 1; }
                 fseek(exec_file, functions[func_idx].pos, SEEK_SET);
-                
-                int brace_count = 1;
-                Token body;
+                int brace_count = 1; Token body;
                 while (brace_count > 0 && (body = get_next_token(exec_file)).type != T_EOF) {
                     if (body.type == 22 || strcmp(body.value, "{") == 0) brace_count++;
-                    else if (body.type == 23 || strcmp(body.value, "}") == 0) {
-                        brace_count--;
-                        if (brace_count <= 0) break;
-                    }
+                    else if (body.type == 23 || strcmp(body.value, "}") == 0) { brace_count--; if (brace_count <= 0) break; }
                     else parse_statement(exec_file, body);
                 }
-                
                 if (is_external) fclose(exec_file);
 
+                // 🌟 FIX 1: SCOPE CLEANUP
                 call_depth--;
                 current_function = old_func;
+                while (var_count > 0 && symbol_table[var_count - 1].scope_depth > call_depth) { var_count--; }
                 tamizhi_gen_assign_from_return(name.value);
-            } else {
-                fprintf(stderr, "[Linker Error] Undefined Function '%s'\n", value.value);
-            }
-        }
-        else {
-            fseek(file, value_pos, SEEK_SET);
-            Token current_tok = get_next_token(file);
-
+            } else { fprintf(stderr, "[Linker Error] Undefined Function '%s'\n", value.value); }
+        } else {
+            fseek(file, value_pos, SEEK_SET); Token current_tok = get_next_token(file);
             ASTNode* root = parse_expression(file, &current_tok);
-            if (root) {
-                tamizhi_gen_math_ast(name.value, root);
-                free_ast(root);
-            } else {
-                fprintf(stderr, "[Syntax Error] Invalid Number Expression for '%s'\n", name.value);
-            }
+            if (root) { tamizhi_gen_math_ast(name.value, root); free_ast(root); } 
             skip_remaining_if_needed(file, current_tok);
         }
     }
 
     else if (t.type == T_STR || strcmp(t.value, "Str") == 0 || strcmp(t.value, "வரி") == 0) {
-        Token name = get_next_token(file);
-        Token next = get_next_token(file);
+        Token name = get_next_token(file); Token next = get_next_token(file);
         while (next.type != 20 && next.type != T_EOF) { next = get_next_token(file); }
-        Token value = get_next_token(file);
-        char clean_str_val[1024] = {0};
-        int len = strlen(value.value);
-        if (value.value[0] == '"' && value.value[len - 1] == '"' && len >= 2) {
-            strncpy(clean_str_val, value.value + 1, len - 2);
-        } else {
-            strcpy(clean_str_val, value.value);
-        }
-        tamizhi_trim_token(clean_str_val);
-        tamizhi_gen_str(name.value, clean_str_val);
+        Token value = get_next_token(file); char clean_str_val[1024] = {0}; int len = strlen(value.value);
+        if (value.value[0] == '"' && value.value[len - 1] == '"' && len >= 2) strncpy(clean_str_val, value.value + 1, len - 2);
+        else strcpy(clean_str_val, value.value);
+        tamizhi_trim_token(clean_str_val); tamizhi_gen_str(name.value, clean_str_val);
     }
 
     else if (t.type == T_ID) {
-        char var_name[100];
-        strcpy(var_name, t.value);
-        long current_pos = ftell(file);
-        Token next = get_next_token(file);
+        char var_name[100]; strcpy(var_name, t.value);
+        long current_pos = ftell(file); Token next = get_next_token(file);
 
         if (next.type == 20 || strcmp(next.value, "=") == 0) {
-            long value_pos = ftell(file);
-            Token current_tok = get_next_token(file);
-            Token next_after_val = get_next_token(file);
-
+            long value_pos = ftell(file); Token current_tok = get_next_token(file); Token next_after_val = get_next_token(file);
             if (next_after_val.type == 15 || strcmp(next_after_val.value, "(") == 0) {
                 int func_idx = -1;
-                for (int i = 0; i < function_count; i++) {
-                    if (strcmp(functions[i].name, current_tok.value) == 0) { func_idx = i; break; }
-                }
+                for (int i = 0; i < function_count; i++) { if (strcmp(functions[i].name, current_tok.value) == 0) { func_idx = i; break; } }
                 if (func_idx != -1) {
                     while (get_next_token(file).type != 21);
-                    LLVMValueRef old_func = current_function;
-                    current_function = LLVMGetNamedFunction(module, current_tok.value);
+                    LLVMValueRef old_func = current_function; current_function = LLVMGetNamedFunction(module, current_tok.value);
                     call_depth++;
 
-                    // 🌟 மாஸ்டர் ஃபிக்ஸ்: எந்த ஃபைலோ அதை ஓபன் பண்ணிப் படித்தல்
-                    FILE *exec_file = file;
-                    int is_external = 0;
-                    if (strlen(functions[func_idx].filepath) > 0) {
-                        exec_file = fopen(functions[func_idx].filepath, "r");
-                        is_external = 1;
-                    }
-
+                    FILE *exec_file = file; int is_external = 0;
+                    if (strlen(functions[func_idx].filepath) > 0) { exec_file = fopen(functions[func_idx].filepath, "r"); is_external = 1; }
                     fseek(exec_file, functions[func_idx].pos, SEEK_SET);
-
                     int brace_count = 1; Token body;
                     while (brace_count > 0 && (body = get_next_token(exec_file)).type != T_EOF) {
                         if (body.type == 22 || strcmp(body.value, "{") == 0) brace_count++;
                         else if (body.type == 23 || strcmp(body.value, "}") == 0) { brace_count--; if (brace_count <= 0) break; }
                         else parse_statement(exec_file, body);
                     }
-                    
                     if (is_external) fclose(exec_file);
 
+                    // 🌟 FIX 2: SCOPE CLEANUP
                     call_depth--; current_function = old_func; 
+                    while (var_count > 0 && symbol_table[var_count - 1].scope_depth > call_depth) { var_count--; }
                     tamizhi_gen_assign_from_return(var_name);
                 }
             } else {
-                fseek(file, value_pos, SEEK_SET);
-                current_tok = get_next_token(file);
+                fseek(file, value_pos, SEEK_SET); current_tok = get_next_token(file);
                 ASTNode* root = parse_expression(file, &current_tok);
-                if (root) {
-                    tamizhi_gen_math_ast(var_name, root);
-                    free_ast(root);
-                }
+                if (root) { tamizhi_gen_math_ast(var_name, root); free_ast(root); }
                 skip_remaining_if_needed(file, current_tok);
             }
         }
@@ -545,51 +455,30 @@ void parse_statement(FILE *file, Token t) {
         // ======================================================
         else if (next.type == 15 || strcmp(next.value, "(") == 0) {
             int func_idx = -1;
-            for (int i = 0; i < function_count; i++) {
-                if (strcmp(functions[i].name, var_name) == 0) {
-                    func_idx = i; break;
-                }
-            }
+            for (int i = 0; i < function_count; i++) { if (strcmp(functions[i].name, var_name) == 0) { func_idx = i; break; } }
 
             if (func_idx != -1) {
-                int arg_passed_count = 0;
-                Token tk = get_next_token(file);
-                
+                int arg_passed_count = 0; Token tk = get_next_token(file);
                 while (strcmp(tk.value, ")") != 0 && tk.type != 16 && tk.type != T_EOF) {
                     if (strcmp(tk.value, ",") != 0) {
                         char* p_name = functions[func_idx].arg_names[arg_passed_count];
                         char* p_type = functions[func_idx].arg_types[arg_passed_count];
-
                         if (strcmp(p_type, "Num") == 0 || strcmp(p_type, "எண்") == 0) {
                             ASTNode* root = parse_expression(file, &tk);
-                            if (root) {
-                                tamizhi_gen_math_ast(p_name, root);
-                                free_ast(root);
-                            }
-                        } 
-                        else if (strcmp(p_type, "Str") == 0 || strcmp(p_type, "வரி") == 0) {
-                            char clean_str[1024] = {0};
-                            int len = strlen(tk.value);
-                            if (tk.value[0] == '"' && tk.value[len - 1] == '"' && len >= 2) {
-                                strncpy(clean_str, tk.value + 1, len - 2);
-                            } else {
-                                strcpy(clean_str, tk.value);
-                            }
-                            tamizhi_gen_str(p_name, clean_str);
-                            tk = get_next_token(file); 
+                            if (root) { tamizhi_gen_math_ast(p_name, root); free_ast(root); }
+                        } else if (strcmp(p_type, "Str") == 0 || strcmp(p_type, "வரி") == 0) {
+                            char clean_str[1024] = {0}; int len = strlen(tk.value);
+                            if (tk.value[0] == '"' && tk.value[len - 1] == '"' && len >= 2) strncpy(clean_str, tk.value + 1, len - 2);
+                            else strcpy(clean_str, tk.value);
+                            tamizhi_gen_str(p_name, clean_str); tk = get_next_token(file); 
                         }
                         arg_passed_count++;
-                    } else {
-                        tk = get_next_token(file); // கமா (,) வந்தால் ஸ்கிப் செய்
-                    }
+                    } else { tk = get_next_token(file); }
                 }
-
                 while (get_next_token(file).type != 21 && get_next_token(file).type != T_EOF);
 
-                // 🛡️ SECURITY GUARD: ஆர்கியுமெண்ட் எண்ணிக்கை சரிபார்ப்பு!
                 if (arg_passed_count != functions[func_idx].arg_count) {
-                    fprintf(stderr, "[Compile Error] '%s' expects %d arguments, but got %d!\n", 
-                            var_name, functions[func_idx].arg_count, arg_passed_count);
+                    fprintf(stderr, "[Compile Error] '%s' expects %d arguments, but got %d!\n", var_name, functions[func_idx].arg_count, arg_passed_count);
                     exit(1); 
                 }
 
@@ -597,90 +486,67 @@ void parse_statement(FILE *file, Token t) {
                 LLVMValueRef old_func = current_function;
                 current_function = LLVMGetNamedFunction(module, var_name);
                 
-                // 🌟 மாஸ்டர் ஃபிக்ஸ்: எந்த ஃபைலோ அதை ஓபன் பண்ணிப் படித்தல்
-                FILE *exec_file = file;
-                int is_external = 0;
-                if (strlen(functions[func_idx].filepath) > 0) {
-                    exec_file = fopen(functions[func_idx].filepath, "r");
-                    is_external = 1;
-                }
-                
+                // 🌟 FIX 3: ADDED DEPTH TRACKING HERE
+                call_depth++; 
+
+                FILE *exec_file = file; int is_external = 0;
+                if (strlen(functions[func_idx].filepath) > 0) { exec_file = fopen(functions[func_idx].filepath, "r"); is_external = 1; }
                 fseek(exec_file, functions[func_idx].pos, SEEK_SET);
-                
+
                 int brace_count = 1; Token body;
                 while (brace_count > 0 && (body = get_next_token(exec_file)).type != T_EOF) {
                     if (body.type == 22 || strcmp(body.value, "{") == 0) brace_count++;
                     else if (body.type == 23 || strcmp(body.value, "}") == 0) { brace_count--; if (brace_count <= 0) break; }
                     else parse_statement(exec_file, body);
                 }
-                
                 if (is_external) fclose(exec_file);
 
+                // 🌟 FIX 4: DEPTH DECREMENT AND SCOPE CLEANUP
+                call_depth--; 
                 current_function = old_func; 
+                while (var_count > 0 && symbol_table[var_count - 1].scope_depth > call_depth) { var_count--; }
+                
                 fseek(file, return_pos, SEEK_SET);
             }
         } else { fseek(file, current_pos, SEEK_SET); }
     }
 
     else if (t.type == T_PRINT || strcmp(t.value, "அச்சிடு") == 0) {
-        long current_pos = ftell(file);
-        Token current_tok = get_next_token(file);
+        long current_pos = ftell(file); Token current_tok = get_next_token(file);
         if (current_tok.type == 15 || strcmp(current_tok.value, "(") == 0) { current_tok = get_next_token(file); }
 
         if (current_tok.value[0] == '"' || current_tok.type == T_STR || strchr(current_tok.value, '"') != NULL) {
-            tamizhi_trim_token(current_tok.value);
-            tamizhi_gen_print(current_tok.value);
+            tamizhi_trim_token(current_tok.value); tamizhi_gen_print(current_tok.value);
             Token semi = get_next_token(file); skip_remaining_if_needed(file, semi);
         } else {
-            long backup_peek = ftell(file);
-            Token peek = get_next_token(file);
-
+            long backup_peek = ftell(file); Token peek = get_next_token(file);
             if (peek.type == 21 || strcmp(peek.value, ";") == 0 || peek.type == 16 || strcmp(peek.value, ")") == 0) {
-                tamizhi_trim_token(current_tok.value);
-                tamizhi_gen_print(current_tok.value);
+                tamizhi_trim_token(current_tok.value); tamizhi_gen_print(current_tok.value);
             } else {
-                fseek(file, current_pos, SEEK_SET);
-                current_tok = get_next_token(file);
+                fseek(file, current_pos, SEEK_SET); current_tok = get_next_token(file);
                 if (current_tok.type == 15 || strcmp(current_tok.value, "(") == 0) { current_tok = get_next_token(file); }
                 ASTNode* root = parse_expression(file, &current_tok);
-                if (root) {
-                    tamizhi_gen_math_ast("__tamizhi_print_tmp", root);
-                    tamizhi_gen_print("__tamizhi_print_tmp");
-                    free_ast(root);
-                }
+                if (root) { tamizhi_gen_math_ast("__tamizhi_print_tmp", root); tamizhi_gen_print("__tamizhi_print_tmp"); free_ast(root); }
                 skip_remaining_if_needed(file, current_tok);
             }
         }
     }
 
     else if (t.type == T_RET || strcmp(t.value, "return") == 0 || strcmp(t.value, "திரும்பு") == 0) {
-        Token expr_token = get_next_token(file);
-        tamizhi_gen_return(expr_token.value);
-        Token semi = get_next_token(file); skip_remaining_if_needed(file, semi);
-        return;
+        Token expr_token = get_next_token(file); tamizhi_gen_return(expr_token.value);
+        Token semi = get_next_token(file); skip_remaining_if_needed(file, semi); return;
     }
 
     else if (t.type == T_FOR || strcmp(t.value, "சு") == 0) {
-        Token limit_token = get_next_token(file);
-        tamizhi_trim_token(limit_token.value);
-
-        int limit = atoi(limit_token.value);
-        Token next = get_next_token(file);
-
+        Token limit_token = get_next_token(file); tamizhi_trim_token(limit_token.value);
+        int limit = atoi(limit_token.value); Token next = get_next_token(file);
         if (strcmp(next.value, ";") == 0 || next.type == 21) { next = get_next_token(file); }
-
         if (next.type == 22 || strcmp(next.value, "{") == 0) {
             tamizhi_gen_loop_start(limit);
-
-            Token body;
-            int loop_brace_depth = 1;
+            Token body; int loop_brace_depth = 1;
             while (loop_brace_depth > 0 && (body = get_next_token(file)).type != T_EOF) {
                 if (strcmp(body.value, "{") == 0 || body.type == 22) { loop_brace_depth++; continue; }
-                if (body.type == 23 || strcmp(body.value, "}") == 0) {
-                    loop_brace_depth--;
-                    if (loop_brace_depth <= 0) break;
-                    continue;
-                }
+                if (body.type == 23 || strcmp(body.value, "}") == 0) { loop_brace_depth--; if (loop_brace_depth <= 0) break; continue; }
                 parse_statement(file, body);
             }
             tamizhi_gen_loop_end();
