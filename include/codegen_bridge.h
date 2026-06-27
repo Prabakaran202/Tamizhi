@@ -15,7 +15,6 @@
 #include <ctype.h>
 
 
-
 // =========================================================================
 // 🌟 மாடர்ன் LLVM குளோபல் எக்ஸ்டெர்ன் மாறிகள்
 // =========================================================================
@@ -33,6 +32,9 @@ extern LLVMValueRef system_func;
 
 extern int loop_counter;
 extern int if_counter;
+// codegen_bridge.h
+extern int call_depth;
+extern int var_count;
 
 
 // =========================================================================
@@ -48,6 +50,7 @@ typedef struct {
 #define MAX_LOOPS 100
 extern LoopContext loop_stack[MAX_LOOPS];
 extern int loop_top;
+
 
 // =========================================================================
 // 🌟 இஃப்-எல்ஸ் ஸ்டேக்
@@ -75,10 +78,12 @@ typedef struct {
     int is_str_type;
     int has_static_val;
     int static_val;
+    int scope_depth;  
 } Variable;
 
-extern Variable symbol_table[MAX_VARS];
 extern int var_count;
+extern int call_depth; 
+extern Variable symbol_table[MAX_VARS];
 
 typedef struct {
     char name[100];
@@ -124,5 +129,7 @@ void tamizhi_codegen_finish(void);   // ← இதை add பண்ணு
 void tamizhi_codegen_destroy(void);
 
 
-
 #endif
+
+
+

@@ -1,4 +1,6 @@
 #include "codegen_bridge.h"
+int call_depth = 0; 
+//int var_count = 0;
 
 // ஸ்ட்ரிங் மாறிகளை (String Variables) உருவாக்குவதற்கான புதிய ஃபங்ஷன்
 void tamizhi_gen_str_var(char* name, char* str_value) {
@@ -30,10 +32,14 @@ void tamizhi_gen_str_var(char* name, char* str_value) {
     // 3. அந்த ஸ்ட்ரிங்கை ஒதுக்கப்பட்ட மெமரியில் ஸ்டோர் செய்தல்
     LLVMBuildStore(builder, global_str, alloca);
 
-    // 4. Symbol Table-ல் பதிவு செய்தல் (இங்கு தான் is_str_type = 1 கொடுக்கிறோம்)
+    // 4. Symbol Table-ல் பதிவு செய்தல் 
     snprintf(symbol_table[var_count].name, sizeof(symbol_table[var_count].name), "%s", clean_name);
     symbol_table[var_count].alloca_ptr = alloca;
-    symbol_table[var_count].is_str_type = 1;  // <--- இது ஸ்ட்ரிங் என்பதை குறிக்கிறது!
+    symbol_table[var_count].is_str_type = 1;  
     symbol_table[var_count].has_static_val = 0; 
+
+    // 🌟 THE MASTER FIX: இது எந்த Scope-ல் (Global/Local) வருகிறது என்பதை பதிவு செய்கிறோம்!
+    symbol_table[var_count].scope_depth = call_depth; 
+
     var_count++;
 }
