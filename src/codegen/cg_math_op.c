@@ -15,7 +15,8 @@ void tamizhi_gen_math_op(char* res_name, char* v1, char* op, char* var2) {
         s_val1 = atoi(clean_v1);
         f1 = 1;
     } else {
-        for(int i = 0; i < var_count; i++) {
+        // 🌟 THE MASTER FIX: ரிவர்ஸ் தேடல் (Reverse Search for v1)
+        for(int i = var_count - 1; i >= 0; i--) {
             if(strcmp(symbol_table[i].name, clean_v1) == 0) {
                 if(symbol_table[i].has_static_val) {
                     s_val1 = symbol_table[i].static_val;
@@ -32,7 +33,8 @@ void tamizhi_gen_math_op(char* res_name, char* v1, char* op, char* var2) {
         s_val2 = atoi(clean_v2);
         f2 = 1;
     } else {
-        for(int i = 0; i < var_count; i++) {
+        // 🌟 THE MASTER FIX: ரிவர்ஸ் தேடல் (Reverse Search for v2)
+        for(int i = var_count - 1; i >= 0; i--) {
             if(strcmp(symbol_table[i].name, clean_v2) == 0) {
                 if(symbol_table[i].has_static_val) {
                     s_val2 = symbol_table[i].static_val;
@@ -67,7 +69,8 @@ void tamizhi_gen_math_op(char* res_name, char* v1, char* op, char* var2) {
             LLVMValueRef target_ptr = NULL;
             int found_idx = -1;
 
-            for(int i = 0; i < var_count; i++) {
+            // 🌟 THE MASTER FIX: ரிவர்ஸ் தேடல் (Reverse Search for Result Variable)
+            for(int i = var_count - 1; i >= 0; i--) {
                 if(strcmp(symbol_table[i].name, clean_res) == 0) {
                     target_ptr = symbol_table[i].alloca_ptr;
                     found_idx = i;
@@ -83,6 +86,10 @@ void tamizhi_gen_math_op(char* res_name, char* v1, char* op, char* var2) {
                 snprintf(symbol_table[var_count].name, sizeof(symbol_table[var_count].name), "%s", clean_res);
                 symbol_table[var_count].alloca_ptr = target_ptr;
                 symbol_table[var_count].is_str_type = 0;
+                
+                // 🌟 SCOPE DEPTH TRACKING
+                symbol_table[var_count].scope_depth = call_depth; 
+                
                 found_idx = var_count;
                 var_count++;
             }
