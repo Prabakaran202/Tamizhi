@@ -1,6 +1,5 @@
 #include "codegen_bridge.h"
-
-//int call_depth = 0; 
+int call_depth = 0; 
 //int var_count = 0;
 
 // ஸ்ட்ரிங் மாறிகளை (String Variables) உருவாக்குவதற்கான புதிய ஃபங்ஷன்
