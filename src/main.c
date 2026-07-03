@@ -6,10 +6,8 @@
 
 #define TAMIZHI_VERSION "v0.1.5"
 
-// 🌟 1. குளோபல் Debug Mode Flag
 int tamizhi_debug_mode = 0;
 
-// 🌟 2. THE MASTER BRIDGE: CLI ஃபங்ஷனை (tamizhi_cli.c-ல் உள்ளது) இங்கே இணைக்கிறோம்!
 extern int tamizhi_cli_main(int argc, char *argv[]);
 
 void print_tamizhi_environment() {
@@ -29,16 +27,10 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
-    // =================================================================
-    // 🚀 THE MASTER FIX: CLI கட்டளைகளை (init) முதலில் பிரித்து CLI எஞ்சினுக்கு அனுப்புதல்
-    // =================================================================
     if (strcmp(argv[1], "init") == 0) {
-        return tamizhi_cli_main(argc, argv); // CLI ஸ்கேஃபோல்டிங் (Scaffolding) வேலை செய்யும்
+        return tamizhi_cli_main(argc, argv);
     }
 
-    // =================================================================
-    // ⚙️ கோர் கம்பைலர் லாஜிக் (Core Compiler Engine)
-    // =================================================================
     char *target_file = NULL;
 
     for (int i = 1; i < argc; i++) {
@@ -50,9 +42,7 @@ int main(int argc, char *argv[]) {
         } else if (strcmp(argv[i], "help") == 0 || strcmp(argv[i], "--help") == 0) {
             print_tamizhi_environment();
             return 0;
-        } 
-        // "run" என்று டைப் செய்தால், அதை ஸ்கிப் செய்துவிட்டு அடுத்த ஃபைல் பெயரை எடுத்துக்கொள்ளும்!
-        else if (strcmp(argv[i], "run") != 0) {
+        } else if (strcmp(argv[i], "run") != 0) {
             target_file = argv[i];
         }
     }
@@ -63,9 +53,14 @@ int main(int argc, char *argv[]) {
     }
 
     if (tamizhi_debug_mode) {
-        fprintf(stderr, " \033[1;33m[System] Cleaning old artifacts before execution...\033[0m\n");
+        fprintf(stderr, " \033[1;33m[System] Preparing environment...\033[0m\n");
     }
 
+    // ==========================================================
+    // 🌟 THE FIX: ஆட்டோமேட்டிக்காக storage ஃபோல்டரை உருவாக்குதல்
+    // ==========================================================
+    system("mkdir -p storage 2>/dev/null");
+    
     system("rm -f storage/output.bc storage/output.o storage/output.ll 2>/dev/null");
     system("rm -f storage/project_binary.dna 2>/dev/null");
 
