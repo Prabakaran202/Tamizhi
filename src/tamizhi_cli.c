@@ -34,12 +34,12 @@ int tamizhi_cli_main(int argc, char *argv[]) {
             printf("பயன்பாடு: tamizhi init <project_name>\n");
             return 1;
         }
-        
+
         char *project_name = argv[2];
         char cmd[1024];
 
         printf("[1/3] '%s' ஃபோல்டர் ஸ்ட்ரக்சர் உருவாக்கப்படுகிறது...\n", project_name);
-        
+
         // விர்ச்சுவல் என்விரான்மென்ட் மற்றும் சோர்ஸ் ஃபோல்டர்களை உருவாக்குதல்
         sprintf(cmd, "mkdir -p %s/.tamizhi-env/packages", project_name); system(cmd);
         sprintf(cmd, "mkdir -p %s/.tamizhi-env/bin", project_name); system(cmd);
@@ -74,7 +74,7 @@ int tamizhi_cli_main(int argc, char *argv[]) {
         printf("👉 tamizhi run src/main.tz\n");
         return 0; // பக்கா-வா எக்சிட்டாகி கோர் இன்ஜினுக்கு போவதை தடுக்கும்
     } 
-    
+
     // ========================================================
     // 🚀 2. RUN கட்டளை: கம்பைல் மற்றும் எக்ஸிகியூஷன் லாஜிக்
     // ========================================================
@@ -110,7 +110,10 @@ int tamizhi_cli_main(int argc, char *argv[]) {
 
         // 2. Clang மூலம் மெஷின் கோடாக மாற்றுதல்
         printf("[2/3] மெஷின் கோடாக மாற்றுகிறது...\n");
-        sprintf(cmd, "clang -x ir %s.ll -o %s_bin", base_name, base_name);
+        
+        // 🌟 FIX: ரன்-டைம் HTTP சர்வர் ஃபைலை (http_runtime.c) இங்கே லிங்க் செய்கிறோம்!
+        sprintf(cmd, "clang -x ir %s.ll $HOME/Tamizhi/core/http_runtime.c -o %s_bin", base_name, base_name);
+        
         if (system(cmd) != 0) {
             printf("தவறு: Clang மூலம் கம்பைல் செய்வதில் சிக்கல்!\n");
             return 1;
@@ -126,7 +129,7 @@ int tamizhi_cli_main(int argc, char *argv[]) {
         system(cmd);
         return 0;
     } 
-    
+
     // ========================================================
     // ❌ 3. தவறான கட்டளைகளை கையாளுதல்
     // ========================================================
