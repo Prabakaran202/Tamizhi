@@ -337,7 +337,7 @@ void parse_statement(FILE *file, Token t) {
         Token v1 = tok; Token op = get_next_token(file); Token v2 = get_next_token(file); 
         Token brace_tok = get_next_token(file);
         if (has_paren && (strcmp(brace_tok.value, ")") == 0 || brace_tok.type == 16)) brace_tok = get_next_token(file); 
-        
+
         tamizhi_gen_if_start(v1.value, op.value, v2.value);
         int brace_count = 1; Token if_body;
         while (brace_count > 0 && (if_body = get_next_token(file)).type != T_EOF) {
@@ -364,6 +364,32 @@ void parse_statement(FILE *file, Token t) {
         Token cmd_token = get_next_token(file); tamizhi_gen_system_call(cmd_token.value);
         Token semi = get_next_token(file); skip_remaining_if_needed(file, semi); return;
     }
+
+    // ==========================================================
+    // 🌟 HTTP Native Hooks Integration
+    // ==========================================================
+    if (strcmp(t.value, "__native_socket_listen") == 0) {
+        Token next_tok = get_next_token(file);
+        if (strcmp(next_tok.value, "(") == 0 || next_tok.type == 15) {
+            Token port_tok = get_next_token(file);
+            tamizhi_gen_socket_listen(atoi(port_tok.value)); // C-ல் உள்ளதை கால் பண்ணும்
+            get_next_token(file); // ')' ஸ்கிப் செய்ய
+        } else {
+            tamizhi_gen_socket_listen(atoi(next_tok.value));
+        }
+        skip_to_semicolon(file);
+        return;
+    }
+    if (strcmp(t.value, "__native_socket_accept") == 0) {
+        Token next_tok = get_next_token(file);
+        if (strcmp(next_tok.value, "(") == 0 || next_tok.type == 15) {
+            get_next_token(file); // ')' ஸ்கிப் செய்ய
+        }
+        tamizhi_gen_socket_accept();
+        skip_to_semicolon(file);
+        return;
+    }
+    // ==========================================================
 
     if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
         Token name = get_next_token(file); Token next = get_next_token(file);
@@ -485,7 +511,7 @@ void parse_statement(FILE *file, Token t) {
                 long return_pos = ftell(file);
                 LLVMValueRef old_func = current_function;
                 current_function = LLVMGetNamedFunction(module, var_name);
-                
+
                 // 🌟 FIX 3: ADDED DEPTH TRACKING HERE
                 call_depth++; 
 
@@ -505,7 +531,7 @@ void parse_statement(FILE *file, Token t) {
                 call_depth--; 
                 current_function = old_func; 
                 while (var_count > 0 && symbol_table[var_count - 1].scope_depth > call_depth) { var_count--; }
-                
+
                 fseek(file, return_pos, SEEK_SET);
             }
         } else { fseek(file, current_pos, SEEK_SET); }
