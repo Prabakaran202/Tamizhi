@@ -6,16 +6,17 @@
 
 #define TAMIZHI_VERSION "v0.1.5"
 
-// 🌟 1. குளோபல் Debug Mode Flag (0 என்றால் அவுட்புட் மட்டும், 1 என்றால் முழு Logs வரும்)
 int tamizhi_debug_mode = 0;
 
+extern int tamizhi_cli_main(int argc, char *argv[]);
+
 void print_tamizhi_environment() {
-    // ... (உங்களுடைய பழைய பேனர் கோட் அப்படியே இருக்கட்டும்) ...
     printf("\033[1;36m==================================================\033[0m\n");
     printf("\033[1;32m         --- தமிழி ரன்டைம் இன்ஜின் (%s) ---\033[0m\n", TAMIZHI_VERSION);
     printf("\033[1;36m==================================================\033[0m\n\n");
     printf("\033[1;35m[Usage]:\033[0m\n");
-    printf("  • tamizhi run <file_name.tz>\n");
+    printf("  • tamizhi init <project_name>  (புதிய ப்ராஜெக்ட் உருவாக்க)\n");
+    printf("  • tamizhi run <file_name.tz>   (கோப்பை இயக்க)\n");
     printf("  • tamizhi <file_name.tz> --debug   (For internal logs)\n");
     printf("\033[1;36m--------------------------------------------------\033[0m\n\n");
 }
@@ -26,12 +27,15 @@ int main(int argc, char *argv[]) {
         return 0;
     }
 
+    if (strcmp(argv[1], "init") == 0) {
+        return tamizhi_cli_main(argc, argv);
+    }
+
     char *target_file = NULL;
 
-    // 🌟 2. கமாண்ட் லைனில் என்னென்ன கொடுத்திருக்கிறார்கள் என்று தேடுதல்
     for (int i = 1; i < argc; i++) {
         if (strcmp(argv[i], "--debug") == 0 || strcmp(argv[i], "-d") == 0) {
-            tamizhi_debug_mode = 1; // Debug Mode ஆன் செய்யப்படுகிறது!
+            tamizhi_debug_mode = 1; 
         } else if (strcmp(argv[i], "version") == 0 || strcmp(argv[i], "-v") == 0) {
             printf("Tamizhi Compiler Version: \033[1;32m%s\033[0m\n", TAMIZHI_VERSION);
             return 0;
@@ -48,10 +52,14 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // 🌟 3. Debug Mode ஆக இருந்தால் மட்டுமே இந்த லாக் மெசேஜ்களைக் காட்டு
     if (tamizhi_debug_mode) {
-        fprintf(stderr, " \033[1;33m[System] Cleaning old artifacts before execution...\033[0m\n");
+        fprintf(stderr, " \033[1;33m[System] Preparing environment...\033[0m\n");
     }
+
+    // ==========================================================
+    // 🌟 THE FIX: ஆட்டோமேட்டிக்காக storage ஃபோல்டரை உருவாக்குதல்
+    // ==========================================================
+    system("mkdir -p storage 2>/dev/null");
     
     system("rm -f storage/output.bc storage/output.o storage/output.ll 2>/dev/null");
     system("rm -f storage/project_binary.dna 2>/dev/null");
