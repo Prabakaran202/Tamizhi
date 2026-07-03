@@ -11,6 +11,9 @@
 void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2);
 void tamizhi_gen_print(char* var_name);
 void tamizhi_gen_str(char* name, char* value);
+// 🌟 HTTP Native Function Declarations
+void tamizhi_gen_socket_listen(int port);
+void tamizhi_gen_socket_accept();
 
 extern void tamizhi_reset_lexer();
 extern int current_line;
