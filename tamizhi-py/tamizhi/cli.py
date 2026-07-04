@@ -7,6 +7,7 @@ import shutil
 from pathlib import Path
 
 BINARY_PATH = Path.home() / ".tamizhi" / "bin" / "tamizhi"
+# குறிப்பு: நீங்கள் புதிய வெர்ஷன் ரிலீஸ் செய்யும்போது இந்த URL-ஐ மாற்றிக்கொள்ளலாம் (உதா: v2.0.9)
 RELEASE_URL = (
     "https://github.com/BackendDeveloperHub/Tamizhi/raw/main/tamizhi-v2.0.8-linux.tar.gz"
 )
@@ -17,12 +18,8 @@ def ensure_binary():
 
     BINARY_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    #archive_path = "/tmp/tamizhi.tar.gz"
-    #extract_path = "/tmp/tamizhi-extract"
-        # பழைய வரிகளை நீக்கிவிட்டு, இதைச் சேர்க்கவும்:
     archive_path = Path.home() / "tamizhi.tar.gz"
     extract_path = Path.home() / "tamizhi-extract"
-    
 
     print("⬇ Downloading Tamizhi compiler...")
 
@@ -42,11 +39,21 @@ def ensure_binary():
     with tarfile.open(archive_path) as tar:
         tar.extractall(extract_path)
 
+    # --- 🌟 புதிய குளோபல் பாத் லாஜிக் (Binary & Core Folder) 🌟 ---
+    CORE_PATH = Path.home() / ".tamizhi" / "core"
+
     for root, dirs, files in os.walk(extract_path):
+        # 1. தமிழி பைனரியை தேடி நகர்த்துதல்
         if "tamizhi" in files:
             binary_src = os.path.join(root, "tamizhi")
             shutil.copy(binary_src, BINARY_PATH)
-            break
+        
+        # 2. கம்பைலருக்குத் தேவையான 'core' ஃபோல்டரை தேடி நகர்த்துதல் (பழைய கோடில் இது விடுபட்டிருந்தது)
+        if "core" in dirs:
+            core_src = os.path.join(root, "core")
+            if CORE_PATH.exists():
+                shutil.rmtree(CORE_PATH)
+            shutil.copytree(core_src, CORE_PATH)
 
     os.chmod(BINARY_PATH, 0o755)
     print("✅ Tamizhi installed successfully!")
