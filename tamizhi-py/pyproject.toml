@@ -4,11 +4,11 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "Tamizhi"
-version = "0.1"
+version = "0.1.1"
 description = "A Linux-native programming language built with C and LLVM."
 readme = "README.md"
 authors = [
-  { name="Prabakaran", email="admin@developerlabs.online" }
+  { name="Prabakaran", email="prabakaran20020430@gmail.com" }
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -19,3 +19,6 @@ requires-python = ">=3.7"
 
 [project.scripts]
 tamizhi = "tamizhi_pkg.cli:main"
+
+[tool.setuptools]
+packages = ["tamizhi_pkg"]
