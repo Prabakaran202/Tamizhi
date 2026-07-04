@@ -11,9 +11,14 @@
 void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2);
 void tamizhi_gen_print(char* var_name);
 void tamizhi_gen_str(char* name, char* value);
+
 // 🌟 HTTP Native Function Declarations
 void tamizhi_gen_socket_listen(int port);
-void tamizhi_gen_socket_accept();
+LLVMValueRef tamizhi_gen_socket_accept(); // Void-க்கு பதிலாக LLVMValueRef
+void tamizhi_gen_socket_send_response(LLVMValueRef client_socket, int status_code, const char* message);
+
+// 🌟 Parser-level Socket Storage (கனெக்ட் ஆகும் பிரவுசரை இதில் சேமிப்போம்)
+LLVMValueRef last_connected_client = NULL;
 
 extern void tamizhi_reset_lexer();
 extern int current_line;
@@ -371,11 +376,11 @@ void parse_statement(FILE *file, Token t) {
     // ==========================================================
     // 🌟 HTTP Native Hooks Integration
     // ==========================================================
-    if (strcmp(t.value, "__native_socket_listen") == 0) {
+    if (strcmp(t.value, "__native_socket_listen") == 0 || strcmp(t.value, "http.listen") == 0) {
         Token next_tok = get_next_token(file);
         if (strcmp(next_tok.value, "(") == 0 || next_tok.type == 15) {
             Token port_tok = get_next_token(file);
-            tamizhi_gen_socket_listen(atoi(port_tok.value)); // C-ல் உள்ளதை கால் பண்ணும்
+            tamizhi_gen_socket_listen(atoi(port_tok.value));
             get_next_token(file); // ')' ஸ்கிப் செய்ய
         } else {
             tamizhi_gen_socket_listen(atoi(next_tok.value));
@@ -383,12 +388,42 @@ void parse_statement(FILE *file, Token t) {
         skip_to_semicolon(file);
         return;
     }
-    if (strcmp(t.value, "__native_socket_accept") == 0) {
+
+    if (strcmp(t.value, "__native_socket_accept") == 0 || strcmp(t.value, "http.accept") == 0) {
         Token next_tok = get_next_token(file);
         if (strcmp(next_tok.value, "(") == 0 || next_tok.type == 15) {
             get_next_token(file); // ')' ஸ்கிப் செய்ய
         }
-        tamizhi_gen_socket_accept();
+        // 🔥 Accept செய்து, கிடைக்கும் Socket-ஐ Parser-ல் ஸ்டோர் செய்கிறோம்
+        last_connected_client = tamizhi_gen_socket_accept();
+        skip_to_semicolon(file);
+        return;
+    }
+
+    if (strcmp(t.value, "__native_socket_send_response") == 0 || strcmp(t.value, "http.send") == 0) {
+        Token next_tok = get_next_token(file);
+        if (strcmp(next_tok.value, "(") == 0 || next_tok.type == 15) {
+            Token status_tok = get_next_token(file); // Status Code (e.g., 200)
+            get_next_token(file); // ',' ஸ்கிப் செய்ய
+            Token msg_tok = get_next_token(file); // Message (e.g., "Success")
+            
+            // ஸ்ட்ரிங்கில் உள்ள "" குறிகளை நீக்க
+            char clean_str[1024] = {0};
+            int len = strlen(msg_tok.value);
+            if (msg_tok.value[0] == '"' && msg_tok.value[len - 1] == '"' && len >= 2) {
+                strncpy(clean_str, msg_tok.value + 1, len - 2);
+            } else {
+                strcpy(clean_str, msg_tok.value);
+            }
+            get_next_token(file); // ')' ஸ்கிப் செய்ய
+
+            // 🔥 ஸ்டோர் செய்துள்ள Socket-ஐ வைத்து Response அனுப்புகிறோம்
+            if (last_connected_client != NULL) {
+                tamizhi_gen_socket_send_response(last_connected_client, atoi(status_tok.value), clean_str);
+            } else {
+                fprintf(stderr, "[Runtime Error] No client connected! Call http.accept() before http.send()\n");
+            }
+        }
         skip_to_semicolon(file);
         return;
     }
