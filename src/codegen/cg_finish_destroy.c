@@ -46,6 +46,7 @@ void tamizhi_generate_universal_bitcode(const char* filename) {
     }
 }
 */
+
 // 🌟 [Master Core Finish]: 100% கிராஷ்-ஃப்ரீ மற்றும் சிஸ்டம் பாத் செக்யூர் கம்பைலேஷன்
 void tamizhi_codegen_finish(void) {
     // 1. ஓப்பன் பிளாக்குகளுக்கு முறையான ரிட்டன் டெர்மினேட்டர் செட் செய்தல்
@@ -67,7 +68,7 @@ void tamizhi_codegen_finish(void) {
 
     // 3. ஆப்டிமைசேஷன் ரன் செய்தல்
     tamizhi_optimize_module();
-    
+
     // 4. புதிய லாஜிக் படி யுனிவர்சல் பிட்கோடை பாதுகாப்பாக storage/ பாத்தில் ஜெனரேட் செய்தல்
     tamizhi_generate_universal_bitcode("storage/output.bc");
 
@@ -80,16 +81,17 @@ void tamizhi_codegen_finish(void) {
         }
     }
     if (tamizhi_debug_mode){
-
     fprintf(stderr, "\n[Execution] Running compiled logic via Native AOT VM...\n");
     }
+
     #ifdef __ANDROID__
-    // 🚀 [ANDROID FIX]: நேரடியா storage/ கோப்பினை கொண்டு பில்ட் செய்து எக்ஸிகியூட் செய்கிறோம்
-    system("clang storage/output.o -o /data/data/com.termux/files/usr/tmp/tamizhi_out && "
+    // 🚀 [ANDROID FIX]: C ரன்டைம் ஃபைல்களையும் சேர்த்து பில்ட் செய்து எக்ஸிகியூட் செய்கிறோம்
+    system("clang storage/output.o core/http_runtime.c core/encoder.c core/decoder.c -o /data/data/com.termux/files/usr/tmp/tamizhi_out && "
            "/data/data/com.termux/files/usr/tmp/tamizhi_out; "
            "rm -f /data/data/com.termux/files/usr/tmp/tamizhi_out"); 
     #else
     // 🚀 [LINUX FIX]: லினக்ஸ் சூழலில் நேரடி ஜியிடி (JIT) எக்ஸிகியூஷன்
+    // (Linux-ல் JIT வேலை செய்ய, Shared Library (.so) தேவைப்படும். இப்போதைக்கு ஆண்ட்ராய்டு/Termux-ல் மட்டும் ஃபோகஸ் செய்வோம்)
     system("lli storage/output.bc"); 
     #endif
 

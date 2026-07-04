@@ -12,6 +12,14 @@ void tamizhi_gen_math_op(char* res_name, char* var1, char* op, char* var2);
 void tamizhi_gen_print(char* var_name);
 void tamizhi_gen_str(char* name, char* value);
 
+// 🌟 HTTP Native Function Declarations
+void tamizhi_gen_socket_listen(int port);
+LLVMValueRef tamizhi_gen_socket_accept(); // Void-க்கு பதிலாக LLVMValueRef
+void tamizhi_gen_socket_send_response(LLVMValueRef client_socket, int status_code, const char* message);
+
+// 🌟 Parser-level Socket Storage (கனெக்ட் ஆகும் பிரவுசரை இதில் சேமிப்போம்)
+LLVMValueRef last_connected_client = NULL;
+
 extern void tamizhi_reset_lexer();
 extern int current_line;
 extern LLVMValueRef current_function; 
@@ -337,7 +345,7 @@ void parse_statement(FILE *file, Token t) {
         Token v1 = tok; Token op = get_next_token(file); Token v2 = get_next_token(file); 
         Token brace_tok = get_next_token(file);
         if (has_paren && (strcmp(brace_tok.value, ")") == 0 || brace_tok.type == 16)) brace_tok = get_next_token(file); 
-        
+
         tamizhi_gen_if_start(v1.value, op.value, v2.value);
         int brace_count = 1; Token if_body;
         while (brace_count > 0 && (if_body = get_next_token(file)).type != T_EOF) {
@@ -364,6 +372,62 @@ void parse_statement(FILE *file, Token t) {
         Token cmd_token = get_next_token(file); tamizhi_gen_system_call(cmd_token.value);
         Token semi = get_next_token(file); skip_remaining_if_needed(file, semi); return;
     }
+
+    // ==========================================================
+    // 🌟 HTTP Native Hooks Integration
+    // ==========================================================
+    if (strcmp(t.value, "__native_socket_listen") == 0 || strcmp(t.value, "http.listen") == 0) {
+        Token next_tok = get_next_token(file);
+        if (strcmp(next_tok.value, "(") == 0 || next_tok.type == 15) {
+            Token port_tok = get_next_token(file);
+            tamizhi_gen_socket_listen(atoi(port_tok.value));
+            get_next_token(file); // ')' ஸ்கிப் செய்ய
+        } else {
+            tamizhi_gen_socket_listen(atoi(next_tok.value));
+        }
+        skip_to_semicolon(file);
+        return;
+    }
+
+    if (strcmp(t.value, "__native_socket_accept") == 0 || strcmp(t.value, "http.accept") == 0) {
+        Token next_tok = get_next_token(file);
+        if (strcmp(next_tok.value, "(") == 0 || next_tok.type == 15) {
+            get_next_token(file); // ')' ஸ்கிப் செய்ய
+        }
+        // 🔥 Accept செய்து, கிடைக்கும் Socket-ஐ Parser-ல் ஸ்டோர் செய்கிறோம்
+        last_connected_client = tamizhi_gen_socket_accept();
+        skip_to_semicolon(file);
+        return;
+    }
+
+    if (strcmp(t.value, "__native_socket_send_response") == 0 || strcmp(t.value, "http.send") == 0) {
+        Token next_tok = get_next_token(file);
+        if (strcmp(next_tok.value, "(") == 0 || next_tok.type == 15) {
+            Token status_tok = get_next_token(file); // Status Code (e.g., 200)
+            get_next_token(file); // ',' ஸ்கிப் செய்ய
+            Token msg_tok = get_next_token(file); // Message (e.g., "Success")
+            
+            // ஸ்ட்ரிங்கில் உள்ள "" குறிகளை நீக்க
+            char clean_str[1024] = {0};
+            int len = strlen(msg_tok.value);
+            if (msg_tok.value[0] == '"' && msg_tok.value[len - 1] == '"' && len >= 2) {
+                strncpy(clean_str, msg_tok.value + 1, len - 2);
+            } else {
+                strcpy(clean_str, msg_tok.value);
+            }
+            get_next_token(file); // ')' ஸ்கிப் செய்ய
+
+            // 🔥 ஸ்டோர் செய்துள்ள Socket-ஐ வைத்து Response அனுப்புகிறோம்
+            if (last_connected_client != NULL) {
+                tamizhi_gen_socket_send_response(last_connected_client, atoi(status_tok.value), clean_str);
+            } else {
+                fprintf(stderr, "[Runtime Error] No client connected! Call http.accept() before http.send()\n");
+            }
+        }
+        skip_to_semicolon(file);
+        return;
+    }
+    // ==========================================================
 
     if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
         Token name = get_next_token(file); Token next = get_next_token(file);
@@ -485,7 +549,7 @@ void parse_statement(FILE *file, Token t) {
                 long return_pos = ftell(file);
                 LLVMValueRef old_func = current_function;
                 current_function = LLVMGetNamedFunction(module, var_name);
-                
+
                 // 🌟 FIX 3: ADDED DEPTH TRACKING HERE
                 call_depth++; 
 
@@ -505,7 +569,7 @@ void parse_statement(FILE *file, Token t) {
                 call_depth--; 
                 current_function = old_func; 
                 while (var_count > 0 && symbol_table[var_count - 1].scope_depth > call_depth) { var_count--; }
-                
+
                 fseek(file, return_pos, SEEK_SET);
             }
         } else { fseek(file, current_pos, SEEK_SET); }
