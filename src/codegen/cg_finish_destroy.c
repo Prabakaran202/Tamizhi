@@ -11,7 +11,7 @@ void tamizhi_codegen_destroy(void) {
 // 🌟 [Optimizer]: நவீன LLVM பாஸ் பில்டர் மூலம் அசுர வேக O2 ஆப்டிமைசேஷன்
 static void tamizhi_optimize_module(void) {
     if (tamizhi_debug_mode){
-    fprintf(stderr, " [Optimizer] Running modern LLVM Pass Builder (O2)...\n");
+    fprintf(stderr, " [Optimizer] Running modern LLVM Pass Builder (O2)...\n")};
 };
     LLVMPassBuilderOptionsRef opts = LLVMCreatePassBuilderOptions();
     LLVMPassBuilderOptionsSetLoopInterleaving(opts, 1);
