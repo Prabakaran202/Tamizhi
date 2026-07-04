@@ -1,5 +1,5 @@
 // ----------------------------------------------------
-// தமிழி HTTP லைப்ரரி (http.tz) - v2.0
+// தமிழி HTTP லைப்ரரி (http.tz) - v2.1 (Fixed)
 // ----------------------------------------------------
 
 // 1. சர்வரை குறிப்பிட்ட போர்ட்டில் தொடங்குகிறது (Dynamic Port)
@@ -7,12 +7,12 @@ fun listen(Num port) {
     __native_socket_listen(port); 
 }
 
-// 2. கிளையண்ட் இணைப்பிற்காக காத்திருக்கிறது (Updated Name)
+// 2. கிளையண்ட் இணைப்பிற்காக காத்திருக்கிறது (Updated: Returns socket)
 fun accept() {
-    __native_socket_accept();
+    return __native_socket_accept(); // 👈 சாக்கெட்டை ரிட்டர்ன் செய்கிறோம்
 }
 
-// 3. டைனமிக் ஸ்டேட்டஸ் கோடுடன் ரெஸ்பான்ஸ் அனுப்புகிறது (New Native Hook)
-fun send(Num status, Str msg) {
-    __native_socket_send_response(status, msg);
+// 3. டைனமிக் ஸ்டேட்டஸ் கோடுடன் ரெஸ்பான்ஸ் அனுப்புகிறது (Updated: Takes client socket)
+fun send(Num client, Num status, Str msg) {
+    __native_socket_send_response(client, status, msg); // 👈 எந்த கிளையண்ட் என்று சேர்த்துக் கொள்கிறோம்
 }
