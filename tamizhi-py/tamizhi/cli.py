@@ -17,8 +17,12 @@ def ensure_binary():
 
     BINARY_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    archive_path = "/tmp/tamizhi.tar.gz"
-    extract_path = "/tmp/tamizhi-extract"
+    #archive_path = "/tmp/tamizhi.tar.gz"
+    #extract_path = "/tmp/tamizhi-extract"
+        # பழைய வரிகளை நீக்கிவிட்டு, இதைச் சேர்க்கவும்:
+    archive_path = Path.home() / "tamizhi.tar.gz"
+    extract_path = Path.home() / "tamizhi-extract"
+    
 
     print("⬇ Downloading Tamizhi compiler...")
 
