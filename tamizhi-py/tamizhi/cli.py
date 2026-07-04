@@ -9,8 +9,7 @@ from pathlib import Path
 BINARY_PATH = Path.home() / ".tamizhi" / "bin" / "tamizhi"
 
 RELEASE_URL = (
-    "https://github.com/BackendDeveloperHub/Tamizhi/"
-    "releases/latest/download/tamizhi-v0.1.0-linux.tar.gz"
+    "https://github.com/BackendDeveloperHub/Tamizhi/blob/main/tamizhi-v2.0.2-linux.tar.gz"
 )
 
 def ensure_binary():
