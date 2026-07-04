@@ -10,7 +10,9 @@ void tamizhi_codegen_destroy(void) {
 
 // 🌟 [Optimizer]: நவீன LLVM பாஸ் பில்டர் மூலம் அசுர வேக O2 ஆப்டிமைசேஷன்
 static void tamizhi_optimize_module(void) {
-    fprintf(stderr, " [Optimizer] Running modern LLVM Pass Builder (O2)...\n");
+    if (tamizhi_debug_mode){
+    fprintf(stderr, " [Optimizer] Running modern LLVM Pass Builder (O2)...\n")};
+};
     LLVMPassBuilderOptionsRef opts = LLVMCreatePassBuilderOptions();
     LLVMPassBuilderOptionsSetLoopInterleaving(opts, 1);
     LLVMPassBuilderOptionsSetLoopVectorization(opts, 1);
@@ -85,8 +87,8 @@ void tamizhi_codegen_finish(void) {
     }
 
     #ifdef __ANDROID__
-    // 🚀 [ANDROID FIX]: C ரன்டைம் ஃபைல்களையும் சேர்த்து பில்ட் செய்து எக்ஸிகியூட் செய்கிறோம்
-    system("clang storage/output.o core/http_runtime.c core/encoder.c core/decoder.c -o /data/data/com.termux/files/usr/tmp/tamizhi_out && "
+    // 🚀 [ANDROID FIX]: C ரன்டைம் ஃபைல்களையும் சேர்த்து பில்ட் செய்து எக்ஸிகியூட் செய்கிறோம் (GLOBAL PATH FIXED)
+    system("clang storage/output.o ~/.tamizhi/core/http_runtime.c ~/.tamizhi/core/encoder.c ~/.tamizhi/core/decoder.c -o /data/data/com.termux/files/usr/tmp/tamizhi_out && "
            "/data/data/com.termux/files/usr/tmp/tamizhi_out; "
            "rm -f /data/data/com.termux/files/usr/tmp/tamizhi_out"); 
     #else
