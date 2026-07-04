@@ -87,8 +87,8 @@ void tamizhi_codegen_finish(void) {
     }
 
     #ifdef __ANDROID__
-    // 🚀 [ANDROID FIX]: C ரன்டைம் ஃபைல்களையும் சேர்த்து பில்ட் செய்து எக்ஸிகியூட் செய்கிறோம்
-    system("clang storage/output.o core/http_runtime.c core/encoder.c core/decoder.c -o /data/data/com.termux/files/usr/tmp/tamizhi_out && "
+    // 🚀 [ANDROID FIX]: C ரன்டைம் ஃபைல்களையும் சேர்த்து பில்ட் செய்து எக்ஸிகியூட் செய்கிறோம் (GLOBAL PATH FIXED)
+    system("clang storage/output.o ~/.tamizhi/core/http_runtime.c ~/.tamizhi/core/encoder.c ~/.tamizhi/core/decoder.c -o /data/data/com.termux/files/usr/tmp/tamizhi_out && "
            "/data/data/com.termux/files/usr/tmp/tamizhi_out; "
            "rm -f /data/data/com.termux/files/usr/tmp/tamizhi_out"); 
     #else
