@@ -94,3 +94,6 @@ def ensure_binary():
     os.chmod(BINARY_PATH, 0o755)
 
     print("✅ Tamizhi installed successfully!")
+    
+if __name__ == "__main__":
+    main()
