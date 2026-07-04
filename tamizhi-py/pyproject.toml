@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "tamizhi"
-version = "1.0.0"
+version = "1.0.1"
 description = "A Linux-native programming language built with C and LLVM."
 readme = "README.md"
 authors = [
