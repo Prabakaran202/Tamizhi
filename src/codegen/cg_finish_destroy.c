@@ -10,9 +10,10 @@ void tamizhi_codegen_destroy(void) {
 
 // 🌟 [Optimizer]: நவீன LLVM பாஸ் பில்டர் மூலம் அசுர வேக O2 ஆப்டிமைசேஷன்
 static void tamizhi_optimize_module(void) {
-    if (tamizhi_debug_mode){
-    fprintf(stderr, " [Optimizer] Running modern LLVM Pass Builder (O2)...\n")};
-};
+    if (tamizhi_debug_mode) {
+        fprintf(stderr, " [Optimizer] Running modern LLVM Pass Builder (O2)...\n");
+    }
+
     LLVMPassBuilderOptionsRef opts = LLVMCreatePassBuilderOptions();
     LLVMPassBuilderOptionsSetLoopInterleaving(opts, 1);
     LLVMPassBuilderOptionsSetLoopVectorization(opts, 1);
@@ -65,7 +66,7 @@ void tamizhi_codegen_finish(void) {
         exit(1);
     }
     if (tamizhi_debug_mode){
-    fprintf(stderr, " [Verifier] IR Graph Validated. Structural anomalies zero.\n");
+        fprintf(stderr, " [Verifier] IR Graph Validated. Structural anomalies zero.\n");
     }
 
     // 3. ஆப்டிமைசேஷன் ரன் செய்தல்
@@ -83,7 +84,7 @@ void tamizhi_codegen_finish(void) {
         }
     }
     if (tamizhi_debug_mode){
-    fprintf(stderr, "\n[Execution] Running compiled logic via Native AOT VM...\n");
+        fprintf(stderr, "\n[Execution] Running compiled logic via Native AOT VM...\n");
     }
 
     #ifdef __ANDROID__
@@ -101,7 +102,7 @@ void tamizhi_codegen_finish(void) {
     tamizhi_binary_to_dna_storage("storage/output.o");
     remove("storage/output.o");
     if (tamizhi_debug_mode){
-    fprintf(stderr, "\n[Codegen] --- Tamizhi Universal Engine: SUCCESS ---\n");
+        fprintf(stderr, "\n[Codegen] --- Tamizhi Universal Engine: SUCCESS ---\n");
     }
     tamizhi_codegen_destroy();
 }
