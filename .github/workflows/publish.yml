@@ -2,11 +2,17 @@ name: Publish Tamizhi to PyPI
 
 on:
   release:
-    types: [published] # நீங்கள் GitHub-ல் புது Release போட்டால் மட்டும் இது இயங்கும்
+    types: [published] # GitHub-ல் புது Release போட்டால் மட்டும் இயங்கும்
 
 jobs:
-  build-and-publish:
+  pypi-publish:
+    name: Upload release to PyPI
     runs-on: ubuntu-latest
+    
+    # OIDC (Trusted Publishing) வேலை செய்ய இந்த பர்மிஷன் கட்டாயம் தேவை!
+    permissions:
+      id-token: write
+      contents: read
     
     steps:
     - name: Checkout Source Code
@@ -25,6 +31,5 @@ jobs:
       
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
-      with:
-        password: ${{ secrets.PYPI_API_TOKEN }}
-        
+      # குறிப்பு: இங்கே password அல்லது token தர வேண்டியதில்லை. 
+      # GitHub மற்றும் PyPI தானாகவே OIDC மூலம் சரிபார்த்துக்கொள்ளும்!
