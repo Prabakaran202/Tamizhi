@@ -17,8 +17,10 @@ classifiers = [
 ]
 requires-python = ">=3.7"
 
+# 1. Scripts பகுதியில்:
 [project.scripts]
-tamizhi = "tamizhi_pkg.cli:main"
+tamizhi = "tamizhi.cli:main"
 
+# 2. Setuptools பகுதியில்:
 [tool.setuptools]
-packages = ["tamizhi_pkg"]
+packages = ["tamizhi"]
