@@ -27,9 +27,14 @@ jobs:
       run: python -m pip install --upgrade pip build twine
       
     - name: Build the Package
-      run: python -m build
+      # 🚀 [FIX]: tamizhi-py ஃபோல்டருக்குள் சென்று பில்ட் செய்யுமாறு மாற்றப்பட்டுள்ளது
+      run: |
+        cd tamizhi-py
+        python -m build
       
     - name: Publish to PyPI
       uses: pypa/gh-action-pypi-publish@release/v1
-      # குறிப்பு: இங்கே password அல்லது token தர வேண்டியதில்லை. 
-      # GitHub மற்றும் PyPI தானாகவே OIDC மூலம் சரிபார்த்துக்கொள்ளும்!
+      # 🚀 [FIX]: பில்ட் செய்யப்பட்ட டாரெக்டரி பாதையை சரியாகக் குறிப்பிட்டுள்ளோம்
+      with:
+        packages-dir: tamizhi-py/dist/
+        
