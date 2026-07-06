@@ -2,7 +2,7 @@
 
 A Native Compiled Programming Language with Tamil Syntax
 
-""License: GPLv3" (https://img.shields.io/badge/License-GPLv3-blue.svg)" (https://www.gnu.org/licenses/gpl-3.0)
+https://img.shields.io/badge/License-GPLv3-blue.svg)(https://www.gnu.org/licenses/gpl-3.0)
 ""Platform" (https://img.shields.io/badge/Platform-Linux%20%7C%20Android-blue.svg)"
 ""Backend" (https://img.shields.io/badge/Backend-LLVM-red.svg)"
 ""Community" (https://img.shields.io/badge/Community-BackendDeveloperHub-green.svg)" (https://github.com/BackendDeveloperHub)
