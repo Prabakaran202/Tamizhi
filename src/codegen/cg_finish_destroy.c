@@ -29,26 +29,6 @@ static void tamizhi_optimize_module(void) {
     LLVMDisposePassBuilderOptions(opts);
 }
 
-// 🌟 [Universal Bitcode]: பிட்கோடு மற்றும் மாடர்ன் LLVM IR அசெம்பிளி ஜெனரேஷன்
-void tamizhi_generate_universal_bitcode(const char* filename) {
-    // 1. Bitcode (output.bc) உருவாக்குதல்
-    if (LLVMWriteBitcodeToFile(module, filename) != 0) {
-        fprintf(stderr, " [Error] Failed to write universal bitcode!\n");
-    } else {
-        if (tamizhi_debug_mode) {
-            fprintf(stderr, " [Universal] Bitcode generated: %s\n", filename);
-        }
-    }
-    
-    // 2. main.c இல் Clang-ஆல் இணைக்கப்படுவதற்காக output.ll ஃபைலையும் உருவாக்குதல்
-    char *error = NULL;
-    LLVMPrintModuleToFile(module, "storage/output.ll", &error);
-    if (error) {
-        fprintf(stderr, " [Error] Failed to write LLVM IR: %s\n", error);
-        LLVMDisposeMessage(error);
-    }
-}
-
 // 🌟 [Master Core Finish]: 100% கிராஷ்-ஃப்ரீ மற்றும் சிஸ்டம் பாத் செக்யூர் கம்பைலேஷன்
 void tamizhi_codegen_finish(void) {
     // 1. ஓப்பன் பிளாக்குகளுக்கு முறையான ரிட்டன் டெர்மினேட்டர் செட் செய்தல்
@@ -71,8 +51,15 @@ void tamizhi_codegen_finish(void) {
     // 3. ஆப்டிமைசேஷன் ரன் செய்தல்
     tamizhi_optimize_module();
 
-    // 4. யுனிவர்சல் பிட்கோடை பாதுகாப்பாக storage/ பாத்தில் ஜெனரேட் செய்தல்
+    // 4. யுனிவர்சல் பிட்கோடை பாதுகாப்பாக storage/ பாத்தில் ஜெனரேட் செய்தல் (cg_bitcode.c-ல் உள்ளது)
     tamizhi_generate_universal_bitcode("storage/output.bc");
+
+    // 🚀 [THE FIX]: main.c-ல் Clang-ஆல் இணைக்கப்படுவதற்காக output.ll ஃபைலையும் இங்கு உருவாக்குகிறோம்
+    char *ir_error = NULL;
+    LLVMPrintModuleToFile(module, "storage/output.ll", &ir_error);
+    if (ir_error) {
+        LLVMDisposeMessage(ir_error);
+    }
 
     // 5. நேட்டிவ் மெஷின் கோட் ஆப்ஜெக்ட் ஃபைலை storage/output.o ஆக உருவாக்குதல்
     char *error = NULL;
@@ -82,11 +69,8 @@ void tamizhi_codegen_finish(void) {
             LLVMDisposeMessage(error);
         }
     }
-    
-    // 🚀 [THE FIX]: Execution (lli/clang) லாஜிக் இங்கிருந்து நீக்கப்பட்டுவிட்டது. 
-    // இப்போது Execution-ஐ முழுமையாக உங்களின் main.c ஃபைல் கையாளுவதால் எரர் வராது!
 
-    // 6. [CRITICAL SEQUENCE]: எக்ஸிகியூஷன் முடிந்ததும் பாதுகாப்பாக DNA VM மாட்யூலுக்கு மாற்றிவிட்டு ஃபைலை நீக்குதல்
+    // 6. [CRITICAL SEQUENCE]: பாதுகாப்பாக DNA VM மாட்யூலுக்கு மாற்றிவிட்டு ஃபைலை நீக்குதல்
     tamizhi_binary_to_dna_storage("storage/output.o");
     remove("storage/output.o");
     
