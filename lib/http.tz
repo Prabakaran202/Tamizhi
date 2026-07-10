@@ -1,18 +1,10 @@
-// ----------------------------------------------------
-// தமிழி HTTP லைப்ரரி (http.tz) - v2.1 (Fixed)
-// ----------------------------------------------------
-import "core/http_runtime.c";
-// 1. சர்வரை குறிப்பிட்ட போர்ட்டில் தொடங்குகிறது (Dynamic Port)
-fun listen(Num port) {
-    __native_socket_listen(port); 
-}
+import "http.tz";
 
-// 2. கிளையண்ட் இணைப்பிற்காக காத்திருக்கிறது (Updated: Returns socket)
-fun accept() {
-    return __native_socket_accept(); // 👈 சாக்கெட்டை ரிட்டர்ன் செய்கிறோம்
-}
+// 1. Start server on port 8080
+listen(8080);
 
-// 3. டைனமிக் ஸ்டேட்டஸ் கோடுடன் ரெஸ்பான்ஸ் அனுப்புகிறது (Updated: Takes client socket)
-fun send(Num client, Num status, Str msg) {
-    __native_socket_send_response(client, status, msg); // 👈 எந்த கிளையண்ட் என்று சேர்த்துக் கொள்கிறோம்
-}
+// 2. Wait for a browser to connect and get the client ID
+Num client = accept(); 
+
+// 3. Send the HTML response to that specific client
+send(client, 200, "<h1>Vanakkam from Tamizhi Server!</h1>");
