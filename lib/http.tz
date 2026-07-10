@@ -1,10 +1,12 @@
 import "http.tz";
-
+main{
+for 100000{
 // 1. Start server on port 8080
 listen(8080);
 
 // 2. Wait for a browser to connect and get the client ID
 Num client = accept(); 
-
+}
 // 3. Send the HTML response to that specific client
 send(client, 200, "<h1>Vanakkam from Tamizhi Server!</h1>");
+}
