@@ -14,8 +14,12 @@ void tamizhi_gen_str(char* name, char* value);
 
 // 🌟 HTTP Native Function Declarations
 void tamizhi_gen_socket_listen(int port);
-LLVMValueRef tamizhi_gen_socket_accept(); // Void-க்கு பதிலாக LLVMValueRef
+LLVMValueRef tamizhi_gen_socket_accept(); 
 void tamizhi_gen_socket_send_response(LLVMValueRef client_socket, int status_code, const char* message);
+
+// 🌟 While Loop (Condition Loop) Bridge Declarations
+void tamizhi_gen_while_start(char* var1, char* op, char* var2);
+void tamizhi_gen_while_end();
 
 // 🌟 Parser-level Socket Storage (கனெக்ட் ஆகும் பிரவுசரை இதில் சேமிப்போம்)
 LLVMValueRef last_connected_client = NULL;
@@ -315,7 +319,7 @@ void parse(FILE *file) {
 }
 
 // ==========================================================
-// Statement Parser System (SCOPE CLEANUP ENABLED)
+// Statement Parser System 
 // ==========================================================
 void parse_statement(FILE *file, Token t) {
     if (!is_valid(t)) return;
@@ -394,7 +398,6 @@ void parse_statement(FILE *file, Token t) {
         if (strcmp(next_tok.value, "(") == 0 || next_tok.type == 15) {
             get_next_token(file); // ')' ஸ்கிப் செய்ய
         }
-        // 🔥 Accept செய்து, கிடைக்கும் Socket-ஐ Parser-ல் ஸ்டோர் செய்கிறோம்
         last_connected_client = tamizhi_gen_socket_accept();
         skip_to_semicolon(file);
         return;
@@ -403,11 +406,10 @@ void parse_statement(FILE *file, Token t) {
     if (strcmp(t.value, "__native_socket_send_response") == 0 || strcmp(t.value, "http.send") == 0) {
         Token next_tok = get_next_token(file);
         if (strcmp(next_tok.value, "(") == 0 || next_tok.type == 15) {
-            Token status_tok = get_next_token(file); // Status Code (e.g., 200)
-            get_next_token(file); // ',' ஸ்கிப் செய்ய
-            Token msg_tok = get_next_token(file); // Message (e.g., "Success")
+            Token status_tok = get_next_token(file); 
+            get_next_token(file); 
+            Token msg_tok = get_next_token(file); 
             
-            // ஸ்ட்ரிங்கில் உள்ள "" குறிகளை நீக்க
             char clean_str[1024] = {0};
             int len = strlen(msg_tok.value);
             if (msg_tok.value[0] == '"' && msg_tok.value[len - 1] == '"' && len >= 2) {
@@ -415,9 +417,8 @@ void parse_statement(FILE *file, Token t) {
             } else {
                 strcpy(clean_str, msg_tok.value);
             }
-            get_next_token(file); // ')' ஸ்கிப் செய்ய
+            get_next_token(file); 
 
-            // 🔥 ஸ்டோர் செய்துள்ள Socket-ஐ வைத்து Response அனுப்புகிறோம்
             if (last_connected_client != NULL) {
                 tamizhi_gen_socket_send_response(last_connected_client, atoi(status_tok.value), clean_str);
             } else {
@@ -427,7 +428,6 @@ void parse_statement(FILE *file, Token t) {
         skip_to_semicolon(file);
         return;
     }
-    // ==========================================================
 
     if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
         Token name = get_next_token(file); Token next = get_next_token(file);
@@ -454,7 +454,6 @@ void parse_statement(FILE *file, Token t) {
                 }
                 if (is_external) fclose(exec_file);
 
-                // 🌟 FIX 1: SCOPE CLEANUP
                 call_depth--;
                 current_function = old_func;
                 while (var_count > 0 && symbol_table[var_count - 1].scope_depth > call_depth) { var_count--; }
@@ -502,7 +501,6 @@ void parse_statement(FILE *file, Token t) {
                     }
                     if (is_external) fclose(exec_file);
 
-                    // 🌟 FIX 2: SCOPE CLEANUP
                     call_depth--; current_function = old_func; 
                     while (var_count > 0 && symbol_table[var_count - 1].scope_depth > call_depth) { var_count--; }
                     tamizhi_gen_assign_from_return(var_name);
@@ -514,9 +512,6 @@ void parse_statement(FILE *file, Token t) {
                 skip_remaining_if_needed(file, current_tok);
             }
         }
-        // ======================================================
-        // 🚀 [API FIX]: Standalone Function Call with Dynamic Arguments
-        // ======================================================
         else if (next.type == 15 || strcmp(next.value, "(") == 0) {
             int func_idx = -1;
             for (int i = 0; i < function_count; i++) { if (strcmp(functions[i].name, var_name) == 0) { func_idx = i; break; } }
@@ -550,7 +545,6 @@ void parse_statement(FILE *file, Token t) {
                 LLVMValueRef old_func = current_function;
                 current_function = LLVMGetNamedFunction(module, var_name);
 
-                // 🌟 FIX 3: ADDED DEPTH TRACKING HERE
                 call_depth++; 
 
                 FILE *exec_file = file; int is_external = 0;
@@ -565,7 +559,6 @@ void parse_statement(FILE *file, Token t) {
                 }
                 if (is_external) fclose(exec_file);
 
-                // 🌟 FIX 4: DEPTH DECREMENT AND SCOPE CLEANUP
                 call_depth--; 
                 current_function = old_func; 
                 while (var_count > 0 && symbol_table[var_count - 1].scope_depth > call_depth) { var_count--; }
@@ -601,20 +594,73 @@ void parse_statement(FILE *file, Token t) {
         Token semi = get_next_token(file); skip_remaining_if_needed(file, semi); return;
     }
 
-    else if (t.type == T_FOR || strcmp(t.value, "சு") == 0) {
-        Token limit_token = get_next_token(file); tamizhi_trim_token(limit_token.value);
-        int limit = atoi(limit_token.value); Token next = get_next_token(file);
-        if (strcmp(next.value, ";") == 0 || next.type == 21) { next = get_next_token(file); }
-        if (next.type == 22 || strcmp(next.value, "{") == 0) {
-            tamizhi_gen_loop_start(limit);
-            Token body; int loop_brace_depth = 1;
-            while (loop_brace_depth > 0 && (body = get_next_token(file)).type != T_EOF) {
-                if (strcmp(body.value, "{") == 0 || body.type == 22) { loop_brace_depth++; continue; }
-                if (body.type == 23 || strcmp(body.value, "}") == 0) { loop_brace_depth--; if (loop_brace_depth <= 0) break; continue; }
-                parse_statement(file, body);
+    // ==========================================================
+    // 🌟 மேம்படுத்தப்பட்ட FOR லூப் சிஸ்டம் (While + Count Loop)
+    // ==========================================================
+    else if (t.type == T_FOR || strcmp(t.value, "சு") == 0 || strcmp(t.value, "for") == 0) {
+        Token next_tok = get_next_token(file); 
+
+        // 🌟 1. Condition Loop (While): for (condition)... { }
+        if (next_tok.type == 15 || strcmp(next_tok.value, "(") == 0) {
+            Token v1 = get_next_token(file);
+            Token op = get_next_token(file);
+            Token v2;
+            
+            int is_infinite = 0;
+            if (strcmp(op.value, ")") == 0 || op.type == 16) {
+                // Infinite Loop (உதா: for (1)... )
+                is_infinite = 1;
+            } else {
+                v2 = get_next_token(file);
+                get_next_token(file); // ')' ஸ்கிப் செய்ய
             }
-            tamizhi_gen_loop_end();
+
+            // 🌟 3 புள்ளிகளை செக் செய்தல் (...)
+            Token dot_check = get_next_token(file);
+            if (strcmp(dot_check.value, ".") == 0) {
+                get_next_token(file); // 2வது புள்ளி
+                get_next_token(file); // 3வது புள்ளி
+                dot_check = get_next_token(file); // '{' பிராக்கெட்டைப் படிக்க
+            } else if (strcmp(dot_check.value, "...") == 0) {
+                dot_check = get_next_token(file); // '{' பிராக்கெட்டைப் படிக்க
+            }
+
+            // Codegen பிரிட்ஜை அழைத்தல் (while_start)
+            if (is_infinite) {
+                tamizhi_gen_while_start("1", "==", "1"); 
+            } else {
+                tamizhi_gen_while_start(v1.value, op.value, v2.value);
+            }
+
+            // லூப் Body-ஐப் படித்தல்
+            if (dot_check.type == 22 || strcmp(dot_check.value, "{") == 0) {
+                int loop_brace_depth = 1; Token body;
+                while (loop_brace_depth > 0 && (body = get_next_token(file)).type != T_EOF) {
+                    if (strcmp(body.value, "{") == 0 || body.type == 22) { loop_brace_depth++; continue; }
+                    if (body.type == 23 || strcmp(body.value, "}") == 0) { loop_brace_depth--; if (loop_brace_depth <= 0) break; continue; }
+                    parse_statement(file, body);
+                }
+            }
+            tamizhi_gen_while_end(); // Codegen (while_end)
+            return;
+        } 
+        // 🔢 2. Count Loop: for 100 { } (பழைய முறை)
+        else {
+            tamizhi_trim_token(next_tok.value);
+            int limit = atoi(next_tok.value); Token next = get_next_token(file);
+            if (strcmp(next.value, ";") == 0 || next.type == 21) { next = get_next_token(file); }
+            
+            if (next.type == 22 || strcmp(next.value, "{") == 0) {
+                tamizhi_gen_loop_start(limit);
+                Token body; int loop_brace_depth = 1;
+                while (loop_brace_depth > 0 && (body = get_next_token(file)).type != T_EOF) {
+                    if (strcmp(body.value, "{") == 0 || body.type == 22) { loop_brace_depth++; continue; }
+                    if (body.type == 23 || strcmp(body.value, "}") == 0) { loop_brace_depth--; if (loop_brace_depth <= 0) break; continue; }
+                    parse_statement(file, body);
+                }
+                tamizhi_gen_loop_end();
+            }
+            return;
         }
-        return;
     }
 }

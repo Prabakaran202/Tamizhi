@@ -14,6 +14,9 @@
 #include <string.h>
 #include <ctype.h>
 
+// 🌟 While Loop Declarations
+//void tamizhi_gen_while_start(char* var1, char* op, char* var2);
+//void tamizhi_gen_while_end();
 
 // =========================================================================
 // 🌟 மாடர்ன் LLVM குளோபல் எக்ஸ்டெர்ன் மாறிகள்
@@ -116,6 +119,9 @@ void tamizhi_gen_ternary(char* res_name, char* v1, char* op, char* var2, char* t
 
 // [ADDED]: லினக்ஸ் சிஸ்டம் ஆட்டோமேஷன் ஷெல் இன்ஜின் டிக்ளரேஷன்
 void tamizhi_gen_system_call(char* command);
+// 🌟 While Loop Declarations
+void tamizhi_gen_while_start(char* var1, char* op, char* var2);
+void tamizhi_gen_while_end();
 
 void tamizhi_gen_loop_start(int limit);
 void tamizhi_gen_loop_end(void);

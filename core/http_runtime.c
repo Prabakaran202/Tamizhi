@@ -22,10 +22,10 @@ void tamizhi_rt_listen(int port) {
     listen(global_server_fd, 3);
 
     printf("\n🌐 [Tamizhi Run-Time] Web Server started on port %d...\n", port);
+    fflush(stdout); // டெர்மினலில் உடனே பிரிண்ட் ஆக
 }
 
-// 🌟 2. பிரவுசரை கனெக்ட் செய்யும் ஃபங்ஷன் (Updated)
-// குறிப்பு: இப்போது இது ஹார்ட்கோட் மெசேஜை அனுப்பாது, மாறாக சாக்கெட்டை (int) ரிட்டர்ன் செய்யும்.
+// 🌟 2. பிரவுசரை கனெக்ட் செய்யும் ஃபங்ஷன் 
 int tamizhi_rt_accept() {
     if (global_server_fd == -1) return -1;
 
@@ -33,11 +33,14 @@ int tamizhi_rt_accept() {
     int addrlen = sizeof(address);
 
     printf("⏳ Waiting for connection in browser...\n");
+    fflush(stdout);
+
     int new_socket = accept(global_server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen);
 
     if (new_socket >= 0) {
         printf("✅ New Client Connected! Processing Response...\n");
-        return new_socket; // இந்த சாக்கெட்டைத்தான் அடுத்த ஃபங்ஷனுக்கு அனுப்ப வேண்டும்
+        fflush(stdout);
+        return new_socket; 
     }
     
     return -1;
@@ -116,4 +119,34 @@ void tamizhi_rt_send_response(int client_socket, int status_code, const char* co
     
     // ரெஸ்பான்ஸ் அனுப்பிய பிறகு கனெக்‌ஷனை Close செய்தால்தான் பிரவுசரில் லோடிங் நிற்கும்
     close(client_socket); 
+}
+
+// 🌟 4. HTML ஃபைலை நேரடியாக அனுப்பும் ஃபங்ஷன்
+void tamizhi_rt_send_file(int client_socket, int status_code, const char* file_path) {
+    if (client_socket < 0) return;
+
+    // 1. ஃபைலை ஓபன் செய்கிறோம்
+    FILE *file = fopen(file_path, "rb");
+    if (file == NULL) {
+        // ஃபைல் இல்லை என்றால் 404 Error அனுப்புகிறோம்
+        tamizhi_rt_send_response(client_socket, 404, "<h1>404 - File Not Found</h1><p>The requested HTML file is missing.</p>");
+        return;
+    }
+
+    // 2. ஃபைலின் சைஸ் (Size) எவ்வளவு என்று கண்டுபிடிக்கிறோம்
+    fseek(file, 0, SEEK_END);
+    long fsize = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    // 3. மெமரியை ஒதுக்கி ஃபைலை முழுமையாகப் படிக்கிறோம்
+    char *file_content = malloc(fsize + 1);
+    fread(file_content, 1, fsize, file);
+    fclose(file);
+    file_content[fsize] = '\0'; // Null-terminate செய்கிறோம்
+
+    // 4. நாம் ஏற்கனவே எழுதிய send_response மூலமாகவே பிரவுசருக்கு அனுப்புகிறோம்
+    tamizhi_rt_send_response(client_socket, status_code, file_content);
+
+    // 5. மெமரியை க்ளீன் செய்கிறோம் (Memory Leak வராமல் தடுக்க)
+    free(file_content);
 }
