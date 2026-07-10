@@ -8,7 +8,9 @@
 int global_server_fd = -1;
 
 // 🌟 1. அவுட்புட் பைனரியில் ரன் ஆகப்போகும் ஒரிஜினல் Listen ஃபங்ஷன்
-void tamizhi_rt_listen(int port) {
+void tamizhi_rt_listen(double port_num) {
+    int port = (int)port_num; // Double-ஐ Int ஆக மாற்றுகிறோம்
+    
     global_server_fd = socket(AF_INET, SOCK_STREAM, 0);
     int opt = 1;
     setsockopt(global_server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
@@ -25,9 +27,8 @@ void tamizhi_rt_listen(int port) {
 }
 
 // 🌟 2. பிரவுசரை கனெக்ட் செய்யும் ஃபங்ஷன் (Updated)
-// குறிப்பு: இப்போது இது ஹார்ட்கோட் மெசேஜை அனுப்பாது, மாறாக சாக்கெட்டை (int) ரிட்டர்ன் செய்யும்.
-int tamizhi_rt_accept() {
-    if (global_server_fd == -1) return -1;
+double tamizhi_rt_accept() {
+    if (global_server_fd == -1) return -1.0;
 
     struct sockaddr_in address;
     int addrlen = sizeof(address);
@@ -37,14 +38,17 @@ int tamizhi_rt_accept() {
 
     if (new_socket >= 0) {
         printf("✅ New Client Connected! Processing Response...\n");
-        return new_socket; // இந்த சாக்கெட்டைத்தான் அடுத்த ஃபங்ஷனுக்கு அனுப்ப வேண்டும்
+        return (double)new_socket; // தமிழி 'Num'-க்காக Double ஆக ரிட்டர்ன் செய்கிறோம்
     }
     
-    return -1;
+    return -1.0;
 }
 
 // 🌟 3. தமிழி ரன்டைம்: முழுமையான டைனமிக் HTTP ரெஸ்பான்ஸ் ஃபங்ஷன்
-void tamizhi_rt_send_response(int client_socket, int status_code, const char* content) {
+void tamizhi_rt_send_response(double client_socket_num, double status_code_num, const char* content) {
+    int client_socket = (int)client_socket_num; // Double-ஐ Int ஆக மாற்றுகிறோம்
+    int status_code = (int)status_code_num;     // Double-ஐ Int ஆக மாற்றுகிறோம்
+
     if (client_socket < 0) return;
 
     char header[2048];
