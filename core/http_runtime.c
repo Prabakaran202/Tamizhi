@@ -24,6 +24,7 @@ void tamizhi_rt_listen(double port_num) {
     listen(global_server_fd, 3);
 
     printf("\n🌐 [Tamizhi Run-Time] Web Server started on port %d...\n", port);
+    fflush(stdout);
 }
 
 // 🌟 2. பிரவுசரை கனெக்ட் செய்யும் ஃபங்ஷன் 
@@ -38,6 +39,7 @@ double tamizhi_rt_accept() {
 
     if (new_socket >= 0) {
         printf("✅ New Client Connected! Processing Response...\n");
+        fflush(stdout);
         return (double)new_socket; // தமிழி 'Num'-க்காக Double ஆக ரிட்டர்ன் செய்கிறோம்
     }
     
