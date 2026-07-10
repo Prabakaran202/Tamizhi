@@ -6,20 +6,20 @@ echo -e "\033[1;36m--------------------------------------------------\033[0m"
 
 # 0. லோக்கல் ஒர்க்ஸ்பேஸை சுத்தம் செய்தல்
 if [ -f "Makefile" ]; then
-    echo -e "\033[1;34m[0/4] Cleaning up local workspace to avoid conflicts...\033[0m"
+    echo -e "\033[1;34m[0/5] Cleaning up local workspace to avoid conflicts...\033[0m"
     make clean > /dev/null 2>&1
     rm -f tamizhi output.bc output.ll
 fi
 
 # 1. சோர்ஸ் கோடு சரிபார்ப்பு
-echo -e "\033[1;34m[1/4] Validating local source code environment...\033[0m"
+echo -e "\033[1;34m[1/5] Validating local source code environment...\033[0m"
 if [ ! -f "main.c" ] && [ ! -f "src/main.c" ]; then
     echo -e "\033[1;31mபிழை: சோர்ஸ் கோடுகள் தற்போதைய ஃபோல்டரில் இல்லை!\033[0m"
     exit 1
 fi
 
 # 2. புதிய கம்பைலரை பில்ட் செய்தல்
-echo -e "\033[1;34m[2/4] Building Tamizhi Engine using Clang Toolchain...\033[0m"
+echo -e "\033[1;34m[2/5] Building Tamizhi Engine using Clang Toolchain...\033[0m"
 make clean && make
 
 if [ ! -f "tamizhi" ]; then
@@ -28,7 +28,7 @@ if [ ! -f "tamizhi" ]; then
 fi
 
 # 3. பைனரியை Python CLI தேடும் இடத்திற்கு நகர்த்துதல் (Crucial Step)
-echo -e "\033[1;34m[3/4] Installing Tamizhi to the exact location requested by PIP Workflow...\033[0m"
+echo -e "\033[1;34m[3/5] Installing Tamizhi to the exact location requested by PIP Workflow...\033[0m"
 
 # ~/.tamizhi/bin மற்றும் ~/.tamizhi/core ஃபோல்டர்களை உருவாக்குதல்
 mkdir -p ~/.tamizhi/bin
@@ -47,8 +47,20 @@ if [ -d "core" ]; then
 fi
 echo -e "\033[1;32m  -> New Tamizhi safely installed in ~/.tamizhi/bin/ \033[0m"
 
-# 4. தற்காலிக குப்பைகளைச் சுத்தம் செய்தல்
-echo -e "\033[1;34m[4/4] Cleaning up temporary build artifacts...\033[0m"
+# 4. குளோபல் கமாண்டாக மாற்றுதல் (Global Symlink - New Fix)
+echo -e "\033[1;34m[4/5] Setting up global command access (Symlink)...\033[0m"
+if [ -n "$PREFIX" ] && [ -d "$PREFIX/bin" ]; then
+    # Termux (Android) சிஸ்டமாக இருந்தால்
+    ln -sf ~/.tamizhi/bin/tamizhi $PREFIX/bin/tamizhi
+    echo -e "\033[1;32m  -> Global command 'tamizhi' linked for Termux.\033[0m"
+else
+    # சாதாரண Linux சிஸ்டமாக இருந்தால்
+    sudo ln -sf ~/.tamizhi/bin/tamizhi /usr/local/bin/tamizhi
+    echo -e "\033[1;32m  -> Global command 'tamizhi' linked for Linux.\033[0m"
+fi
+
+# 5. தற்காலிக குப்பைகளைச் சுத்தம் செய்தல்
+echo -e "\033[1;34m[5/5] Cleaning up temporary build artifacts...\033[0m"
 rm -f output.bc output.ll
 
 echo -e "\033[1;36m--------------------------------------------------\033[0m"
