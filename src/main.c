@@ -1,13 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include "parser.h"
 #include "codegen.h"
 
 #define TAMIZHI_VERSION "v0.1.5"
 
 int tamizhi_debug_mode = 0;
-
 extern int tamizhi_cli_main(int argc, char *argv[]);
 
 void print_tamizhi_environment() {
@@ -52,17 +52,20 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // கோப்பு இருக்கிறதா என சரிபார்க்க
+    if (access(target_file, F_OK) == -1) {
+        fprintf(stderr, "\033[1;31mதவறு: '%s' என்ற கோப்பு காணப்படவில்லை!\033[0m\n", target_file);
+        return 1;
+    }
+
     if (tamizhi_debug_mode) {
         fprintf(stderr, " \033[1;33m[System] Preparing environment...\033[0m\n");
     }
 
-    // ==========================================================
-    // 🌟 THE FIX: ஆட்டோமேட்டிக்காக storage ஃபோல்டரை உருவாக்குதல்
-    // ==========================================================
+    // 🌟 1. Environment & Storage செட்-அப்
     system("mkdir -p storage 2>/dev/null");
-    
     system("rm -f storage/output.bc storage/output.o storage/output.ll 2>/dev/null");
-    system("rm -f storage/project_binary.dna 2>/dev/null");
+    system("rm -f storage/project_binary 2>/dev/null");
 
     FILE *file = fopen(target_file, "r");
     if (!file) {
@@ -70,6 +73,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // 🌟 2. தமிழி Parsing மற்றும் LLVM IR உருவாக்கம்
     tamizhi_codegen_init();
     tamizhi_generate_entry();
 
@@ -78,12 +82,34 @@ int main(int argc, char *argv[]) {
     }
 
     parse(file); 
+    
+    // 🌟 இந்த ஃபங்ஷன் இப்போது JIT-ஐ இயக்காமல் 'storage/output.ll' ஃபைலை மட்டும் உருவாக்கும்
     tamizhi_codegen_finish();
     fclose(file);
 
     if (tamizhi_debug_mode) {
-        fprintf(stderr, "\n\033[1;36mதொகுப்பு மற்றும் ஆய்வு வெற்றிகரமாக முடிந்தது.\033[0m\n");
+        fprintf(stderr, "\n\033[1;36mதொகுப்பு (Parsing) வெற்றிகரமாக முடிந்தது.\033[0m\n");
     }
+
+    // ==========================================================
+    // 🚀 THE MAGIC: Clang Linking & Execution Phase
+    // ==========================================================
+    printf("\033[1;34m[Building] Linking Native C Runtime...\033[0m\n");
+
+    // LLVM IR ஃபைலையும், HTTP C ரன்டைமையும் இணைத்து பைனரியாக மாற்றுகிறோம்
+    // குறிப்பு: $HOME/Tamizhi/core/http_runtime.c என்ற பாதை சரியாக உள்ளதா என உறுதிசெய்து கொள்ளவும்
+    char compile_cmd[1024];
+    sprintf(compile_cmd, "clang -Wno-override-module storage/output.ll $HOME/Tamizhi/core/http_runtime.c -o storage/project_binary");
+    
+    if (system(compile_cmd) != 0) {
+        fprintf(stderr, "\033[1;31m\n[பிழை] கம்பைல் செய்வதில் (Clang) சிக்கல் ஏற்பட்டது!\033[0m\n");
+        return 1;
+    }
+
+    printf("\033[1;32m[Success] Server App Ready! Running now...\033[0m\n\n");
+
+    // உருவாக்கப்பட்ட நேட்டிவ் பைனரியை இயக்குகிறோம்!
+    system("./storage/project_binary");
 
     return 0;
 }
