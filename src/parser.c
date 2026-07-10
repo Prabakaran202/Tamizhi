@@ -378,37 +378,48 @@ void parse_statement(FILE *file, Token t) {
     }
 
     // ==========================================================
-    // 🌟 HTTP Native Hooks Integration
+    // 🌟 HTTP Native Hooks Integration (Fixed & Updated)
     // ==========================================================
-    if (strcmp(t.value, "__native_socket_listen") == 0 || strcmp(t.value, "http.listen") == 0) {
+    
+    // 1. Listen Logic
+    if (strcmp(t.value, "__native_socket_listen") == 0 || strcmp(t.value, "http.listen") == 0 || strcmp(t.value, "listen") == 0) {
         Token next_tok = get_next_token(file);
+        int port_val = 8080; // Default fallback
+        
         if (strcmp(next_tok.value, "(") == 0 || next_tok.type == 15) {
             Token port_tok = get_next_token(file);
-            tamizhi_gen_socket_listen(atoi(port_tok.value));
+            port_val = atoi(port_tok.value);
             get_next_token(file); // ')' ஸ்கிப் செய்ய
         } else {
-            tamizhi_gen_socket_listen(atoi(next_tok.value));
+            port_val = atoi(next_tok.value);
         }
+        
+        if (port_val <= 0) port_val = 8080; // தவறு நடந்தால் 8080
+        
+        tamizhi_gen_socket_listen(port_val);
         skip_to_semicolon(file);
         return;
     }
 
-    if (strcmp(t.value, "__native_socket_accept") == 0 || strcmp(t.value, "http.accept") == 0) {
+    // 2. Accept Logic
+    if (strcmp(t.value, "__native_socket_accept") == 0 || strcmp(t.value, "http.accept") == 0 || strcmp(t.value, "accept") == 0) {
         Token next_tok = get_next_token(file);
         if (strcmp(next_tok.value, "(") == 0 || next_tok.type == 15) {
             get_next_token(file); // ')' ஸ்கிப் செய்ய
         }
+        // இங்கிருந்துதான் Client வேரியபிள் LLVM-க்குச் செல்கிறது!
         last_connected_client = tamizhi_gen_socket_accept();
         skip_to_semicolon(file);
         return;
     }
 
-    if (strcmp(t.value, "__native_socket_send_response") == 0 || strcmp(t.value, "http.send") == 0) {
+    // 3. Send Logic
+    if (strcmp(t.value, "__native_socket_send_response") == 0 || strcmp(t.value, "http.send") == 0 || strcmp(t.value, "send") == 0) {
         Token next_tok = get_next_token(file);
         if (strcmp(next_tok.value, "(") == 0 || next_tok.type == 15) {
-            Token status_tok = get_next_token(file); 
-            get_next_token(file); 
-            Token msg_tok = get_next_token(file); 
+            Token status_tok = get_next_token(file); // Status Code
+            get_next_token(file); // ',' ஸ்கிப் செய்ய
+            Token msg_tok = get_next_token(file);   // Message string
             
             char clean_str[1024] = {0};
             int len = strlen(msg_tok.value);
@@ -417,17 +428,19 @@ void parse_statement(FILE *file, Token t) {
             } else {
                 strcpy(clean_str, msg_tok.value);
             }
-            get_next_token(file); 
+            get_next_token(file); // ')' ஸ்கிப் செய்ய
 
+            // Client காலியாக (NULL) இல்லை என்றால் மட்டுமே அனுப்பு!
             if (last_connected_client != NULL) {
                 tamizhi_gen_socket_send_response(last_connected_client, atoi(status_tok.value), clean_str);
             } else {
-                fprintf(stderr, "[Runtime Error] No client connected! Call http.accept() before http.send()\n");
+                fprintf(stderr, "[Compiler Error] Client variable is lost during HTTP Accept parsing!\n");
             }
         }
         skip_to_semicolon(file);
         return;
     }
+    // ==========================================================
 
     if (t.type == T_INT || strcmp(t.value, "Num") == 0 || strcmp(t.value, "எண்") == 0) {
         Token name = get_next_token(file); Token next = get_next_token(file);
