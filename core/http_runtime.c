@@ -8,9 +8,7 @@
 int global_server_fd = -1;
 
 // 🌟 1. அவுட்புட் பைனரியில் ரன் ஆகப்போகும் ஒரிஜினல் Listen ஃபங்ஷன்
-void tamizhi_rt_listen(double port_num) {
-    int port = (int)port_num; // Double-ஐ Int ஆக மாற்றுகிறோம்
-    
+void tamizhi_rt_listen(int port) {
     global_server_fd = socket(AF_INET, SOCK_STREAM, 0);
     int opt = 1;
     setsockopt(global_server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
@@ -24,33 +22,32 @@ void tamizhi_rt_listen(double port_num) {
     listen(global_server_fd, 3);
 
     printf("\n🌐 [Tamizhi Run-Time] Web Server started on port %d...\n", port);
-    fflush(stdout);
+    fflush(stdout); // டெர்மினலில் உடனே பிரிண்ட் ஆக
 }
 
 // 🌟 2. பிரவுசரை கனெக்ட் செய்யும் ஃபங்ஷன் 
-double tamizhi_rt_accept() {
-    if (global_server_fd == -1) return -1.0;
+int tamizhi_rt_accept() {
+    if (global_server_fd == -1) return -1;
 
     struct sockaddr_in address;
     int addrlen = sizeof(address);
 
     printf("⏳ Waiting for connection in browser...\n");
+    fflush(stdout);
+
     int new_socket = accept(global_server_fd, (struct sockaddr *)&address, (socklen_t*)&addrlen);
 
     if (new_socket >= 0) {
         printf("✅ New Client Connected! Processing Response...\n");
         fflush(stdout);
-        return (double)new_socket; // தமிழி 'Num'-க்காக Double ஆக ரிட்டர்ன் செய்கிறோம்
+        return new_socket; 
     }
     
-    return -1.0;
+    return -1;
 }
 
 // 🌟 3. தமிழி ரன்டைம்: முழுமையான டைனமிக் HTTP ரெஸ்பான்ஸ் ஃபங்ஷன்
-void tamizhi_rt_send_response(double client_socket_num, double status_code_num, const char* content) {
-    int client_socket = (int)client_socket_num; // Double-ஐ Int ஆக மாற்றுகிறோம்
-    int status_code = (int)status_code_num;     // Double-ஐ Int ஆக மாற்றுகிறோம்
-
+void tamizhi_rt_send_response(int client_socket, int status_code, const char* content) {
     if (client_socket < 0) return;
 
     char header[2048];
@@ -124,17 +121,15 @@ void tamizhi_rt_send_response(double client_socket_num, double status_code_num, 
     close(client_socket); 
 }
 
-// 🌟 4. HTML ஃபைலை நேரடியாக அனுப்பும் புதிய ஃபங்ஷன்
-void tamizhi_rt_send_file(double client_socket_num, double status_code_num, const char* file_path) {
-    int client_socket = (int)client_socket_num;
-
+// 🌟 4. HTML ஃபைலை நேரடியாக அனுப்பும் ஃபங்ஷன்
+void tamizhi_rt_send_file(int client_socket, int status_code, const char* file_path) {
     if (client_socket < 0) return;
 
     // 1. ஃபைலை ஓபன் செய்கிறோம்
     FILE *file = fopen(file_path, "rb");
     if (file == NULL) {
         // ஃபைல் இல்லை என்றால் 404 Error அனுப்புகிறோம்
-        tamizhi_rt_send_response(client_socket_num, 404.0, "<h1>404 - File Not Found</h1><p>The requested HTML file is missing.</p>");
+        tamizhi_rt_send_response(client_socket, 404, "<h1>404 - File Not Found</h1><p>The requested HTML file is missing.</p>");
         return;
     }
 
@@ -150,7 +145,7 @@ void tamizhi_rt_send_file(double client_socket_num, double status_code_num, cons
     file_content[fsize] = '\0'; // Null-terminate செய்கிறோம்
 
     // 4. நாம் ஏற்கனவே எழுதிய send_response மூலமாகவே பிரவுசருக்கு அனுப்புகிறோம்
-    tamizhi_rt_send_response(client_socket_num, status_code_num, file_content);
+    tamizhi_rt_send_response(client_socket, status_code, file_content);
 
     // 5. மெமரியை க்ளீன் செய்கிறோம் (Memory Leak வராமல் தடுக்க)
     free(file_content);
