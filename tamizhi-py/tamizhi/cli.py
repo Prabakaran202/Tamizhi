@@ -39,8 +39,9 @@ def ensure_binary():
     with tarfile.open(archive_path) as tar:
         tar.extractall(extract_path)
 
-    # --- 🌟 புதிய குளோபல் பாத் லாஜிக் (Binary & Core Folder) 🌟 ---
+    # --- 🌟 புதிய குளோபல் பாத் லாஜிக் (Binary, Core & Lib Folders) 🌟 ---
     CORE_PATH = Path.home() / ".tamizhi" / "core"
+    LIB_PATH = Path.home() / ".tamizhi" / "lib"
 
     for root, dirs, files in os.walk(extract_path):
         # 1. தமிழி பைனரியை தேடி நகர்த்துதல்
@@ -48,12 +49,19 @@ def ensure_binary():
             binary_src = os.path.join(root, "tamizhi")
             shutil.copy(binary_src, BINARY_PATH)
         
-        # 2. கம்பைலருக்குத் தேவையான 'core' ஃபோல்டரை தேடி நகர்த்துதல் (பழைய கோடில் இது விடுபட்டிருந்தது)
+        # 2. கம்பைலருக்குத் தேவையான 'core' ஃபோல்டரை தேடி நகர்த்துதல்
         if "core" in dirs:
             core_src = os.path.join(root, "core")
             if CORE_PATH.exists():
                 shutil.rmtree(CORE_PATH)
             shutil.copytree(core_src, CORE_PATH)
+
+        # 3. 🌟 Import-க்குத் தேவையான 'lib' ஃபோல்டரை தேடி நகர்த்துதல் (The Fix!)
+        if "lib" in dirs:
+            lib_src = os.path.join(root, "lib")
+            if LIB_PATH.exists():
+                shutil.rmtree(LIB_PATH)
+            shutil.copytree(lib_src, LIB_PATH)
 
     os.chmod(BINARY_PATH, 0o755)
     print("✅ Tamizhi installed successfully!")
