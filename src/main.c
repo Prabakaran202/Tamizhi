@@ -102,23 +102,27 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
+    // 🌟 THE FIX: 3 பாதைகளையும் உருவாக்குதல்
+    char cli_path[512];
     char pip_path[512];
     char git_path[512];
 
-    // Pip மற்றும் GitHub இரண்டின் முழுப் பாதைகளையும் உருவாக்குதல்
-    sprintf(pip_path, "%s/tamizhi-extract/core/http_runtime.c", home);
-    sprintf(git_path, "%s/Tamizhi/core/http_runtime.c", home);
+    sprintf(cli_path, "%s/.tamizhi/core/http_runtime.c", home);          // 1. புதிய CLI டவுன்லோட் பாதை (முன்னுரிமை)
+    sprintf(pip_path, "%s/tamizhi-extract/core/http_runtime.c", home);   // 2. பழைய Extract பாதை
+    sprintf(git_path, "%s/Tamizhi/core/http_runtime.c", home);           // 3. GitHub குளோன் பாதை
 
     char *final_runtime_path = NULL;
 
-    // எங்கு ஃபைல் இருக்கிறது என்பதை உறுதிப்படுத்துதல்
-    if (access(pip_path, F_OK) == 0) {
+    // எங்கு ஃபைல் இருக்கிறது என்பதை வரிசையாக செக் செய்தல்
+    if (access(cli_path, F_OK) == 0) {
+        final_runtime_path = cli_path;
+    } else if (access(pip_path, F_OK) == 0) {
         final_runtime_path = pip_path;
     } else if (access(git_path, F_OK) == 0) {
         final_runtime_path = git_path;
     } else {
         fprintf(stderr, "\033[1;31mதவறு: 'http_runtime.c' ரன்டைம் ஃபைல் காணப்படவில்லை!\033[0m\n");
-        fprintf(stderr, "தேடிய இடங்கள்:\n 1. %s\n 2. %s\n", pip_path, git_path);
+        fprintf(stderr, "தேடிய இடங்கள்:\n 1. %s\n 2. %s\n 3. %s\n", cli_path, pip_path, git_path);
         return 1;
     }
 
