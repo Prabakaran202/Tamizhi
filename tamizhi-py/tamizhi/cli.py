@@ -60,6 +60,21 @@ def ensure_binary():
 
 # இந்த main() பங்க்ஷன் கட்டாயம் இருக்க வேண்டும்!
 def main():
+    # 🌟 யூசர் 'tamizhi upgrade' என்று கொடுத்தால்...
+    if len(sys.argv) > 1 and sys.argv[1] == "upgrade":
+        print("🔄 தமிழி புதிய வெர்ஷனுக்கு அப்டேட் செய்யப்படுகிறது...")
+        tamizhi_folder = Path.home() / ".tamizhi"
+        
+        # பழைய ஃபோல்டரை முழுமையாக அழிக்கிறோம்
+        if tamizhi_folder.exists():
+            shutil.rmtree(tamizhi_folder, ignore_errors=True)
+            
+        # புதிதாக டவுன்லோட் செய்யச் சொல்கிறோம்
+        ensure_binary()
+        print("🎉 தமிழி வெற்றிகரமாக அப்டேட் செய்யப்பட்டது! (Updated to latest version)")
+        return
+
+    # வழக்கம் போல் நடக்கும் வேலைகள்...
     ensure_binary()
     subprocess.run([str(BINARY_PATH)] + sys.argv[1:])
 
