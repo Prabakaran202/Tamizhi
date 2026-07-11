@@ -102,18 +102,18 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // 🌟 THE FIX: 3 பாதைகளையும் உருவாக்குதல்
+    // 🌟 3 பாதைகளையும் உருவாக்குகிறோம் (cli_path தான் முக்கியம்!)
     char cli_path[512];
     char pip_path[512];
     char git_path[512];
 
-    sprintf(cli_path, "%s/.tamizhi/core/http_runtime.c", home);          // 1. புதிய CLI டவுன்லோட் பாதை (முன்னுரிமை)
+    sprintf(cli_path, "%s/.tamizhi/core/http_runtime.c", home);          // 1. புதிய CLI குளோபல் டவுன்லோட் பாதை
     sprintf(pip_path, "%s/tamizhi-extract/core/http_runtime.c", home);   // 2. பழைய Extract பாதை
-    sprintf(git_path, "%s/Tamizhi/core/http_runtime.c", home);           // 3. GitHub குளோன் பாதை
+    sprintf(git_path, "%s/Tamizhi/core/http_runtime.c", home);           // 3. GitHub லோக்கல் பாதை
 
     char *final_runtime_path = NULL;
 
-    // எங்கு ஃபைல் இருக்கிறது என்பதை வரிசையாக செக் செய்தல்
+    // எங்கு ஃபைல் இருக்கிறது என்பதை வரிசையாக உறுதிப்படுத்துதல்
     if (access(cli_path, F_OK) == 0) {
         final_runtime_path = cli_path;
     } else if (access(pip_path, F_OK) == 0) {
