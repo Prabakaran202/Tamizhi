@@ -9,7 +9,7 @@ from pathlib import Path
 BINARY_PATH = Path.home() / ".tamizhi" / "bin" / "tamizhi"
 # குறிப்பு: நீங்கள் புதிய வெர்ஷன் ரிலீஸ் செய்யும்போது இந்த URL-ஐ மாற்றிக்கொள்ளலாம் (உதா: v2.0.9)
 RELEASE_URL = (
-    "https://github.com/BackendDeveloperHub/Tamizhi/raw/main/tamizhi-v2.1.1-linux.tar.gz"
+    "https://github.com/BackendDeveloperHub/Tamizhi/raw/main/tamizhi-v2.1.3-linux.tar.gz"
 )
 
 def ensure_binary():
