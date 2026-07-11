@@ -5,7 +5,7 @@
 #include "parser.h"
 #include "codegen.h"
 
-#define TAMIZHI_VERSION "v0.1.5"
+#define TAMIZHI_VERSION "v2.1.4"
 
 int tamizhi_debug_mode = 0;
 extern int tamizhi_cli_main(int argc, char *argv[]);
