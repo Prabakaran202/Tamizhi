@@ -111,8 +111,29 @@ int tamizhi_cli_main(int argc, char *argv[]) {
         // 2. Clang மூலம் மெஷின் கோடாக மாற்றுதல்
         printf("[2/3] மெஷின் கோடாக மாற்றுகிறது...\n");
         
-        // 🌟 FIX: ரன்-டைம் HTTP சர்வர் ஃபைலை (http_runtime.c) இங்கே லிங்க் செய்கிறோம்!
-        sprintf(cmd, "clang -x ir %s.ll $HOME/Tamizhi/core/http_runtime.c -o %s_bin", base_name, base_name);
+        // 🌟 சிஸ்டமின் $HOME பாதையை எடுப்பது
+        char *home = getenv("HOME");
+        char pip_path[512];
+        char git_path[512];
+
+        // 1. Pip மற்றும் 2. GitHub இரண்டின் முழுப் பாதைகளையும் உருவாக்குதல்
+        sprintf(pip_path, "%s/tamizhi-extract/core/http_runtime.c", home);
+        sprintf(git_path, "%s/Tamizhi/core/http_runtime.c", home);
+
+        // 🌟 THE FIX: IF Statement வைத்து செக் செய்தல்
+        if (access(pip_path, F_OK) == 0) {
+            // Pip வழியாக இன்ஸ்டால் செய்யப்பட்டிருந்தால் இது இயங்கும்
+            sprintf(cmd, "clang -x ir %s.ll \"%s\" -o %s_bin", base_name, pip_path, base_name);
+        } 
+        else if (access(git_path, F_OK) == 0) {
+            // GitHub Clone வழியாக இருந்தால் இது இயங்கும்
+            sprintf(cmd, "clang -x ir %s.ll \"%s\" -o %s_bin", base_name, git_path, base_name);
+        } 
+        else {
+            // இரண்டுமே இல்லை என்றால் எரர் மெசேஜ்
+            printf("தவறு: 'http_runtime.c' ரன்டைம் ஃபைல் சிஸ்டமில் காணப்படவில்லை!\n");
+            return 1;
+        }
         
         if (system(cmd) != 0) {
             printf("தவறு: Clang மூலம் கம்பைல் செய்வதில் சிக்கல்!\n");
