@@ -92,14 +92,39 @@ int main(int argc, char *argv[]) {
     }
 
     // ==========================================================
-    // 🚀 THE MAGIC: Clang Linking & Execution Phase
+    // 🚀 THE MAGIC: Clang Linking & Execution Phase (Dynamic Path Fix)
     // ==========================================================
     printf("\033[1;34m[Building] Linking Native C Runtime...\033[0m\n");
 
-    // LLVM IR ஃபைலையும், HTTP C ரன்டைமையும் இணைத்து பைனரியாக மாற்றுகிறோம்
-    // குறிப்பு: $HOME/Tamizhi/core/http_runtime.c என்ற பாதை சரியாக உள்ளதா என உறுதிசெய்து கொள்ளவும்
+    char *home = getenv("HOME");
+    if (home == NULL) {
+        fprintf(stderr, "\033[1;31mதவறு: HOME environment variable இல்லை!\033[0m\n");
+        return 1;
+    }
+
+    char pip_path[512];
+    char git_path[512];
+
+    // Pip மற்றும் GitHub இரண்டின் முழுப் பாதைகளையும் உருவாக்குதல்
+    sprintf(pip_path, "%s/tamizhi-extract/core/http_runtime.c", home);
+    sprintf(git_path, "%s/Tamizhi/core/http_runtime.c", home);
+
+    char *final_runtime_path = NULL;
+
+    // எங்கு ஃபைல் இருக்கிறது என்பதை உறுதிப்படுத்துதல்
+    if (access(pip_path, F_OK) == 0) {
+        final_runtime_path = pip_path;
+    } else if (access(git_path, F_OK) == 0) {
+        final_runtime_path = git_path;
+    } else {
+        fprintf(stderr, "\033[1;31mதவறு: 'http_runtime.c' ரன்டைம் ஃபைல் காணப்படவில்லை!\033[0m\n");
+        fprintf(stderr, "தேடிய இடங்கள்:\n 1. %s\n 2. %s\n", pip_path, git_path);
+        return 1;
+    }
+
+    // கண்டுபிடிக்கப்பட்ட சரியான பாதையை வைத்து Clang கமாண்டை உருவாக்குதல்
     char compile_cmd[1024];
-    sprintf(compile_cmd, "clang -Wno-override-module storage/output.ll $HOME/Tamizhi/core/http_runtime.c -o storage/project_binary");
+    sprintf(compile_cmd, "clang -Wno-override-module storage/output.ll \"%s\" -o storage/project_binary", final_runtime_path);
     
     if (system(compile_cmd) != 0) {
         fprintf(stderr, "\033[1;31m\n[பிழை] கம்பைல் செய்வதில் (Clang) சிக்கல் ஏற்பட்டது!\033[0m\n");
