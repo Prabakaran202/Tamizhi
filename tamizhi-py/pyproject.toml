@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "Tamizhi"
-version = "v2.1.3"
+version = "v2.1.4"
 description = "A Linux-native programming language built with C and LLVM."
 readme = "README.md"
 authors = [
