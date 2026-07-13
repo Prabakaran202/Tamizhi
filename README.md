@@ -214,7 +214,39 @@ Read the full license here: GNU GPLv3
 
 
 
-
+```
+Tamizhi/
+├── src/                  # Lexer, Parser, and LLVM Code Generator (C source files)
+├── include/              # Compiler Core Header files
+├── examples/             # Sample Tamizhi advanced programs (.tz)
+├── .vscode/              # Pre-configured global tasks for VS Code execution
+├── install.sh            # Global one-click automated installer script
+└── Makefile              # Automated Clang compilation pipelines
+```
+---
+<h2>Keyword support Tamizhi </h2>
+---
+<pre>
+| Tamil          | English   | Token Type | Category   |
+|----------------|-----------|------------|------------|
+| முதன்மை        | main      | T_MAIN     | Structure  |
+| நிகழ்          | fun       | T_FUNC     | Structure  |
+| பூட்டர்        | footer    | T_FOOTER   | Structure  |
+| அச்சிடு        | print     | T_PRINT    | I/O        |
+| உள்ளீடு        | input     | T_INP      | I/O        |
+| எண் / முழுஎண்  | Num       | T_INT      | Data Type  |
+| வரி            | Str       | T_STR      | Data Type  |
+| உண்மை          | bool      | T_BOOL     | Data Type  |
+| எனில்          | if        | T_IF       | Control    |
+| இல்லையெனில்    | else      | T_ELSE     | Control    |
+| சு             | for       | T_FOR      | Control    |
+| சு2            | while     | T_WHILE    | Control    |
+| திரும்பு       | return    | T_RET      | Other      |
+| இயக்கு         | call      | T_CALL     | Other      |
+| வரிசை          | line      | T_LINE     | Other      |
+```
+</pre>
+---
 
 
 
