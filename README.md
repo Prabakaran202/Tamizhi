@@ -106,7 +106,10 @@ Tamizhi/
 ├── install.sh            # Global one-click automated installer script
 └── Makefile              # Automated Clang compilation pipelines
 ```
-```
+---
+<h2>Keyword support Tamizhi </h2>
+---
+<pre>
 | Tamil          | English   | Token Type | Category   |
 |----------------|-----------|------------|------------|
 | முதன்மை        | main      | T_MAIN     | Structure  |
@@ -125,6 +128,7 @@ Tamizhi/
 | இயக்கு         | call      | T_CALL     | Other      |
 | வரிசை          | line      | T_LINE     | Other      |
 ```
+</pre>
 ---
 
 ## 🗺️ Roadmap
