@@ -7,8 +7,9 @@ import shutil
 from pathlib import Path
 
 BINARY_PATH = Path.home() / ".tamizhi" / "bin" / "tamizhi"
+# குறிப்பு: நீங்கள் புதிய வெர்ஷன் ரிலீஸ் செய்யும்போது இந்த URL-ஐ மாற்றிக்கொள்ளலாம் (உதா: v2.0.9)
 RELEASE_URL = (
-    "https://github.com/BackendDeveloperHub/Tamizhi/raw/main/tamizhi-v2.0.8-linux.tar.gz"
+    "https://github.com/BackendDeveloperHub/Tamizhi/raw/main/tamizhi-v2.1.6-linux.tar.gz"
 )
 
 def ensure_binary():
@@ -17,12 +18,8 @@ def ensure_binary():
 
     BINARY_PATH.parent.mkdir(parents=True, exist_ok=True)
 
-    #archive_path = "/tmp/tamizhi.tar.gz"
-    #extract_path = "/tmp/tamizhi-extract"
-        # பழைய வரிகளை நீக்கிவிட்டு, இதைச் சேர்க்கவும்:
     archive_path = Path.home() / "tamizhi.tar.gz"
     extract_path = Path.home() / "tamizhi-extract"
-    
 
     print("⬇ Downloading Tamizhi compiler...")
 
@@ -42,17 +39,50 @@ def ensure_binary():
     with tarfile.open(archive_path) as tar:
         tar.extractall(extract_path)
 
+    # --- 🌟 புதிய குளோபல் பாத் லாஜிக் (Binary, Core & Lib Folders) 🌟 ---
+    CORE_PATH = Path.home() / ".tamizhi" / "core"
+    LIB_PATH = Path.home() / ".tamizhi" / "lib"
+
     for root, dirs, files in os.walk(extract_path):
+        # 1. தமிழி பைனரியை தேடி நகர்த்துதல்
         if "tamizhi" in files:
             binary_src = os.path.join(root, "tamizhi")
             shutil.copy(binary_src, BINARY_PATH)
-            break
+        
+        # 2. கம்பைலருக்குத் தேவையான 'core' ஃபோல்டரை தேடி நகர்த்துதல்
+        if "core" in dirs:
+            core_src = os.path.join(root, "core")
+            if CORE_PATH.exists():
+                shutil.rmtree(CORE_PATH)
+            shutil.copytree(core_src, CORE_PATH)
+
+        # 3. 🌟 Import-க்குத் தேவையான 'lib' ஃபோல்டரை தேடி நகர்த்துதல் (The Fix!)
+        if "lib" in dirs:
+            lib_src = os.path.join(root, "lib")
+            if LIB_PATH.exists():
+                shutil.rmtree(LIB_PATH)
+            shutil.copytree(lib_src, LIB_PATH)
 
     os.chmod(BINARY_PATH, 0o755)
     print("✅ Tamizhi installed successfully!")
 
 # இந்த main() பங்க்ஷன் கட்டாயம் இருக்க வேண்டும்!
 def main():
+    # 🌟 யூசர் 'tamizhi upgrade' என்று கொடுத்தால்...
+    if len(sys.argv) > 1 and sys.argv[1] == "upgrade":
+        print("🔄 தமிழி புதிய வெர்ஷனுக்கு அப்டேட் செய்யப்படுகிறது...")
+        tamizhi_folder = Path.home() / ".tamizhi"
+        
+        # பழைய ஃபோல்டரை முழுமையாக அழிக்கிறோம்
+        if tamizhi_folder.exists():
+            shutil.rmtree(tamizhi_folder, ignore_errors=True)
+            
+        # புதிதாக டவுன்லோட் செய்யச் சொல்கிறோம்
+        ensure_binary()
+        print("🎉 தமிழி வெற்றிகரமாக அப்டேட் செய்யப்பட்டது! (Updated to latest version)")
+        return
+
+    # வழக்கம் போல் நடக்கும் வேலைகள்...
     ensure_binary()
     subprocess.run([str(BINARY_PATH)] + sys.argv[1:])
 
