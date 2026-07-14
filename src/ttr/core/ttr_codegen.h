@@ -1,5 +1,5 @@
 #ifndef TTR_CODEGEN_H
-#define TTR__CODEGEN_H
+#define TTR_CODEGEN_H
 
 #include "ttr_parser.h"
 
