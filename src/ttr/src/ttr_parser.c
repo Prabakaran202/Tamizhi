@@ -1,9 +1,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include "../core/parser.h"
+#include "../core/ttr_parser.h"
 
-ASTProgram parse() {
+ASTProgram ttr_parse() {
     ASTProgram program;
     program.count = 0;
 
