@@ -7,20 +7,20 @@ typedef enum {
     TOKEN_STRING,     // "..." அல்லது '...'
     TOKEN_LPAREN,     // (
     TOKEN_RPAREN,
-    TOKEN_IDENTIFIER, // name, age (புதியது)
-    TOKEN_ASSIGN,     // = (புதியது)
-    TOKEN_NUMBER,       // )
+    TOKEN_IDENTIFIER, // name, age
+    TOKEN_ASSIGN,     // =
+    TOKEN_NUMBER,     
     TOKEN_EOF         // End of File
 } TTR_TokenType;
 
-// ஒரு டோக்கனின் அமைப்பு
+// ஒரு டோக்கனின் அமைப்பு (Token என்பது TTR_Token என மாற்றப்பட்டுள்ளது)
 typedef struct {
     TTR_TokenType type;
     char value[256];
-} Token;
+} TTR_Token;
 
 // Lexer ஃபங்ஷன்ஸ்
 void ttr_init_lexer(const char *source_code);
-Token get_next_token();
+TTR_Token ttr_get_next_token(); // ttr_get_next_token என மாற்றப்பட்டுள்ளது
 
 #endif
