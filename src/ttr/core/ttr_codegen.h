@@ -1,8 +1,8 @@
 #ifndef CODEGEN_H
 #define CODEGEN_H
 
-#include "parser.h"
+#include "ttr_parser.h"
 
-void generate_tamizhi_code(ASTProgram program, const char *output_filename);
+void ttr_generate_tamizhi_code(ASTProgram program, const char *output_filename);
 
 #endif
