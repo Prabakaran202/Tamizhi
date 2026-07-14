@@ -1,7 +1,7 @@
 #ifndef PARSER_H
 #define PARSER_H
 
-#include "lexer.h"
+#include "ttr_lexer.h"
 
 typedef enum {
     AST_PRINT,        // print("Hello")
