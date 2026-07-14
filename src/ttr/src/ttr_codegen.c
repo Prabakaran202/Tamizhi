@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include "../core/ttr_codegen.h"
 
-void ttr_generate_tamizhi_code(ASTProgram program, const char *output_filename) {
+void ttr_generate_tamizhi_code(TTR_ASTProgram program, const char *output_filename) {
     FILE *fout = fopen(output_filename, "w");
     if (!fout) return;
 
@@ -9,7 +9,7 @@ void ttr_generate_tamizhi_code(ASTProgram program, const char *output_filename) 
 
     // பதிவான அத்தனை வரிகளையும் (Array) வரிசையாக தமிழிக்கு மாற்று!
     for (int i = 0; i < program.count; i++) {
-        ASTNode node = program.nodes[i];
+        TTR_ASTNode node = program.nodes[i]; // 🔥 இங்கே TTR_ASTNode என மாற்றப்பட்டுள்ளது
         
         if (node.type == AST_PRINT) {
             fprintf(fout, "    print(\"%s\");\n", node.value);
