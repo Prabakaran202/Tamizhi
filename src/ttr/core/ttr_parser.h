@@ -22,6 +22,6 @@ typedef struct {
     int count;
 } ASTProgram;
 
-ASTProgram parse();
+ASTProgram ttr_parse();
 
 #endif
