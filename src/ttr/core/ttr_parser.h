@@ -1,5 +1,5 @@
-#ifndef PARSER_H
-#define PARSER_H
+#ifndef TTR_PARSER_H
+#define TTR_PARSER_H
 
 #include "ttr_lexer.h"
 
