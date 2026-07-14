@@ -1,5 +1,5 @@
-#ifndef LEXER_H
-#define LEXER_H
+#ifndef TTR_LEXER_H
+#define TTR_LEXER_H
 
 // பைத்தான் கோடில் நாம் கண்டுபிடிக்க வேண்டிய டோக்கன்கள்
 typedef enum {
