@@ -5,6 +5,11 @@
 #include "parser.h"
 #include "codegen.h"
 
+// 🐍 Python Frontend Module (TTr)
+#include "ttr/core/lexer.h"
+#include "ttr/core/parser.h"
+#include "ttr/core/codegen.h"
+
 #define TAMIZHI_VERSION "v2.1.4"
 
 int tamizhi_debug_mode = 0;
@@ -17,8 +22,23 @@ void print_tamizhi_environment() {
     printf("\033[1;35m[Usage]:\033[0m\n");
     printf("  • tamizhi init <project_name>  (புதிய ப்ராஜெக்ட் உருவாக்க)\n");
     printf("  • tamizhi run <file_name.tz>   (கோப்பை இயக்க)\n");
+    printf("  • tamizhi run <file_name.py>   (பைத்தான் கோப்பை இயக்க)\n");
     printf("  • tamizhi <file_name.tz> --debug   (For internal logs)\n");
     printf("\033[1;36m--------------------------------------------------\033[0m\n\n");
+}
+
+// கோப்பைப் படிப்பதற்கான Helper Function (Python Frontend-க்காக)
+char* read_full_file(const char* filename) {
+    FILE *file = fopen(filename, "r");
+    if (!file) return NULL;
+    fseek(file, 0, SEEK_END);
+    long length = ftell(file);
+    fseek(file, 0, SEEK_SET);
+    char *buffer = malloc(length + 1);
+    fread(buffer, 1, length, file);
+    buffer[length] = '\0';
+    fclose(file);
+    return buffer;
 }
 
 int main(int argc, char *argv[]) {
@@ -52,7 +72,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // கோப்பு இருக்கிறதா என சரிபார்க்க
     if (access(target_file, F_OK) == -1) {
         fprintf(stderr, "\033[1;31mதவறு: '%s' என்ற கோப்பு காணப்படவில்லை!\033[0m\n", target_file);
         return 1;
@@ -62,10 +81,37 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, " \033[1;33m[System] Preparing environment...\033[0m\n");
     }
 
-    // 🌟 1. Environment & Storage செட்-அப்
     system("mkdir -p storage 2>/dev/null");
     system("rm -f storage/output.bc storage/output.o storage/output.ll 2>/dev/null");
-    system("rm -f storage/project_binary 2>/dev/null");
+    system("rm -f storage/project_binary storage/temp_python.tz 2>/dev/null");
+
+    // ==========================================================
+    // 🐍 THE MAGIC: Python Interceptor (Native Translation)
+    // ==========================================================
+    char *ext = strrchr(target_file, '.');
+    if (ext && strcmp(ext, ".py") == 0) {
+        printf("\033[1;33m[Python Frontend] பைத்தான் கோப்பு கண்டறியப்பட்டது. தமிழிக்கு மாற்றப்படுகிறது...\033[0m\n");
+        
+        char *py_source = read_full_file(target_file);
+        if (!py_source) {
+            fprintf(stderr, "\033[1;31mதவறு: பைத்தான் கோப்பைப் படிக்க முடியவில்லை!\033[0m\n");
+            return 1;
+        }
+
+        ttr_init_lexer(py_source);            
+        ASTProgram py_prog = ttr_parse();     
+        
+        if (py_prog.count > 0) {
+            ttr_generate_tamizhi_code(py_prog, "storage/temp_python.tz"); 
+            target_file = "storage/temp_python.tz"; // 🔥 இலக்கை தற்காலிக தமிழி கோப்பிற்கு மாற்றுகிறோம்!
+            free(py_source);
+        } else {
+            fprintf(stderr, "\033[1;31m❌ பைத்தான் கோடில் பிழை உள்ளது!\033[0m\n");
+            free(py_source);
+            return 1;
+        }
+    }
+    // ==========================================================
 
     FILE *file = fopen(target_file, "r");
     if (!file) {
@@ -73,7 +119,6 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // 🌟 2. தமிழி Parsing மற்றும் LLVM IR உருவாக்கம்
     tamizhi_codegen_init();
     tamizhi_generate_entry();
 
@@ -83,7 +128,6 @@ int main(int argc, char *argv[]) {
 
     parse(file); 
     
-    // 🌟 இந்த ஃபங்ஷன் இப்போது JIT-ஐ இயக்காமல் 'storage/output.ll' ஃபைலை மட்டும் உருவாக்கும்
     tamizhi_codegen_finish();
     fclose(file);
 
@@ -91,9 +135,6 @@ int main(int argc, char *argv[]) {
         fprintf(stderr, "\n\033[1;36mதொகுப்பு (Parsing) வெற்றிகரமாக முடிந்தது.\033[0m\n");
     }
 
-    // ==========================================================
-    // 🚀 THE MAGIC: Clang Linking & Execution Phase (Dynamic Path Fix)
-    // ==========================================================
     printf("\033[1;34m[Building] Linking Native C Runtime...\033[0m\n");
 
     char *home = getenv("HOME");
@@ -102,18 +143,16 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // 🌟 3 பாதைகளையும் உருவாக்குகிறோம் (cli_path தான் முக்கியம்!)
     char cli_path[512];
     char pip_path[512];
     char git_path[512];
 
-    sprintf(cli_path, "%s/.tamizhi/core/http_runtime.c", home);          // 1. புதிய CLI குளோபல் டவுன்லோட் பாதை
-    sprintf(pip_path, "%s/tamizhi-extract/core/http_runtime.c", home);   // 2. பழைய Extract பாதை
-    sprintf(git_path, "%s/Tamizhi/core/http_runtime.c", home);           // 3. GitHub லோக்கல் பாதை
+    sprintf(cli_path, "%s/.tamizhi/core/http_runtime.c", home);          
+    sprintf(pip_path, "%s/tamizhi-extract/core/http_runtime.c", home);   
+    sprintf(git_path, "%s/Tamizhi/core/http_runtime.c", home);           
 
     char *final_runtime_path = NULL;
 
-    // எங்கு ஃபைல் இருக்கிறது என்பதை வரிசையாக உறுதிப்படுத்துதல்
     if (access(cli_path, F_OK) == 0) {
         final_runtime_path = cli_path;
     } else if (access(pip_path, F_OK) == 0) {
@@ -122,11 +161,9 @@ int main(int argc, char *argv[]) {
         final_runtime_path = git_path;
     } else {
         fprintf(stderr, "\033[1;31mதவறு: 'http_runtime.c' ரன்டைம் ஃபைல் காணப்படவில்லை!\033[0m\n");
-        fprintf(stderr, "தேடிய இடங்கள்:\n 1. %s\n 2. %s\n 3. %s\n", cli_path, pip_path, git_path);
         return 1;
     }
 
-    // கண்டுபிடிக்கப்பட்ட சரியான பாதையை வைத்து Clang கமாண்டை உருவாக்குதல்
     char compile_cmd[1024];
     sprintf(compile_cmd, "clang -Wno-override-module storage/output.ll \"%s\" -o storage/project_binary", final_runtime_path);
     
@@ -137,7 +174,6 @@ int main(int argc, char *argv[]) {
 
     printf("\033[1;32m[Success] Server App Ready! Running now...\033[0m\n\n");
 
-    // உருவாக்கப்பட்ட நேட்டிவ் பைனரியை இயக்குகிறோம்!
     system("./storage/project_binary");
 
     return 0;
