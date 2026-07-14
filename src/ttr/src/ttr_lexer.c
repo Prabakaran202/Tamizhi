@@ -1,12 +1,12 @@
 #include <stdio.h>
 #include <string.h>
 #include <ctype.h>
-#include "../core/lexer.h"
+#include "../core/ttr_lexer.h"
 
 static const char *source;
 static int pos = 0;
 
-void init_lexer(const char *source_code) { source = source_code; pos = 0; }
+void ttr_init_lexer(const char *source_code) { source = source_code; pos = 0; }
 
 Token get_next_token() {
     Token token;
