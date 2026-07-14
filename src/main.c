@@ -6,9 +6,9 @@
 #include "codegen.h"
 
 // 🐍 Python Frontend Module (TTr)
-#include "ttr/core/lexer.h"
-#include "ttr/core/parser.h"
-#include "ttr/core/codegen.h"
+#include "ttr/core/ttr_lexer.h"
+#include "ttr/core/ttr_parser.h"
+#include "ttr/core/ttr_codegen.h"
 
 #define TAMIZHI_VERSION "v2.1.4"
 
