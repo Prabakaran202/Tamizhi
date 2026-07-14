@@ -11,11 +11,11 @@ typedef enum {
     TOKEN_ASSIGN,     // = (புதியது)
     TOKEN_NUMBER,       // )
     TOKEN_EOF         // End of File
-} TokenType;
+} TTR_TokenType;
 
 // ஒரு டோக்கனின் அமைப்பு
 typedef struct {
-    TokenType type;
+    TTR_TokenType type;
     char value[256];
 } Token;
 
