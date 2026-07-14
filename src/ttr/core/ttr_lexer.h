@@ -20,7 +20,7 @@ typedef struct {
 } Token;
 
 // Lexer ஃபங்ஷன்ஸ்
-void init_lexer(const char *source_code);
+void ttr_init_lexer(const char *source_code);
 Token get_next_token();
 
 #endif
