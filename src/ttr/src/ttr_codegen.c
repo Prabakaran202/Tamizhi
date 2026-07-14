@@ -1,7 +1,7 @@
 #include <stdio.h>
-#include "../core/codegen.h"
+#include "../core/ttrcodegen.h"
 
-void generate_tamizhi_code(ASTProgram program, const char *output_filename) {
+void ttr_generate_tamizhi_code(ASTProgram program, const char *output_filename) {
     FILE *fout = fopen(output_filename, "w");
     if (!fout) return;
 
