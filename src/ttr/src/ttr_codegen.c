@@ -1,5 +1,5 @@
 #include <stdio.h>
-#include "../core/ttrcodegen.h"
+#include "../core/ttr_codegen.h"
 
 void ttr_generate_tamizhi_code(ASTProgram program, const char *output_filename) {
     FILE *fout = fopen(output_filename, "w");
