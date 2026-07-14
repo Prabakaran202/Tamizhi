@@ -14,9 +14,10 @@ LLVM_FLAGS = -lLLVM
 SRC_DIR = src
 CODEGEN_DIR = src/codegen
 CORE_DIR = core
+TTR_DIR = src/ttr/src
 
 # ஆட்டோமேட்டிக்காக அனைத்து ஃபோல்டர்களில் இருக்கும் .c ஃபைல்களையும் ஸ்கேன் செய்து எடுத்தல்
-SRCS = $(wildcard $(SRC_DIR)/*.c) $(wildcard $(CODEGEN_DIR)/*.c) $(wildcard $(CORE_DIR)/*.c)
+SRCS = $(wildcard $(SRC_DIR)/*.c) $(wildcard $(CODEGEN_DIR)/*.c) $(wildcard $(CORE_DIR)/*.c) $(wildcard $(TTR_DIR)/*.c)
 TARGET = tamizhi
 
 # டிஃபால்ட் கமெண்ட்: 'make' அடிச்சா இது ரன் ஆகும்
