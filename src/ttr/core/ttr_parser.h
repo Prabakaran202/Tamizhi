@@ -10,7 +10,7 @@ typedef enum {
 } TTR_ASTNodeType;
 
 typedef struct {
-    ASTNodeType type;
+    TTR_ASTNodeType type;  // 🔥 இங்கே ASTNodeType என்று இருந்தது, அதை TTR_ASTNodeType என மாற்றியாச்சு!
     char value[256];
     char var_name[256];
     char var_type[10];
